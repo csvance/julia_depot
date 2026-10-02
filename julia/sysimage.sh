@@ -54,6 +54,29 @@ if [ -n "$want" ] && [ "$want" != "$minor" ]; then
     exit 2
 fi
 
+# The environment being right does not mean its packages are in the depot: nothing else
+# instantiates it, so a fresh depot has the Manifest but not PackageCompiler. Probe for
+# every pinned package without loading any, and instantiate only when one is missing, so
+# a warm depot stays silent and offline. Instantiate from a COPY: under Bazel the
+# environment is staged read-only from the external tree, and only the depot should
+# change. The registry is whatever the depot already has; none is added here.
+missing="$("$JULIA" --startup-file=no --project="$BUILD_PROJECT" -e '
+manifest = Base.parsed_toml(joinpath(dirname(Base.active_project()), "Manifest.toml"))
+for (name, entries) in manifest["deps"], entry in entries
+    haskey(entry, "git-tree-sha1") || continue
+    id = Base.PkgId(Base.UUID(entry["uuid"]), name)
+    Base.locate_package(id) === nothing && print(name, " ")
+end
+')"
+if [ -n "$missing" ]; then
+    echo "installing the PackageCompiler environment for Julia $minor into the depot (missing: ${missing% })" >&2
+    env_copy="$(mktemp -d)"
+    trap 'rm -rf "$env_copy"' EXIT
+    cp "$BUILD_PROJECT/Project.toml" "$BUILD_PROJECT/Manifest.toml" "$env_copy"/
+    chmod u+w "$env_copy"/*.toml
+    "$JULIA" --startup-file=no --project="$env_copy" -e 'using Pkg; Pkg.instantiate()'
+fi
+
 OUT_ABS="$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")"
 
 "$JULIA" --startup-file=no --project="$BUILD_PROJECT" -e '
