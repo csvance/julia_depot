@@ -41,6 +41,11 @@ starts and loads what was baked into it. Across versions, a manifest resolved un
 Julia is refused by the other in both directions, and a PackageCompiler environment
 pinned to the wrong minor is refused before any work starts.
 
+One test sits outside the per-version set. The matrix's sysimage tests run over a depot
+that already holds PackageCompiler, so on 1.13 `sysimage.sh auto` is also run on an empty
+depot of the test's own, and has to install its PackageCompiler environment there before
+building. It downloads the General registry and PackageCompiler each time it runs.
+
 ## Before pushing
 
 `tools/check_no_private_refs.sh` greps everything git would publish for internal

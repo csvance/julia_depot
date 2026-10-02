@@ -41,9 +41,10 @@ julia.depot(
     manifest = "//projects/v1.12:Manifest.toml",
 )
 
-# The module's own PackageCompiler environment for this minor. `sysimage.sh auto` runs
-# julia against it, so something has to have instantiated it first, and the depot rule
-# is that something: this is also how a consumer building a sysimage arranges it.
+# The module's own PackageCompiler environment for this minor, instantiated ahead of the
+# sysimage tests so they start warm. A consumer needs no such depot: `sysimage.sh`
+# installs the environment itself when it is missing, which
+# tests/sysimage_fresh_depot_test.sh checks on a depot that never had it.
 julia.depot(
     name = "sysimage_depot_1_12",
     julia = "@julia_1_12//:bin/julia",

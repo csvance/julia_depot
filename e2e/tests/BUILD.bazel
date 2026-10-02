@@ -72,3 +72,31 @@ sh_test(
     ],
     tags = ["julia1_12"],
 )
+
+# sysimage.sh on a depot with no PackageCompiler in it, which is what a consumer following
+# docs/recipes.md has: the matrix's sysimage tests all run over a depot that already holds
+# it. The install step is version-independent, so 1.13 alone covers it.
+sh_test(
+    name = "sysimage_fresh_depot_1_13_test",
+    size = "large",
+    srcs = ["sysimage_fresh_depot_test.sh"],
+    args = [
+        "$(rootpath @rules_julia_depot//julia:sysimage.sh)",
+        "$(rootpath @julia_1_13//:bin/julia)",
+        "$(rootpath //projects/v1.13:Manifest.toml)",
+    ],
+    data = [
+        "common.sh",
+        "//projects/v1.13:Manifest.toml",
+        "//projects/v1.13:Project.toml",
+        "@julia_1_13//:bin/julia",
+        "@julia_1_13//:dist",
+        "@rules_julia_depot//julia:sysimage.sh",
+        "@rules_julia_depot//julia:sysimage_envs",
+    ],
+    env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
+    tags = [
+        "julia1_13",
+        "requires-network",
+    ],
+)
