@@ -1,0 +1,103 @@
+name: e2e
+
+# The end-to-end suite for ONE Julia version, called by one small workflow per version
+# (julia-1.12.yml, julia-1.13.yml, ...). It is split this way rather than run as a
+# matrix so each version has its own workflow, and so its own status badge: GitHub
+# badges are per workflow, not per job.
+
+on:
+  workflow_call:
+    inputs:
+      julia:
+        description: The Julia minor, e.g. "1.13". Keys the caches and names the run.
+        required: true
+        type: string
+      tag:
+        # The Bazel test tag that selects this version's tests. It is derived from the
+        # version the same way tests/defs.bzl derives it, and has to stay that way: a
+        # tag that matches nothing makes the run pass by doing nothing, which is why the
+        # test step below refuses an empty target list.
+        description: The Bazel test tag for this version, e.g. "julia1_13".
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  # The runner has no private network and must never be asked to look for one. The same
+  # pin is in e2e/.bazelrc for repository rules and in e2e/tests/defs.bzl for test
+  # actions; this is belt and braces for anything run outside Bazel.
+  JULIA_PKG_SERVER: https://pkg.julialang.org
+
+jobs:
+  e2e:
+    name: e2e julia ${{ inputs.julia }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install bazelisk
+        env:
+          BAZELISK_VERSION: "1.29.0"
+        # Into a user directory, not /usr/local/bin: the runner's shell is not root and
+        # curl fails there with "Failure writing output to destination".
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL -o "$HOME/.local/bin/bazel" \
+            "https://github.com/bazelbuild/bazelisk/releases/download/v${BAZELISK_VERSION}/bazelisk-linux-amd64"
+          chmod +x "$HOME/.local/bin/bazel"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/bazel" --version
+
+      # The depot is where the expensive part of this suite lives: instantiating the
+      # manifests and precompiling them. It is keyed on the manifests, so a run that
+      # changes none of them starts warm.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.julia
+          key: julia-depot-${{ inputs.julia }}-${{ hashFiles('e2e/projects/**/Manifest.toml', 'julia/sysimage/**/Manifest.toml') }}
+          restore-keys: julia-depot-${{ inputs.julia }}-
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/bazel-disk
+          key: bazel-disk-${{ inputs.julia }}-${{ hashFiles('e2e/MODULE.bazel', 'MODULE.bazel') }}
+          restore-keys: bazel-disk-${{ inputs.julia }}-
+
+      # The tag selects the version: a test is tagged for the Julia it runs, so every
+      # test in this run needs only this version's toolchain and depot. The
+      # cross-version refusal tests land in the run of the Julia they run, and between
+      # the per-version workflows both directions are covered.
+      #
+      # The run's targets are QUERIED rather than filtered with --test_tag_filters,
+      # because a filter still analyses the tests it excludes, and analysing a test here
+      # means fetching the depot it depends on. Each runner would then instantiate both
+      # Julia versions to run one, which is most of the wall clock.
+      - name: bazel test
+        working-directory: e2e
+        run: |
+          set -euo pipefail
+          targets="$(bazel query "attr(tags, '${{ inputs.tag }}', tests(//...))")"
+          test -n "$targets" || {
+            echo "no tests tagged ${{ inputs.tag }}; the tag and tests/defs.bzl disagree" >&2
+            exit 1
+          }
+          echo "$targets"
+          # shellcheck disable=SC2086
+          bazel test $targets \
+            --disk_cache="$HOME/.cache/bazel-disk" \
+            --test_output=errors \
+            --keep_going
+
+      - name: Test logs
+        if: failure()
+        working-directory: e2e
+        run: |
+          for log in $(find -L bazel-testlogs -name test.log); do
+            echo "::group::$log"
+            cat "$log"
+            echo "::endgroup::"
+          done

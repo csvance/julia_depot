@@ -1,0 +1,25 @@
+name: julia 1.13
+
+# The end-to-end suite on Julia 1.13; the steps are in e2e.yml. One file per supported
+# version, so each has its own status badge in the README. Adding a version means copying
+# this file with the version and tag changed, and adding its badge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: julia-1.13-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+    with:
+      julia: "1.13"
+      tag: julia1_13

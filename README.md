@@ -1,5 +1,9 @@
 # rules_julia_depot
 
+[![ci](https://github.com/csvance/rules_julia_depot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/ci.yml)
+[![julia 1.12](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.12.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.12.yml)
+[![julia 1.13](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.13.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.13.yml)
+
 Reproducible Julia environments, sysimages and container images with Bazel, pinned to
 the `Manifest.toml` you already commit.
 
