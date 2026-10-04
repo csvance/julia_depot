@@ -17,8 +17,9 @@ output="$("$check" 2>&1)" || rc=$?
 [ "$rc" -ne 0 ] ||
     fail "the check passed on an image built to fail it:
 $output"
-printf '%s\n' "$output" | grep -q -- "$pattern" ||
+# A here-string, not a pipe: under pipefail a `printf | grep -q` that matches early can fail.
+grep -q -- "$pattern" <<<"$output" ||
     fail "the check failed, but not with '$pattern':
 $output"
 
-echo "PASS: the check failed as it should, on: $(printf '%s\n' "$output" | grep -m1 -- "$pattern" | cut -c1-160)"
+echo "PASS: the check failed as it should, on: $(grep -m1 -- "$pattern" <<<"$output" | cut -c1-160)"
