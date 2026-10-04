@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Images — rules_julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=af0b550a">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=27a5f0bf">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Images — rules_julia_depot">
   <meta property="og:title" content="Images — rules_julia_depot">
@@ -78,14 +78,14 @@ julia_image_env(
 
 julia_dist_layer(
     name = &quot;julia_layer&quot;,
-    julia = &quot;@julia_dist//:dist&quot;,
+    julia = &quot;@julia_dist&quot;,
 )
 
 julia_depot_layer(
     name = &quot;depot_layer&quot;,
     contents = &quot;full&quot;,
-    depot = &quot;@my_depot//:env&quot;,
-    julia = &quot;@julia_dist//:dist&quot;,
+    depot = &quot;@my_depot&quot;,
+    julia = &quot;@julia_dist&quot;,
     manifest = &quot;Manifest.toml&quot;,
     project = &quot;Project.toml&quot;,
 )
@@ -94,7 +94,7 @@ julia_depot_layer(
 julia_compiled_layer(
     name = &quot;compiled_layer&quot;,
     image_env = &quot;:image_env&quot;,
-    julia = &quot;@julia_dist//:dist&quot;,
+    julia = &quot;@julia_dist&quot;,
     layers = [&quot;:julia_layer&quot;, &quot;:depot_layer&quot;, &quot;:app_layer&quot;],
     projects = [&quot;/opt/app&quot;],
 )
@@ -111,14 +111,14 @@ oci_image(
 julia_precompile_test(
     name = &quot;image_precompile_test&quot;,
     image_env = &quot;:image_env&quot;,
-    julia = &quot;@julia_dist//:dist&quot;,
+    julia = &quot;@julia_dist&quot;,
     layers = [&quot;:julia_layer&quot;, &quot;:depot_layer&quot;, &quot;:compiled_layer&quot;, &quot;:app_layer&quot;],
     projects = [&quot;/opt/app&quot;],
 )</code></pre>
 </div>
 <p><code class="md-code-inline">:app_layer</code> is your own: the project&#39;s <code class="md-code-inline">Project.toml</code> and <code class="md-code-inline">Manifest.toml</code> at <code class="md-code-inline">/opt/app</code>, and your code. <code class="md-code-inline">e2e/image/</code> builds exactly this for every Julia version in the test matrix.</p>
 <h2 id="The-rules" class="md-heading">The rules<a href="#The-rules" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
-<p>All layer rules write <code class="md-code-inline">&lt;name&gt;.tar</code> and take <code class="md-code-inline">julia</code>, the toolchain&#39;s <code class="md-code-inline">@&lt;toolchain&gt;//:dist</code>.</p>
+<p>All layer rules write <code class="md-code-inline">&lt;name&gt;.tar</code> and take <code class="md-code-inline">julia</code>, the distribution from <code class="md-code-inline">julia.dist</code>, e.g. <code class="md-code-inline">@julia_dist</code>.</p>
 <div class="md-table-wrap">
 <table class="md-table">
 <thead>
@@ -154,7 +154,7 @@ julia_precompile_test(
 </div>
 <p><code class="md-code-inline">julia_image_env</code> writes <code class="md-code-inline">&lt;name&gt;.env</code> and provides <code class="md-code-inline">JuliaImageEnvInfo</code>. Its attributes are <code class="md-code-inline">julia_prefix</code>, <code class="md-code-inline">depot_prefix</code>, <code class="md-code-inline">extra_depots</code>, <code class="md-code-inline">project</code>, <code class="md-code-inline">load_path</code>, <code class="md-code-inline">cpu_target</code>, <code class="md-code-inline">offline</code> (default true), <code class="md-code-inline">path</code> (default true) and <code class="md-code-inline">env</code>. <code class="md-code-inline">julia_image_env_vars(...)</code> returns the same variables as a dict, for a BUILD file that merges them with its own.</p>
 <p><code class="md-code-inline">julia_precompile_test</code> is a test, with the compiled layer&#39;s attributes plus <code class="md-code-inline">modules</code>.</p>
-<p><code class="md-code-inline">project</code> and <code class="md-code-inline">manifest</code> are labels to the two files; the manifest is staged beside the project wherever it lives, so a production lock kept apart from the development one works. <code class="md-code-inline">srcs</code> are further project files (a <code class="md-code-inline">LocalPreferences.toml</code>, workspace members) staged at their paths relative to the <code class="md-code-inline">Project.toml</code>. <code class="md-code-inline">depot</code> is a julia.depot&#39;s <code class="md-code-inline">@&lt;depot&gt;//:env</code>: the depot layer copies its registries and package-server credentials for the instantiate and ships neither, and without it fetches the registry fresh; the sysimage layer reads the packages that depot already holds. <code class="md-code-inline">env</code> passes variables to the build, such as what a package&#39;s platform augmentation reads to select an artifact.</p>
+<p><code class="md-code-inline">project</code> and <code class="md-code-inline">manifest</code> are labels to the two files; the manifest is staged beside the project wherever it lives, so a production lock kept apart from the development one works. <code class="md-code-inline">srcs</code> are further project files (a <code class="md-code-inline">LocalPreferences.toml</code>, workspace members) staged at their paths relative to the <code class="md-code-inline">Project.toml</code>. <code class="md-code-inline">depot</code> is a julia.depot repository, e.g. <code class="md-code-inline">@my_depot</code>: the depot layer copies its registries and package-server credentials for the instantiate and ships neither, and without it fetches the registry fresh; the sysimage layer reads the packages that depot already holds. <code class="md-code-inline">env</code> passes variables to the build, such as what a package&#39;s platform augmentation reads to select an artifact.</p>
 <p>The depot and sysimage layers need the network (tagged <code class="md-code-inline">requires-network</code>); set <code class="md-code-inline">JULIA_PKG_SERVER</code> with <code class="md-code-inline">--action_env</code> to go through a mirror. Every layer action is <code class="md-code-inline">no-remote-exec</code>, since they read the distribution through its real directory and, for the depot and sysimage layers, the depot a fetch filled on this host.</p>
 <h2 id="The-environment" class="md-heading">The environment<a href="#The-environment" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p><code class="md-code-inline">julia_image_env</code> with the defaults and <code class="md-code-inline">project = &quot;/opt/app&quot;</code> writes:</p>
@@ -166,7 +166,7 @@ JULIA_PKG_OFFLINE=true
 JULIA_PROJECT=/opt/app
 PATH=/opt/julia/bin:$PATH</code></pre>
 </div>
-<p>The depot path is in search order. The image&#39;s depot comes first, because Julia writes to the first entry and a cache that turns out stale at run time is rebuilt there. Then <code class="md-code-inline">extra_depots</code>. Then the two depots the distribution ships inside itself, which hold the stdlib caches; without them Julia recompiles the stdlib into the first depot, and listing them explicitly rather than with a trailing <code class="md-code-inline">:</code> keeps <code class="md-code-inline">~/.julia</code> out. <code class="md-code-inline">$PATH</code> is expanded by rules_oci against the base image&#39;s own PATH. Variables of your own go in <code class="md-code-inline">env</code>, and are written to the same file.</p>
+<p>The depot path is in search order. The image&#39;s depot comes first, because Julia writes to the first entry and a cache that turns out stale at run time is rebuilt there. Then <code class="md-code-inline">extra_depots</code>. Then the two depots the distribution ships inside itself, which hold the stdlib caches; without them Julia recompiles the stdlib into the first depot. They are named rather than left to a trailing <code class="md-code-inline">:</code>, which expands to the same two, so the file says exactly what the path is. <code class="md-code-inline">$PATH</code> is expanded by rules_oci against the base image&#39;s own PATH. Variables of your own go in <code class="md-code-inline">env</code>, and are written to the same file.</p>
 <h2 id="Caches-that-survive-the-move" class="md-heading">Caches that survive the move<a href="#Caches-that-survive-the-move" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>Julia validates a cache against its sources by content and records each source relative to the depot that holds it (<code class="md-code-inline">@depot/packages/...</code>). So <code class="md-code-inline">julia_compiled_layer</code> unpacks the layers into a temporary tree with the image&#39;s layout, precompiles each entry project against the image&#39;s depot path rooted in that tree, and ships the first depot&#39;s <code class="md-code-inline">compiled/</code>; the caches then load unchanged from <code class="md-code-inline">/opt</code>. The same tree runs the image&#39;s own Julia when a dist layer is among <code class="md-code-inline">layers</code>.</p>
 <p>Sources outside every depot are recorded by absolute path and would be stale in the image. When the application has packages of its own (a workspace, or a path dependency), list its root in <code class="md-code-inline">extra_depots</code> so they are recorded relative to it too.</p>
@@ -218,6 +218,6 @@ PATH=/opt/julia/bin:$PATH</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=af0b550a"></script>
+  <script src="../assets/materialdocs.js?v=27a5f0bf"></script>
 </body>
 </html>

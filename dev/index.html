@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Index — rules_julia_depot</title>
-  <link rel="stylesheet" href="./assets/materialdocs.css?v=647a6880">
+  <link rel="stylesheet" href="./assets/materialdocs.css?v=909566a5">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Index — rules_julia_depot">
   <meta property="og:title" content="Index — rules_julia_depot">
@@ -121,11 +121,11 @@ git_override(
 )
 
 julia = use_extension(&quot;@rules_julia_depot//julia:extensions.bzl&quot;, &quot;julia&quot;)
-julia.toolchain(name = &quot;julia_dist&quot;, version = &quot;1.12.7&quot;)
+julia.dist(name = &quot;julia_dist&quot;, version = &quot;1.12.7&quot;)
 julia.depot(
     name = &quot;my_depot&quot;,
     manifest = &quot;//:Manifest.toml&quot;,
-    julia = &quot;@julia_dist//:bin/julia&quot;,
+    julia = &quot;@julia_dist&quot;,
 )
 use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 </div>
@@ -135,7 +135,7 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 <li><p>For an image, the rules in <code class="md-code-inline">julia/image.bzl</code> do the Julia-specific part: the distribution, depot, sysimage and precompile-cache layers as deterministic tars, the image&#39;s environment, and a test that the image starts without compiling anything. You assemble the image with rules_oci (or anything else that takes tars); this module does not depend on it.</p>
 </li>
 </ol>
-<p>Moving to a new Julia is the toolchain version plus a re-resolved manifest, nothing else. Private registries plug in through the depot&#39;s <code class="md-code-inline">hook</code>.</p>
+<p>Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing else. Private registries plug in through the depot&#39;s <code class="md-code-inline">hook</code>.</p>
 <h2 id="What-is-in-the-box" class="md-heading">What is in the box<a href="#What-is-in-the-box" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <div class="md-table-wrap">
 <table class="md-table">
@@ -147,7 +147,7 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 </thead>
 <tbody>
 <tr>
-<td style="text-align:right"><code class="md-code-inline">julia.toolchain</code></td>
+<td style="text-align:right"><code class="md-code-inline">julia.dist</code></td>
 <td style="text-align:right">an official Julia distribution, fetched and pinned by sha256</td>
 </tr>
 <tr>
@@ -215,6 +215,6 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="./siteinfo.js"></script>
   <script src="./../versions.js"></script>
-  <script src="./assets/materialdocs.js?v=647a6880"></script>
+  <script src="./assets/materialdocs.js?v=909566a5"></script>
 </body>
 </html>
