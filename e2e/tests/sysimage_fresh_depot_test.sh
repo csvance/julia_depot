@@ -36,7 +36,10 @@ $(cat "$TEST_TMPDIR/project.log")"
 
 out="$TEST_TMPDIR/sysimage.so"
 log="$TEST_TMPDIR/sysimage.log"
+# generic, not sysimage.sh's portable default: this tests that the environment is installed, and
+# compiling four CPU clones per build ran a CI runner out of memory with the builds in parallel.
 env RULES_JULIA_DEPOT_BIN="$julia_bin" RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
+    RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET="generic" \
     "$sysimage_sh" "$project" auto "$out" > "$log" 2>&1 ||
     fail "sysimage.sh auto failed on a depot without PackageCompiler:
 $(cat "$log")"
