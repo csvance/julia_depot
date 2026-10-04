@@ -14,8 +14,11 @@ concurrency:
   group: julia-1.13-${{ github.ref }}
   cancel-in-progress: true
 
+# pull-requests: read is for e2e.yml's changes job, which skips the suite on a
+# docs-only change.
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   e2e:

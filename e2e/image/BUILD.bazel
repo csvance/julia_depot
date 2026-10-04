@@ -1,6 +1,6 @@
 # The image example: an oci_image assembled from the module's layers with rules_oci, once per Julia
 # version in the matrix, and the tests over it. See defs.bzl for what each call declares, and
-# docs/images.md for the same recipe written out for a consumer.
+# docs/src/images.md for the same recipe written out for a consumer.
 #
 #   bazel build //image:image_1_13
 #   bazel test //image:all

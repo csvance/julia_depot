@@ -21,8 +21,11 @@ on:
         required: true
         type: string
 
+# pull-requests: read is for the changes job; a called workflow can hold no permission
+# its caller does not grant, so each julia-*.yml grants it too.
 permissions:
   contents: read
+  pull-requests: read
 
 env:
   # The runner has no private network and must never be asked to look for one. The same
@@ -31,7 +34,38 @@ env:
   JULIA_PKG_SERVER: https://pkg.julialang.org
 
 jobs:
+  # Whether anything the suite exercises changed. The filter names what CANNOT change
+  # behaviour, rather than what can, so a new rule file, script or test directory counts
+  # without anyone remembering to add it here: everything is in scope except the
+  # documentation, its site, and the docs workflow. A manual dispatch always runs.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # dorny/paths-filter reads changed files from the PR
+    outputs:
+      rules: ${{ steps.filter.outputs.rules }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          # `every`: a file counts only when it matches all the patterns, which is what
+          # makes the negations exclude rather than merely fail to include.
+          predicate-quantifier: every
+          filters: |
+            rules:
+              - '**'
+              - '!docs/**'
+              - '!README.md'
+              - '!LICENSE'
+              - '!.github/workflows/docs.yml'
+
   e2e:
+    needs: changes
+    # A skipped e2e job counts as success for required-check gating, so a docs-only
+    # change merges without waiting on the suite.
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.rules == 'true' }}
     name: e2e julia ${{ inputs.julia }}
     runs-on: ubuntu-latest
     timeout-minutes: 60

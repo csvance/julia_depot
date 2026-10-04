@@ -77,7 +77,7 @@ sh_test(
 )
 
 # sysimage.sh on a depot with no PackageCompiler in it, which is what a consumer following
-# docs/recipes.md has: the matrix's sysimage tests all run over a depot that already holds
+# docs/src/recipes.md has: the matrix's sysimage tests all run over a depot that already holds
 # it. The install step is version-independent, so 1.13 alone covers it.
 sh_test(
     name = "sysimage_fresh_depot_1_13_test",

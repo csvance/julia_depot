@@ -1,12 +1,46 @@
-# rules_julia_depot
+```@raw html
+---
+layout: home
 
-[![ci](https://github.com/csvance/rules_julia_depot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/ci.yml)
-[![julia 1.12](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.12.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.12.yml)
-[![julia 1.13](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.13.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.13.yml)
-[![docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://csvance.github.io/rules_julia_depot/dev/)
+hero:
+  name: rules_julia_depot
+  text: Reproducible Julia environments with Bazel
+  tagline: Depots, sysimages and container images pinned to the Manifest.toml you already commit. The rules never re-resolve, never model packages themselves, and never invent a second lockfile.
+  actions:
+    - theme: brand
+      text: Get started
+      link: "#The-core-workflow"
+    - theme: alt
+      text: Images
+      link: /images/
+    - theme: alt
+      text: View on GitHub
+      link: https://github.com/csvance/rules_julia_depot
 
-Reproducible Julia environments, sysimages and container images with Bazel, pinned to
-the `Manifest.toml` you already commit.
+features:
+  - icon: 📌
+    title: Pinned by your Manifest
+    details: The unit of pinning is Pkg's own resolved `Manifest.toml`, which already names every package by tree hash and every artifact by content hash. See [the contract](/contract/).
+  - icon: 🤝
+    title: Works with Pkg
+    details: Path sources, artifact overrides, private registries, package servers and Julia 1.12 workspaces keep working unchanged, because Pkg does the work.
+  - icon: 🛑
+    title: Refuses to guess
+    details: Fetching a depot checks that the manifest was resolved under the Julia you pinned, and fails with a message instead of producing something subtly different.
+    link: /julia-versions/
+  - icon: ⚡
+    title: Sysimages
+    details: A PackageCompiler sysimage from `sysimage.sh`, with a pinned build environment per Julia minor. See the [recipes](/recipes/).
+  - icon: 📦
+    title: Container images
+    details: The distribution, depot, sysimage and precompile caches as deterministic layers for `oci_image`, plus a test that the image starts without compiling.
+    link: /images/
+  - icon: 🧪
+    title: Tested as a consumer
+    details: The end-to-end suite is a separate Bazel module that consumes these rules through `bazel_dep`, across a matrix of Julia versions.
+    link: /testing/
+---
+```
 
 ## Why these rules
 
@@ -72,17 +106,10 @@ else. Private registries plug in through the depot's `hook`.
 | `julia_image_env` | the image's layout declared once, written as the environment file `oci_image` takes |
 | `julia_precompile_test` | a test, run on the layers without a container, that the image starts without precompiling |
 
-## Documentation
+## Where to go next
 
-The pages below are published as a site at
-[csvance.github.io/rules_julia_depot](https://csvance.github.io/rules_julia_depot/dev/).
-
-- [Images](docs/src/images.md): the image layers, the environment, the precompile test, and the recipe.
-- [Recipes](docs/src/recipes.md): the depot layer, the sysimage, a REPL target, the hook.
-- [The contract](docs/src/contract.md): what the manifest guarantees, what it does not, and how the depot rule and the image script differ.
-- [Julia versions](docs/src/julia-versions.md): what is version-specific, and adding a version.
-- [Testing](docs/src/testing.md): the end-to-end suite and its version matrix.
-
-## License
-
-MIT.
+- [Images](images.md): the image layers, the environment, the precompile test, and the recipe.
+- [Recipes](recipes.md): the depot layer, the sysimage, a REPL target, the hook.
+- [The contract](contract.md): what the manifest guarantees, what it does not, and how the depot rule and the image script differ.
+- [Julia versions](julia-versions.md): what is version-specific, and adding a version.
+- [Testing](testing.md): the end-to-end suite and its version matrix.

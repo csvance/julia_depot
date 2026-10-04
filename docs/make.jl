@@ -1,0 +1,37 @@
+# The documentation site for rules_julia_depot, published to GitHub Pages by
+# .github/workflows/Documenter.yml. This repository is a Bazel module, not a Julia
+# package, so there are no modules or docstrings to document: the site is the prose
+# in docs/src, rendered with MaterialDocs' Material3 writer and a DocumenterLandingPage
+# home page. DocumenterCodeBlocks is left out on purpose: its value is Julia highlighting
+# and docstring links, and the code here is Starlark and shell.
+using Documenter
+using DocumenterLandingPage
+using MaterialDocs
+
+makedocs(
+    sitename = "rules_julia_depot",
+    doctest = false,
+    format = Material3(
+        edit_link = "main",
+        canonical = "https://csvance.github.io/rules_julia_depot/",
+        inventory_version = "0.1.0",
+    ),
+    repo = Documenter.Remotes.GitHub("csvance", "rules_julia_depot"),
+    plugins = [
+        LandingPage(),
+    ],
+    pages = [
+        "Home" => "index.md",
+        "Images" => "images.md",
+        "Recipes" => "recipes.md",
+        "The contract" => "contract.md",
+        "Julia versions" => "julia-versions.md",
+        "Testing" => "testing.md",
+    ],
+)
+
+Documenter.deploydocs(
+    repo = "github.com/csvance/rules_julia_depot.git",
+    push_preview = true,
+    devbranch = "main",
+)
