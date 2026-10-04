@@ -67,7 +67,9 @@ if [ -n "${JULIA_DEPOT_OVERRIDES_BUILD:-}" ] && [ -z "${JULIA_DEPOT_OVERRIDES_IM
     exit 1
 fi
 
+# Relative inside the tar either way; a leading slash is accepted and dropped.
 depot_prefix="${JULIA_DEPOT_IMAGE_PREFIX:-opt/julia-depot}"
+depot_prefix="${depot_prefix#/}"
 contents="${JULIA_DEPOT_CONTENTS:-artifacts}"
 min_artifacts="${JULIA_DEPOT_MIN_ARTIFACTS:-1}"
 src_depot="${JULIA_DEPOT_PATH%%:*}"
@@ -183,12 +185,18 @@ case "$contents" in
         ;;
 esac
 
-# Deterministic tar: sorted, epoch mtimes, root-owned by number. Without these the
-# layer digest changes on every build and nothing downstream can be cached or compared.
+# Deterministic tar: sorted, epoch mtimes, root-owned by number, permissions normalised
+# (0755 for directories and executables, 0644 otherwise, whatever Pkg and the umask left).
+# Without these the layer digest changes on every build and nothing downstream can be
+# cached or compared. The prefix's top directory is what is archived, so its parents are
+# entries too, with the same normalised modes, rather than whatever a container runtime
+# invents for them. These are the flags of write_layer in image_layers.sh.
 echo "==> writing $out"
-tar --create --file "$out" \
+LC_ALL=C tar --create --file "$out" \
+    --format=gnu \
     --sort=name \
     --mtime=@0 \
     --owner=0 --group=0 --numeric-owner \
+    --mode='u=rwX,go=rX' \
     --directory "$stage" \
-    "$depot_prefix"
+    "${depot_prefix%%/*}"
