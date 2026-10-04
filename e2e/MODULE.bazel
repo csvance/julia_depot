@@ -9,8 +9,8 @@ THE MATRIX lives here and nowhere else. Every Julia version in it gets four
 repositories, and tests/BUILD.bazel turns those into the same set of test cases for
 each. Adding a version means adding one block below, one `projects/v<minor>` directory
 with a Manifest resolved under that exact Julia, one `julia/sysimage/v<minor>`
-environment in the module itself, and one `julia_version_tests()` call in
-tests/BUILD.bazel. See the Testing section of the top-level README.md.
+environment in the module itself, one `julia_version_tests()` call in tests/BUILD.bazel,
+and one `julia_image_tests()` call in image/BUILD.bazel. See docs/julia-versions.md.
 """
 
 module(
@@ -25,6 +25,29 @@ local_path_override(
     module_name = "rules_julia_depot",
     path = "..",
 )
+
+# rules_oci, for image/: the image example assembles an oci_image from the module's layers, the way
+# a consumer would. An e2e dependency only. The module itself writes plain tars and an environment
+# file, and never depends on rules_oci, so a consumer chooses its own version or none.
+bazel_dep(name = "rules_oci", version = "2.2.6")
+
+# rules_oci 2.2.6 pins aspect_bazel_lib 2.7.2, which registers its tar and zstd toolchains against
+# @local_config_platform. Bazel 9 removed that repository, so toolchain resolution fails for every
+# target, including ones that have nothing to do with images. MVS takes the higher version, so
+# naming it here is the whole fix.
+bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")
+
+oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
+
+# The base the example image starts from: debian:bookworm-slim, pinned by digest. Small, and with
+# the glibc the official Julia build needs; anything comparable would do.
+oci.pull(
+    name = "debian_base",
+    digest = "sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251",
+    image = "index.docker.io/library/debian",
+    platforms = ["linux/amd64"],
+)
+use_repo(oci, "debian_base", "debian_base_linux_amd64")
 
 julia = use_extension("@rules_julia_depot//julia:extensions.bzl", "julia")
 

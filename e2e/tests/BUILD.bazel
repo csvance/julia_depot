@@ -9,6 +9,9 @@ load(":defs.bzl", "julia_version_tests", "version_mismatch_test")
 
 package(default_testonly = True)
 
+# Sourced by the image tests in //image as well.
+exports_files(["common.sh"])
+
 julia_version_tests(
     depot_repo = "@depot_1_12",
     hook_depot_repo = "@hook_depot_1_12",
