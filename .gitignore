@@ -2,3 +2,6 @@ bazel-*
 MODULE.bazel.lock
 .bazelbsp/
 .idea/
+# The docs environment is resolved fresh in CI, and its build output is published, not tracked.
+/docs/Manifest.toml
+/docs/build/

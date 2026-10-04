@@ -1,0 +1,73 @@
+# Builds the documentation site on every push and PR, and deploys it to GitHub Pages on
+# main and on tags. `deploydocs(push_preview = true)` in docs/make.jl makes PR builds land
+# on a preview URL instead of the live site, so a PR can be reviewed with its docs rendered
+# before it merges. The build is pure Julia: Documenter with MaterialDocs' Material3 writer
+# and the DocumenterLandingPage plugin. It needs nothing from Bazel.
+#
+# A `changes` job gates the build on doc-relevant changes: docs/ and this workflow. Tag
+# pushes always deploy: a release must publish its versioned docs regardless of what the
+# filter sees. A skipped docs job counts as success for required-check gating.
+name: docs
+
+on:
+  push:
+    branches: [main]
+    tags: ['*']
+  pull_request:
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+# contents: write is needed because deploydocs pushes the built site to the gh-pages
+# branch; actions: write because julia-actions/cache prunes its own old caches.
+permissions:
+  contents: write
+  actions: write
+
+env:
+  # As in ci.yml: the runner has no private network and must never be asked to look for one.
+  JULIA_PKG_SERVER: https://pkg.julialang.org
+
+jobs:
+  changes:
+    # Tag pushes skip the filter entirely: the docs job below runs them unconditionally,
+    # and dorny/paths-filter has no sensible base commit to diff a new tag against.
+    if: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # dorny/paths-filter reads changed files from the PR
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          filters: |
+            docs:
+              - 'docs/**'
+              - '.github/workflows/docs.yml'
+
+  docs:
+    needs: changes
+    # !cancelled() is required: without a status function, a job whose `needs` was
+    # skipped (as `changes` is on tag pushes) is itself skipped before this condition is
+    # ever evaluated.
+    if: ${{ !cancelled() && needs.changes.result != 'failure' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || needs.changes.outputs.docs == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: julia-actions/setup-julia@fa02766e078afaaf09b14210362cee14137e6a32 # v3.0.2
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@a45e8fa8be21c18a06b7177052533149e61e9b38 # v3.1.0
+      - name: Install Julia dependencies
+        # docs/Manifest.toml is gitignored, so the docs environment is resolved fresh here.
+        run: julia --project=docs -e 'using Pkg; Pkg.instantiate()'
+      - name: Build and deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # required for previews/status
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}   # SSH deploy key for the gh-pages push
+        run: julia --project=docs docs/make.jl

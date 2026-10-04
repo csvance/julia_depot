@@ -10,7 +10,7 @@ repositories, and tests/BUILD.bazel turns those into the same set of test cases 
 each. Adding a version means adding one block below, one `projects/v<minor>` directory
 with a Manifest resolved under that exact Julia, one `julia/sysimage/v<minor>`
 environment in the module itself, one `julia_version_tests()` call in tests/BUILD.bazel,
-and one `julia_image_tests()` call in image/BUILD.bazel. See docs/julia-versions.md.
+and one `julia_image_tests()` call in image/BUILD.bazel. See docs/src/julia-versions.md.
 """
 
 module(

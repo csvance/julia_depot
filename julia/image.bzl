@@ -12,7 +12,7 @@
 Each layer rule writes ONE deterministic tar, ready for rules_oci's `oci_image(tars = [...])`:
 entries sorted, mtimes zeroed, owned by uid and gid 0, permissions normalised to 0755 or 0644.
 This module does not depend on rules_oci and never will; the consumer wires the tars and the
-environment file into its own `oci_image`. See docs/images.md for the whole recipe.
+environment file into its own `oci_image`. See docs/src/images.md for the whole recipe.
 
 THE LAYOUT IS DECLARED ONCE, by `julia_image_env`: where Julia, the depot and any other depots
 live in the image, their search order, the CPU targets the caches are compiled for, and the
@@ -321,7 +321,7 @@ julia_compiled_layer needs. Fetches from the package server: set JULIA_PKG_SERVE
         "prefix": attr.string(default = "/opt/julia-depot", doc = "Where the image keeps the depot. Match julia_image_env's `depot_prefix`."),
         "min_artifacts": attr.int(default = 1, doc = "Fail below this many artifact directories, a floor against a selection that silently came up empty."),
         "depot": attr.label(allow_files = True, doc = "Optional `@<depot>//:env` of a julia.depot. Its registries and package-server credentials are used for the instantiate (never shipped). Without it the registry is fetched fresh."),
-        "overrides_build": attr.label(allow_single_file = True, doc = "artifacts/Overrides.toml naming build-host directories; see docs/recipes.md."),
+        "overrides_build": attr.label(allow_single_file = True, doc = "artifacts/Overrides.toml naming build-host directories; see docs/src/recipes.md."),
         "overrides_image": attr.label(allow_single_file = True, doc = "The artifacts/Overrides.toml that ships, naming in-image paths. Required with overrides_build."),
         "env": attr.string_dict(doc = "Variables for the instantiate, e.g. what a package's platform augmentation reads to select an artifact."),
     },

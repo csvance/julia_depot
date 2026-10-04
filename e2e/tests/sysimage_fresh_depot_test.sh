@@ -3,7 +3,7 @@
 #
 # Every other sysimage test runs on a depot that a `julia.depot` over the module's
 # PackageCompiler environment has already filled, so none of them can tell whether
-# sysimage.sh would have worked without it. A consumer following docs/recipes.md declares
+# sysimage.sh would have worked without it. A consumer following docs/src/recipes.md declares
 # no such depot, and on a fresh one the script used to die inside `using PackageCompiler`.
 #
 # THE DEPOT IS EMPTY AND OWNED BY THIS TEST: no fetched depot sits behind it, only the
