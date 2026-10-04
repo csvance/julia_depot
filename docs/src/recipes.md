@@ -26,16 +26,16 @@ genrule(
     cmd = """
 set -euo pipefail
 . $(location @my_depot//:env.sh)
-export JULIA_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
+export RULES_JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
 $(location @rules_julia_depot//julia:image_depot.sh) "$$(dirname $(location Manifest.toml))" "$@"
 """,
     tags = ["no-sandbox", "requires-network"],
 )
 ```
 
-The tar unpacks at `opt/julia-depot` (`JULIA_DEPOT_IMAGE_PREFIX` to change it) and holds
+The tar unpacks at `opt/julia-depot` (`RULES_JULIA_DEPOT_IMAGE_PREFIX` to change it) and holds
 `artifacts/` only. That is right when a sysimage carries the code. For an image that loads
-packages from source, set `JULIA_DEPOT_CONTENTS=full` to ship `packages/` too. Set
+packages from source, set `RULES_JULIA_DEPOT_CONTENTS=full` to ship `packages/` too. Set
 `JULIA_PKG_SERVER` in the command if your packages come from a private server; the script
 copies the source depot's registries and server credentials into the clean depot for the
 duration of the instantiate and never into the layer.
@@ -51,8 +51,8 @@ patched source, ship the replacement in its own layer at a fixed path and pass t
 override files:
 
 ```
-JULIA_DEPOT_OVERRIDES_BUILD=build.toml    # names the directory on the build host
-JULIA_DEPOT_OVERRIDES_IMAGE=image.toml    # names the path inside the image; this one ships
+RULES_JULIA_DEPOT_OVERRIDES_BUILD=build.toml    # names the directory on the build host
+RULES_JULIA_DEPOT_OVERRIDES_IMAGE=image.toml    # names the path inside the image; this one ships
 ```
 
 Both are `artifacts/Overrides.toml` files keyed by the artifact's git tree hash. Pkg skips
@@ -79,8 +79,8 @@ genrule(
     cmd = """
 set -euo pipefail
 . $(location @my_depot//:env.sh)
-export JULIA_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
-export JULIA_SYSIMAGE_PACKAGES="MyApp"
+export RULES_JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
+export RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="MyApp"
 proj="$$(mktemp -d)"; trap 'rm -rf "$$proj"' EXIT
 cp -rL "$$(dirname $(location Manifest.toml))"/. "$$proj"/
 $(location @rules_julia_depot//julia:sysimage.sh) "$$proj" auto "$@"
@@ -102,7 +102,7 @@ the environment matches the manifest by the time the script runs.
 
 ## A private registry
 
-Give the depot a `hook`: an executable run before instantiate with `JULIA_BIN` and
+Give the depot a `hook`: an executable run before instantiate with `RULES_JULIA_DEPOT_BIN` and
 `JULIA_DEPOT_PATH` set, plus any variables named in `hook_environ`, which also become
 inputs so a change refetches. The hook adds the registry and writes the package server
 credential into the depot; it is yours, and the module knows nothing about it.
@@ -111,7 +111,7 @@ credential into the depot; it is yours, and the module knows nothing about it.
 julia.depot(
     name = "my_depot",
     manifest = "//:Manifest.toml",
-    julia = "@julia_dist//:bin/julia",
+    julia = "@julia_dist",
     hook = "//tools:enable_registry.sh",
     hook_environ = ["MY_REGISTRY_TOKEN"],
 )
@@ -127,8 +127,8 @@ disk rather than in an NFS home, declare it:
 julia.depot(
     name = "app_depot",
     manifest = "//app:Manifest.toml",
-    julia = "@julia_dist//:bin/julia",
-    depot = "/cache/{USER}/myproject/julia",
+    julia = "@julia_dist",
+    dir = "/cache/{USER}/myproject/julia",
 )
 ```
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# julia.toolchain fetched a Julia that RUNS, and it is the version that was asked for.
+# julia.dist fetched a Julia that RUNS, and it is the version that was asked for.
 #
 # The sha256 pin already guarantees the bytes. What it does not guarantee is that the
 # archive was unpacked with the right strip_prefix, that bin/julia came out executable,
 # or that the rest of the distribution came with it: Julia finds its bundled stdlib
-# relative to Sys.BINDIR, so a toolchain reduced to the binary alone starts and then
+# relative to Sys.BINDIR, so a distribution reduced to the binary alone starts and then
 # fails on the first `using`. Asking Julia to load a stdlib proves the whole tree.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
@@ -23,4 +23,4 @@ stdlib="$("$julia_bin" --startup-file=no -e 'using TOML; print(isdefined(TOML, :
 [ "$stdlib" = "true" ] ||
     fail "the fetched distribution cannot load its own stdlib: TOML gave '$stdlib'"
 
-echo "PASS: julia.toolchain produced a working julia $want at $julia_bin"
+echo "PASS: julia.dist produced a working julia $want at $julia_bin"

@@ -27,14 +27,14 @@ julia_image_env(
 
 julia_dist_layer(
     name = "julia_layer",
-    julia = "@julia_dist//:dist",
+    julia = "@julia_dist",
 )
 
 julia_depot_layer(
     name = "depot_layer",
     contents = "full",
-    depot = "@my_depot//:env",
-    julia = "@julia_dist//:dist",
+    depot = "@my_depot",
+    julia = "@julia_dist",
     manifest = "Manifest.toml",
     project = "Project.toml",
 )
@@ -43,7 +43,7 @@ julia_depot_layer(
 julia_compiled_layer(
     name = "compiled_layer",
     image_env = ":image_env",
-    julia = "@julia_dist//:dist",
+    julia = "@julia_dist",
     layers = [":julia_layer", ":depot_layer", ":app_layer"],
     projects = ["/opt/app"],
 )
@@ -60,7 +60,7 @@ oci_image(
 julia_precompile_test(
     name = "image_precompile_test",
     image_env = ":image_env",
-    julia = "@julia_dist//:dist",
+    julia = "@julia_dist",
     layers = [":julia_layer", ":depot_layer", ":compiled_layer", ":app_layer"],
     projects = ["/opt/app"],
 )
@@ -71,7 +71,7 @@ your code. `e2e/image/` builds exactly this for every Julia version in the test 
 
 ## The rules
 
-All layer rules write `<name>.tar` and take `julia`, the toolchain's `@<toolchain>//:dist`.
+All layer rules write `<name>.tar` and take `julia`, the distribution from `julia.dist`, e.g. `@julia_dist`.
 
 | rule | what the tar holds | attributes beyond `julia` |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ variables as a dict, for a BUILD file that merges them with its own.
 `project` and `manifest` are labels to the two files; the manifest is staged beside the project
 wherever it lives, so a production lock kept apart from the development one works. `srcs` are
 further project files (a `LocalPreferences.toml`, workspace members) staged at their paths
-relative to the `Project.toml`. `depot` is a julia.depot's `@<depot>//:env`: the depot layer
+relative to the `Project.toml`. `depot` is a julia.depot repository, e.g. `@my_depot`: the depot layer
 copies its registries and package-server credentials for the instantiate and ships neither, and
 without it fetches the registry fresh; the sysimage layer reads the packages that depot already
 holds. `env` passes variables to the build, such as what a package's platform augmentation reads
@@ -116,8 +116,8 @@ PATH=/opt/julia/bin:$PATH
 The depot path is in search order. The image's depot comes first, because Julia writes to the
 first entry and a cache that turns out stale at run time is rebuilt there. Then `extra_depots`.
 Then the two depots the distribution ships inside itself, which hold the stdlib caches; without
-them Julia recompiles the stdlib into the first depot, and listing them explicitly rather than
-with a trailing `:` keeps `~/.julia` out. `$PATH` is expanded by rules_oci against the base
+them Julia recompiles the stdlib into the first depot. They are named rather than left to a
+trailing `:`, which expands to the same two, so the file says exactly what the path is. `$PATH` is expanded by rules_oci against the base
 image's own PATH. Variables of your own go in `env`, and are written to the same file.
 
 ## Caches that survive the move

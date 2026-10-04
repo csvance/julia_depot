@@ -48,13 +48,13 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
 
     Args:
       minor: the Julia minor, e.g. "1.12". Names the targets and the tag.
-      julia_repo: the toolchain repository, e.g. "@julia_1_12".
+      julia_repo: the distribution repository, e.g. "@julia_1_12".
       depot_repo: the depot over `project`, e.g. "@depot_1_12".
       project: the project package, e.g. "//projects/v1.12".
     """
     tag = minor.replace(".", "_")
     tags = ["julia" + tag]
-    julia = julia_repo + "//:dist"
+    julia = julia_repo
 
     def n(what):
         return "{}_{}".format(what, tag)
@@ -75,7 +75,7 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
     julia_depot_layer(
         name = n("depot_layer"),
         contents = "full",
-        depot = depot_repo + "//:env",
+        depot = depot_repo,
         julia = julia,
         manifest = project + ":Manifest.toml",
         project = project + ":Project.toml",
@@ -177,7 +177,7 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
     julia_depot_layer(
         name = n("depot_layer_again"),
         contents = "full",
-        depot = depot_repo + "//:env",
+        depot = depot_repo,
         julia = julia,
         manifest = project + ":Manifest.toml",
         project = project + ":Project.toml",
@@ -293,7 +293,7 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
 
     julia_sysimage_layer(
         name = n("sysimage_layer"),
-        depot = depot_repo + "//:env",
+        depot = depot_repo,
         julia = julia,
         manifest = project + ":Manifest.toml",
         packages = [

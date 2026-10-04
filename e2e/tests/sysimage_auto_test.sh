@@ -38,9 +38,9 @@ src_depot="$(first_depot "$(stamp_value "$stamp" depot)")"
 out="$TEST_TMPDIR/sysimage.so"
 log="$TEST_TMPDIR/sysimage.log"
 
-env JULIA_BIN="$julia_bin" \
+env RULES_JULIA_DEPOT_BIN="$julia_bin" \
     JULIA_DEPOT_PATH="$(overlay_depot "$src_depot" "$julia_bin")" \
-    JULIA_SYSIMAGE_PACKAGES="Crayons" \
+    RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
     "$sysimage_sh" "$project" auto "$out" > "$log" 2>&1 ||
     fail "sysimage.sh auto failed under julia $want_minor:
 $(cat "$log")"

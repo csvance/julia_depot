@@ -22,9 +22,9 @@ build_project="$(dirname "$wrong_manifest")"
 
 rc=0
 output="$(
-    env JULIA_BIN="$julia_bin" \
+    env RULES_JULIA_DEPOT_BIN="$julia_bin" \
         JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
-        JULIA_SYSIMAGE_PACKAGES="Crayons" \
+        RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
         "$sysimage_sh" "$project" "$build_project" "$TEST_TMPDIR/sysimage.so" 2>&1
 )" || rc=$?
 
@@ -45,12 +45,12 @@ esac
 # the slow work rather than after PackageCompiler has started.
 rc=0
 output="$(
-    env JULIA_BIN="$julia_bin" JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
+    env RULES_JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
         "$sysimage_sh" "$project" auto "$TEST_TMPDIR/sysimage.so" 2>&1
 )" || rc=$?
-[ "$rc" -ne 0 ] || fail "sysimage.sh ran with no JULIA_SYSIMAGE_PACKAGES set"
+[ "$rc" -ne 0 ] || fail "sysimage.sh ran with no RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES set"
 case "$output" in
-    *JULIA_SYSIMAGE_PACKAGES*) ;;
+    *RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES*) ;;
     *) fail "the missing-packages failure does not name the variable:
 $output" ;;
 esac

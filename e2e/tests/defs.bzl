@@ -35,8 +35,8 @@ def julia_version_tests(
 
     Args:
       minor: the Julia minor, e.g. "1.12". Names the targets and the tag.
-      patch: the full version the toolchain pins, e.g. "1.12.7".
-      julia_repo: the toolchain repository, e.g. "@julia_1_12".
+      patch: the full version the distribution pins, e.g. "1.12.7".
+      julia_repo: the distribution repository, e.g. "@julia_1_12".
       depot_repo: the depot over projects/v<minor>, e.g. "@depot_1_12".
       sysimage_depot_repo: the depot over the module's PackageCompiler environment.
       hook_depot_repo: the depot whose fetch runs hooks/marker_hook.sh.
@@ -47,9 +47,9 @@ def julia_version_tests(
     tags = ["julia" + tag]
 
     sh_test(
-        name = "toolchain_version_{}_test".format(tag),
+        name = "dist_version_{}_test".format(tag),
         size = "small",
-        srcs = ["toolchain_version_test.sh"],
+        srcs = ["dist_version_test.sh"],
         args = [
             "$(rootpath {}//:bin/julia)".format(julia_repo),
             patch,
@@ -200,7 +200,7 @@ def version_mismatch_test(julia_repo, running_minor, running_patch, depot_repo, 
     """Declares the refusal test for one (running Julia, foreign Manifest) pair.
 
     Args:
-      julia_repo: the toolchain that RUNS, e.g. "@julia_1_12".
+      julia_repo: the distribution that RUNS, e.g. "@julia_1_12".
       running_minor: its minor, for the target name.
       running_patch: its full version, which the error message must name.
       depot_repo: a depot instantiated under the running Julia, used only as a read

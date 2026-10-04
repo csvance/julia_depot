@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build a sysimage for a Manifest-pinned project with PackageCompiler.
 #
-# Usage: JULIA_SYSIMAGE_PACKAGES="Pkg1 Pkg2" sysimage.sh <project dir> <build project> <out.so>
+# Usage: RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="Pkg1 Pkg2" sysimage.sh <project dir> <build project> <out.so>
 #
 #   <project dir>    the project whose packages are baked (a COPY; see below)
 #   <build project>  the PackageCompiler environment, or `auto` to use the one shipped
@@ -11,9 +11,13 @@
 #   <out.so>         sysimage path to write
 #
 # Environment:
-#   JULIA_BIN                    the julia to use (falls back to PATH for hand runs)
-#   JULIA_SYSIMAGE_PACKAGES      required, space-separated package names to bake
-#   JULIA_SYSIMAGE_CPU_TARGET    default "generic", so the image runs on any x86_64 host
+#   RULES_JULIA_DEPOT_BIN                    the julia to use (falls back to PATH for hand runs)
+#   RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES      required, space-separated package names to bake
+#   RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET    default: the CPU targets of the official
+#                                x86_64 Julia build (generic plus Sandy Bridge, Haswell
+#                                and x86-64-v4 clones), so the sysimage runs on any
+#                                x86_64 host and uses the best clone for the CPU it lands
+#                                on. Kept equal to PORTABLE_X86_64_CPU_TARGET in image.bzl.
 #
 # WHAT IT COSTS. Code baked into a sysimage cannot be revised. Use the sysimage when the
 # baked packages are fixed underneath you, and an ordinary Revise loop when they are not.
@@ -30,8 +34,8 @@ set -euo pipefail
 PROJECT_DIR="$1"
 BUILD_PROJECT="$2"
 OUT="$3"
-: "${JULIA_SYSIMAGE_PACKAGES:?set JULIA_SYSIMAGE_PACKAGES to the space-separated packages to bake}"
-JULIA="${JULIA_BIN:-julia}"
+: "${RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES:?set RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES to the space-separated packages to bake}"
+JULIA="${RULES_JULIA_DEPOT_BIN:-julia}"
 
 # The PackageCompiler environment must have been resolved under the SAME Julia minor as
 # the one building the sysimage: PackageCompiler's own compat and its precompile cache
@@ -83,7 +87,7 @@ OUT_ABS="$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")"
 using PackageCompiler
 
 project, out = ARGS[1], ARGS[2]
-packages = Symbol.(split(ENV["JULIA_SYSIMAGE_PACKAGES"]))
+packages = Symbol.(split(ENV["RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES"]))
 
 # Bake the named packages and, transitively, everything they depend on.
 create_sysimage(
@@ -91,6 +95,7 @@ create_sysimage(
     project = project,
     sysimage_path = out,
     incremental = true,
-    cpu_target = get(ENV, "JULIA_SYSIMAGE_CPU_TARGET", "generic"),
+    cpu_target = get(ENV, "RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET",
+                     "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1);x86-64-v4,-rdrnd,base(1)"),
 )
 ' "$PROJECT_DIR" "$OUT_ABS"

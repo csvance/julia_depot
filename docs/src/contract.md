@@ -15,8 +15,8 @@ Nothing in the module runs Pkg's resolver. A manifest is pinned, never re-resolv
 
 `julia.depot` is a repository rule, not a build action, because fetch time is where
 hitting the network is legitimate and because the rule's inputs, the manifest, the hook,
-and the environment variables it names, are what Bazel keys the fetch on. Change any of
-them and the depot is re-conformed.
+the Julia version and the environment variables it names, are what Bazel keys the fetch
+on. Change any of them and the depot is re-conformed.
 
 It runs `instantiate.sh` on the ambient depot (`JULIA_DEPOT_PATH`, or Julia's default),
 not a private one: a fresh depot per manifest would mean gigabytes of artifacts on every
@@ -25,11 +25,23 @@ thrash between branches with different manifests. The script refuses a manifest 
 `julia_version` differs from the running Julia, since such a manifest can instantiate and
 then behave differently, which is exactly the failure the pin exists to prevent.
 
-The rule produces `env.sh`, which exports `JULIA_DEPOT_PATH` only when the launching
-environment set one, and `stamp.txt` with the manifest sha256, Julia version, host
-triplet and depot. Julia itself is deliberately not in `env.sh`: consumers take it as a
-label, so the file's content, which is part of every downstream action key, carries no
-machine-specific path.
+The rule produces `env.sh`, which always exports `JULIA_DEPOT_PATH`: the depot the fetch
+instantiated into, whether declared with `dir`, set in the launching environment, or
+Julia's default made explicit. A hook is given the same value. It also produces
+`stamp.txt` with the manifest sha256, Julia version, host triplet and depot. Julia itself
+is deliberately not in `env.sh`: consumers take it as a label from the distribution
+(`@julia_dist//:bin/julia`). The depot is the one machine-specific path in the file, and
+it is per user by nature.
+
+The manifest is the file Julia actually instantiates from, and the rule checks that. Julia
+prefers a versioned `Manifest-v<major>.<minor>.toml` beside `Manifest.toml`, and a
+`Project.toml` can name another file with `manifest = ...`; the fetch fails unless
+`manifest` points at the file Julia uses. A project can therefore carry one manifest per
+Julia version, each pinned by its own `julia.depot`.
+
+The fetch is keyed on the manifest, the hook, the Julia version (through the
+distribution's version header), the declared `dir`, and the variables `HOME`,
+`JULIA_DEPOT_PATH`, `JULIA_PKG_SERVER` and every `hook_environ` entry.
 
 ## The image script
 
@@ -45,8 +57,9 @@ Two details that cost real time when missed:
 - The distribution's bundled depots stay on the depot path. Setting `JULIA_DEPOT_PATH` to
   the fresh directory alone drops `<julia>/share/julia`, where the stdlib precompile
   caches live, and `using Pkg` then recompiles Pkg serially before anything else. The
-  script appends exactly the two bundled depots, not a trailing colon, which would also
-  pull in the developer's `~/.julia` and let instantiate treat its artifacts as present.
+  script appends the two bundled depots by name. A trailing colon would expand to the
+  same two (since Julia 1.10 it leaves `~/.julia` out), but naming them keeps the path
+  explicit.
 - Nothing is precompiled into the layer. A cache built in the script's temporary depot,
   laid out differently from the image, would not be valid there. `julia_compiled_layer`
   precompiles in a tree with the image's own layout instead, so its caches load unchanged

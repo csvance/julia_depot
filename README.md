@@ -37,11 +37,11 @@ git_override(
 )
 
 julia = use_extension("@rules_julia_depot//julia:extensions.bzl", "julia")
-julia.toolchain(name = "julia_dist", version = "1.12.7")
+julia.dist(name = "julia_dist", version = "1.12.7")
 julia.depot(
     name = "my_depot",
     manifest = "//:Manifest.toml",
-    julia = "@julia_dist//:bin/julia",
+    julia = "@julia_dist",
 )
 use_repo(julia, "julia_dist", "my_depot")
 ```
@@ -56,14 +56,14 @@ use_repo(julia, "julia_dist", "my_depot")
    and a test that the image starts without compiling anything. You assemble the image with
    rules_oci (or anything else that takes tars); this module does not depend on it.
 
-Moving to a new Julia is the toolchain version plus a re-resolved manifest, nothing
+Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing
 else. Private registries plug in through the depot's `hook`.
 
 ## What is in the box
 
 | | |
 | --- | --- |
-| `julia.toolchain` | an official Julia distribution, fetched and pinned by sha256 |
+| `julia.dist` | an official Julia distribution, fetched and pinned by sha256 |
 | `julia.depot` | the Manifest-pinned depot repository, with an optional pre-instantiate hook |
 | `//julia:image_depot.sh` | a clean depot as a deterministic image layer, artifacts-only or with packages, with artifact overrides for locally built binaries |
 | `//julia:sysimage.sh` | a PackageCompiler sysimage, with a pinned build environment per Julia minor |

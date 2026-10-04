@@ -23,15 +23,15 @@ example); warm, the whole matrix takes a few minutes.
 
 Every Julia version in the matrix (currently 1.12.7 and 1.13.0) gets the same set of
 tests, tagged `julia<minor>` for the Julia they run, so a CI shard needs only that
-version's toolchain and depot:
+version's distribution and depot:
 
 ```bash
 bazel test $(bazel query "attr(tags, 'julia1_13', tests(//...))")
 ```
 
-For each version: the toolchain produces a Julia of that version that can load its own
+For each version: the distribution is a Julia of that version that can load its own
 stdlib; a depot over a manifest resolved under it stamps the right version, manifest hash
-and depot, and its `env.sh` carries no machine path; a hook runs before instantiate and
+and depot, and its `env.sh` exports that same depot and names no Julia binary; a hook runs before instantiate and
 sees its `hook_environ`; `image_depot.sh` ships artifacts and no packages in `artifacts`
 mode and both in `full`, honours the image prefix and the artifact floor, and never ships
 depot credentials; artifact overrides are honoured, and a broken one fails the build

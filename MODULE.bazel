@@ -2,12 +2,24 @@
 # repositories and scripts. See README.md for the contract and the consumer interface.
 #
 # compatibility_level is declared, and starts at 1, because the consumer interface here
-# is small and entirely explicit: tag names, attribute names, script arguments, and
-# environment variable names. A change to any of them breaks every consumer at once, so
-# it is worth being able to say so in the module graph. Raise it when one of those
-# changes incompatibly, not when behaviour is added.
+# is small and entirely explicit. A change to any of it breaks every consumer at once, so
+# it is worth being able to say so in the module graph. Raise it when one of these
+# changes incompatibly, not when behaviour is added:
+#
+#   - the `julia` extension's tag classes (dist, depot) and their attributes
+#   - the rules and macros in julia/image.bzl, their attributes and JuliaImageEnvInfo
+#   - what a depot repository provides: its default target, :env, env.sh and stamp.txt
+#   - what a dist repository provides: its default target, :dist and bin/julia
+#   - the arguments and RULES_JULIA_DEPOT_* variables of image_depot.sh and sysimage.sh,
+#     and what a hook is given
+#
+# instantiate.sh and image_layers.sh are internal: their arguments may change in any
+# release.
+#
+# Bazel 9 is the only version this is built and tested with.
 module(
     name = "rules_julia_depot",
     version = "0.1.0",
+    bazel_compatibility = [">=9.0.0"],
     compatibility_level = 1,
 )

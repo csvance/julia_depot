@@ -1,5 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
+# image_depot.sh and sysimage.sh are public: their arguments and variables are part of the
+# module's interface (see MODULE.bazel). instantiate.sh and image_layers.sh are internal,
+# exported for this module's own rules and its tests, and may change in any release.
 exports_files([
     "image_depot.sh",
     "image_layers.sh",

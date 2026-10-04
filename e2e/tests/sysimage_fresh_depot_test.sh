@@ -36,7 +36,7 @@ $(cat "$TEST_TMPDIR/project.log")"
 
 out="$TEST_TMPDIR/sysimage.so"
 log="$TEST_TMPDIR/sysimage.log"
-env JULIA_BIN="$julia_bin" JULIA_SYSIMAGE_PACKAGES="Crayons" \
+env RULES_JULIA_DEPOT_BIN="$julia_bin" RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
     "$sysimage_sh" "$project" auto "$out" > "$log" 2>&1 ||
     fail "sysimage.sh auto failed on a depot without PackageCompiler:
 $(cat "$log")"

@@ -25,7 +25,7 @@ want_version="$4"
     . "$env_sh"
 ) || fail "env.sh is not sourceable"
 
-if grep -qE 'JULIA_BIN|/bin/julia' "$env_sh"; then
+if grep -qE 'RULES_JULIA_DEPOT_BIN|/bin/julia' "$env_sh"; then
     fail "env.sh names a julia binary; consumers take Julia as a label, not from here:
 $(cat "$env_sh")"
 fi
@@ -52,14 +52,15 @@ depot="$(first_depot "$(stamp_value "$stamp" depot)")"
 
 # When the fetch saw a JULIA_DEPOT_PATH, env.sh has to hand the same one back, or a
 # consumer sourcing it would run against a different depot than the one just filled.
-if grep -q '^export JULIA_DEPOT_PATH=' "$env_sh"; then
-    exported="$(
-        # shellcheck disable=SC1090
-        . "$env_sh"
-        printf '%s\n' "$JULIA_DEPOT_PATH"
-    )"
-    [ "$exported" = "$(stamp_value "$stamp" depot)" ] ||
-        fail "env.sh exports JULIA_DEPOT_PATH=$exported but the stamp says $(stamp_value "$stamp" depot)"
-fi
+exported="$(
+    # shellcheck disable=SC1090
+    . "$env_sh"
+    printf '%s\n' "${JULIA_DEPOT_PATH:-}"
+)"
+[ -n "$exported" ] ||
+    fail "env.sh does not export JULIA_DEPOT_PATH; it must, even when the fetch environment set none:
+$(cat "$env_sh")"
+[ "$exported" = "$(stamp_value "$stamp" depot)" ] ||
+    fail "env.sh exports JULIA_DEPOT_PATH=$exported but the stamp says $(stamp_value "$stamp" depot)"
 
 echo "PASS: depot stamped julia $got_version, manifest $got_sha, depot $depot"

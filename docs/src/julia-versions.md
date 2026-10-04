@@ -1,11 +1,11 @@
 # Julia versions
 
-Nothing here requires one Julia version. `julia.toolchain` fetches any: the sha256 is
+Nothing here requires one Julia version. `julia.dist` fetches any: the sha256 is
 looked up for versions the module knows (1.11.9, 1.12.7, 1.13.0) and passed explicitly
 otherwise, from `https://julialang-s3.julialang.org/bin/checksums/julia-<version>.sha256`.
 The depot rule pins nothing itself; it enforces that YOUR manifest was resolved under the
 Julia you fetched. Moving to a new Julia is therefore one change in two places, the
-toolchain version and a re-resolved manifest, and a mismatch fails at fetch time with a
+distribution version and a re-resolved manifest, and a mismatch fails at fetch time with a
 message rather than producing a subtly different depot.
 
 The one version-specific thing the module ships is the PackageCompiler environment a
@@ -15,7 +15,7 @@ on the Julia minor. There is one per minor under `julia/sysimage/v<major>.<minor
 available ones when yours is missing.
 
 Linux x86_64 is what this is used with. Other platforms work by passing `sha256` and
-`url` to `julia.toolchain`.
+`url` to `julia.dist`.
 
 ## Adding a Julia version
 
@@ -43,7 +43,7 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
 
 **Three.** The sha256 in `_KNOWN_SHA256` in `julia/extensions.bzl`.
 
-**Four.** The declarations: four repositories in `e2e/MODULE.bazel` (toolchain, depot,
+**Four.** The declarations: four repositories in `e2e/MODULE.bazel` (distribution, depot,
 sysimage depot, hook depot), a `julia_version_tests()` call in `e2e/tests/BUILD.bazel`, a
 `julia_image_tests()` call in `e2e/image/BUILD.bazel`, a `version_mismatch_test()` call for
 each pair worth covering, a copy of

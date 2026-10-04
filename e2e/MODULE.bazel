@@ -52,7 +52,7 @@ use_repo(oci, "debian_base", "debian_base_linux_amd64")
 julia = use_extension("@rules_julia_depot//julia:extensions.bzl", "julia")
 
 # --- Julia 1.12 -------------------------------------------------------------------
-julia.toolchain(
+julia.dist(
     name = "julia_1_12",
     version = "1.12.7",
 )
@@ -60,7 +60,7 @@ julia.toolchain(
 # The environment under test, pinned to a Manifest resolved under 1.12.7.
 julia.depot(
     name = "depot_1_12",
-    julia = "@julia_1_12//:bin/julia",
+    julia = "@julia_1_12",
     manifest = "//projects/v1.12:Manifest.toml",
 )
 
@@ -70,7 +70,7 @@ julia.depot(
 # tests/sysimage_fresh_depot_test.sh checks on a depot that never had it.
 julia.depot(
     name = "sysimage_depot_1_12",
-    julia = "@julia_1_12//:bin/julia",
+    julia = "@julia_1_12",
     manifest = "@rules_julia_depot//julia:sysimage/v1.12/Manifest.toml",
 )
 
@@ -81,23 +81,23 @@ julia.depot(
     name = "hook_depot_1_12",
     hook = "//hooks:marker_hook.sh",
     hook_environ = ["E2E_HOOK_VALUE"],
-    julia = "@julia_1_12//:bin/julia",
+    julia = "@julia_1_12",
     manifest = "//projects/v1.12:Manifest.toml",
 )
 
 # The same project once more, into a DECLARED depot rather than the ambient one: the
-# `depot` attribute with a {HOME} placeholder. tests/declared_depot_test.sh checks that
+# `dir` attribute with a {HOME} placeholder. tests/declared_depot_test.sh checks that
 # env.sh exports the expanded path with the trailing separator and that the fetch landed
 # there.
 julia.depot(
     name = "declared_depot_1_12",
-    depot = "{HOME}/.rules-julia-depot-e2e/declared",
-    julia = "@julia_1_12//:bin/julia",
+    dir = "{HOME}/.rules-julia-depot-e2e/declared",
+    julia = "@julia_1_12",
     manifest = "//projects/v1.12:Manifest.toml",
 )
 
 # --- Julia 1.13 -------------------------------------------------------------------
-julia.toolchain(
+julia.dist(
     name = "julia_1_13",
     version = "1.13.0",
 )
@@ -106,14 +106,14 @@ julia.toolchain(
 # for; a version added to the matrix is this block again with the numbers changed.
 julia.depot(
     name = "depot_1_13",
-    julia = "@julia_1_13//:bin/julia",
+    julia = "@julia_1_13",
     manifest = "//projects/v1.13:Manifest.toml",
 )
 
 # The module's own PackageCompiler environment for this minor.
 julia.depot(
     name = "sysimage_depot_1_13",
-    julia = "@julia_1_13//:bin/julia",
+    julia = "@julia_1_13",
     manifest = "@rules_julia_depot//julia:sysimage/v1.13/Manifest.toml",
 )
 
@@ -122,7 +122,7 @@ julia.depot(
     name = "hook_depot_1_13",
     hook = "//hooks:marker_hook.sh",
     hook_environ = ["E2E_HOOK_VALUE"],
-    julia = "@julia_1_13//:bin/julia",
+    julia = "@julia_1_13",
     manifest = "//projects/v1.13:Manifest.toml",
 )
 

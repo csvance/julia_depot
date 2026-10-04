@@ -1,13 +1,18 @@
 """The `julia` module extension: a pinned Julia distribution and Manifest-pinned depots.
 
     julia = use_extension("@rules_julia_depot//julia:extensions.bzl", "julia")
-    julia.toolchain(name = "julia_dist", version = "1.12.7")
+    julia.dist(name = "julia_dist", version = "1.12.7")
     julia.depot(
         name = "my_depot",
         manifest = "//julia:Manifest.toml",
-        julia = "@julia_dist//:bin/julia",
+        julia = "@julia_dist",
     )
     use_repo(julia, "julia_dist", "my_depot")
+
+NAMING. A rule attribute that takes a repository is named after what it takes and is given
+the repository itself: `julia = "@julia_dist"`, `depot = "@my_depot"`. Each repository's
+default target, the one named after it, is what the rules need from it. The named targets
+(`:dist`, `bin/julia`, `:env`, `env.sh`, `stamp.txt`) stay for genrules and scripts.
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -28,6 +33,10 @@ _DIST_URL = "https://julialang-s3.julialang.org/bin/linux/x64/{minor}/julia-{ver
 # The WHOLE distribution is exposed, not just bin/julia. Julia locates its bundled
 # depots (share/julia, where the stdlib JLLs live) relative to Sys.BINDIR, so a consumer
 # that took only the binary would come up without a stdlib.
+#
+# The version header is exported for julia_depot, which reads it so that a version change
+# refetches the depot. bin/julia is a small launcher that need not change between releases,
+# so it cannot serve as that key.
 _DIST_BUILD = """
 filegroup(
     name = "dist",
@@ -35,22 +44,31 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-exports_files(["bin/julia"])
+exports_files(["bin/julia", "include/julia/julia_version.h"])
+"""
+
+# The default target, so `@<name>` alone means the distribution.
+_DIST_ALIAS = """
+alias(
+    name = "{name}",
+    actual = ":dist",
+    visibility = ["//visibility:public"],
+)
 """
 
 def _julia_impl(module_ctx):
     for mod in module_ctx.modules:
-        for tc in mod.tags.toolchain:
+        for tc in mod.tags.dist:
             sha256 = tc.sha256
             if not sha256:
                 if tc.version not in _KNOWN_SHA256:
-                    fail("julia.toolchain: no known sha256 for Julia {}; pass sha256 = ...".format(tc.version))
+                    fail("julia.dist: no known sha256 for Julia {}; pass sha256 = ...".format(tc.version))
                 sha256 = _KNOWN_SHA256[tc.version]
             minor = ".".join(tc.version.split(".")[:2])
             url = tc.url or _DIST_URL.format(minor = minor, version = tc.version)
             http_archive(
                 name = tc.name,
-                build_file_content = _DIST_BUILD,
+                build_file_content = _DIST_BUILD + ("" if tc.name == "dist" else _DIST_ALIAS.format(name = tc.name)),
                 sha256 = sha256,
                 strip_prefix = tc.strip_prefix or ("julia-" + tc.version),
                 urls = [url],
@@ -60,7 +78,7 @@ def _julia_impl(module_ctx):
                 name = depot.name,
                 manifest = depot.manifest,
                 julia = depot.julia,
-                depot = depot.depot,
+                dir = depot.dir,
                 hook = depot.hook,
                 hook_environ = depot.hook_environ,
                 timeout = depot.timeout,
@@ -69,7 +87,7 @@ def _julia_impl(module_ctx):
 julia = module_extension(
     implementation = _julia_impl,
     tag_classes = {
-        "toolchain": tag_class(
+        "dist": tag_class(
             doc = "Fetch an official Julia distribution, pinned by sha256, as a repository.",
             attrs = {
                 "name": attr.string(mandatory = True, doc = "Repository name, e.g. julia_dist."),
@@ -84,8 +102,8 @@ julia = module_extension(
             attrs = {
                 "name": attr.string(mandatory = True),
                 "manifest": attr.label(mandatory = True),
-                "julia": attr.label(mandatory = True, doc = "The julia binary, e.g. @julia_dist//:bin/julia."),
-                "depot": attr.string(doc = "Depot to instantiate into, overriding JULIA_DEPOT_PATH; {HOME} and {USER} expand from the fetch environment."),
+                "julia": attr.label(mandatory = True, doc = "The Julia distribution, e.g. @julia_dist from julia.dist."),
+                "dir": attr.string(doc = "Depot directory to instantiate into, overriding JULIA_DEPOT_PATH; {HOME} and {USER} expand from the fetch environment."),
                 "hook": attr.label(doc = "Optional executable run before instantiate (private registries, credentials)."),
                 "hook_environ": attr.string_list(doc = "Environment variables the hook reads; a change refetches."),
                 "timeout": attr.int(default = 3600),

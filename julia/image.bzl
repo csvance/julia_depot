@@ -31,6 +31,8 @@ scripts decide is not repeated here.
 # the best clone for the CPU it lands on. Compiled for the build machine's CPU instead (Julia's
 # default, "native"), a cache is rejected on any host whose CPU differs and the package is
 # recompiled at startup, which is the cost a compiled layer exists to remove.
+#
+# sysimage.sh carries the same string as its default; change both together.
 PORTABLE_X86_64_CPU_TARGET = "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1);x86-64-v4,-rdrnd,base(1)"
 
 JuliaImageEnvInfo = provider(
@@ -55,8 +57,9 @@ def _depot_path(julia_prefix, depot_prefix, extra_depots):
     # application's own root, listed so its packages are recorded relative to it in the caches and
     # stay valid when the tree moves (see image_layers.sh, unpack_image). Then the two depots the
     # distribution ships inside itself, which hold the stdlib caches; leaving them out makes Julia
-    # recompile the stdlib it needs into the first depot. Listed explicitly rather than with a
-    # trailing separator, which would also add ~/.julia.
+    # recompile the stdlib it needs into the first depot. Named rather than left to a trailing
+    # separator, which expands to the same two, so the image's environment file says exactly what
+    # the path is.
     return [depot_prefix] + extra_depots + [julia_prefix + "/local/share/julia", julia_prefix + "/share/julia"]
 
 def julia_image_env_vars(
@@ -170,13 +173,13 @@ take as `image_env`, so the caches are compiled for, and checked against, this e
 
 # --- shared ---------------------------------------------------------------------------------
 
-_JULIA_DOC = "The Julia distribution, `@julia_dist//:dist` from julia.toolchain."
+_JULIA_DOC = "The Julia distribution, `@julia_dist` from julia.dist."
 
 def _julia_bin(ctx):
     for f in ctx.files.julia:
         if f.owner.name == "bin/julia":
             return f
-    fail("julia: {} has no bin/julia; pass the distribution, @<toolchain>//:dist".format(ctx.attr.julia.label))
+    fail("julia: {} has no bin/julia; pass the distribution, e.g. @julia_dist".format(ctx.attr.julia.label))
 
 def _tool_attrs():
     return {
@@ -214,7 +217,7 @@ def _stamp(ctx):
     for f in ctx.files.depot:
         if f.basename == "stamp.txt":
             return f
-    fail("depot: {} has no stamp.txt; pass the depot's env target, @<depot>//:env".format(ctx.attr.depot.label))
+    fail("depot: {} has no stamp.txt; pass the julia.depot repository, e.g. @my_depot".format(ctx.attr.depot.label))
 
 def _project_attrs():
     return {
@@ -255,7 +258,7 @@ def _julia_dist_layer_impl(ctx):
         out,
         ["dist", _julia_bin(ctx).path, _check_absolute("prefix", ctx.attr.prefix), out.path],
         [],
-        # A gigabyte that a copy rebuilds in seconds from the toolchain repository, which is
+        # A gigabyte that a copy rebuilds in seconds from the distribution repository, which is
         # already local: not worth a round trip through a remote or disk cache.
         remote_cache = False,
         mnemonic = "JuliaDistLayer",
@@ -279,9 +282,9 @@ def _julia_depot_layer_impl(ctx):
     stamp = _stamp(ctx)
     env = dict(ctx.attr.env)
     env.update({
-        "JULIA_DEPOT_CONTENTS": ctx.attr.contents,
-        "JULIA_DEPOT_IMAGE_PREFIX": _check_absolute("prefix", ctx.attr.prefix),
-        "JULIA_DEPOT_MIN_ARTIFACTS": str(ctx.attr.min_artifacts),
+        "RULES_JULIA_DEPOT_CONTENTS": ctx.attr.contents,
+        "RULES_JULIA_DEPOT_IMAGE_PREFIX": _check_absolute("prefix", ctx.attr.prefix),
+        "RULES_JULIA_DEPOT_MIN_ARTIFACTS": str(ctx.attr.min_artifacts),
     })
     inputs = list(files)
     if stamp:
@@ -289,10 +292,10 @@ def _julia_depot_layer_impl(ctx):
     if ctx.file.overrides_build:
         if not ctx.file.overrides_image:
             fail("overrides_build without overrides_image would ship this host's paths; set both")
-        env["JULIA_DEPOT_OVERRIDES_BUILD"] = ctx.file.overrides_build.path
+        env["RULES_JULIA_DEPOT_OVERRIDES_BUILD"] = ctx.file.overrides_build.path
         inputs.append(ctx.file.overrides_build)
     if ctx.file.overrides_image:
-        env["JULIA_DEPOT_OVERRIDES_IMAGE"] = ctx.file.overrides_image.path
+        env["RULES_JULIA_DEPOT_OVERRIDES_IMAGE"] = ctx.file.overrides_image.path
         inputs.append(ctx.file.overrides_image)
     _layer_run(
         ctx,
@@ -320,7 +323,7 @@ julia_compiled_layer needs. Fetches from the package server: set JULIA_PKG_SERVE
         "contents": attr.string(default = "artifacts", values = ["artifacts", "full"], doc = "artifacts: artifacts/ only. full: packages/ as well."),
         "prefix": attr.string(default = "/opt/julia-depot", doc = "Where the image keeps the depot. Match julia_image_env's `depot_prefix`."),
         "min_artifacts": attr.int(default = 1, doc = "Fail below this many artifact directories, a floor against a selection that silently came up empty."),
-        "depot": attr.label(allow_files = True, doc = "Optional `@<depot>//:env` of a julia.depot. Its registries and package-server credentials are used for the instantiate (never shipped). Without it the registry is fetched fresh."),
+        "depot": attr.label(allow_files = True, doc = "Optional julia.depot repository, e.g. `@my_depot`. Its registries and package-server credentials are used for the instantiate (never shipped). Without it the registry is fetched fresh."),
         "overrides_build": attr.label(allow_single_file = True, doc = "artifacts/Overrides.toml naming build-host directories; see docs/src/recipes.md."),
         "overrides_image": attr.label(allow_single_file = True, doc = "The artifacts/Overrides.toml that ships, naming in-image paths. Required with overrides_build."),
         "env": attr.string_dict(doc = "Variables for the instantiate, e.g. what a package's platform augmentation reads to select an artifact."),
@@ -337,8 +340,8 @@ def _julia_sysimage_layer_impl(ctx):
         fail("packages: name at least one package to bake")
     env = dict(ctx.attr.env)
     env.update({
-        "JULIA_SYSIMAGE_PACKAGES": " ".join(ctx.attr.packages),
-        "JULIA_SYSIMAGE_CPU_TARGET": ctx.attr.cpu_target,
+        "RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES": " ".join(ctx.attr.packages),
+        "RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET": ctx.attr.cpu_target,
     })
     _layer_run(
         ctx,
@@ -364,7 +367,7 @@ and start Julia with `--sysimage <path>`.
 """,
     attrs = _tool_attrs() | _project_attrs() | {
         "julia": attr.label(mandatory = True, allow_files = True, doc = _JULIA_DOC),
-        "depot": attr.label(mandatory = True, allow_files = True, doc = "`@<depot>//:env` of the julia.depot over this manifest."),
+        "depot": attr.label(mandatory = True, allow_files = True, doc = "The julia.depot repository over this manifest, e.g. `@my_depot`."),
         "packages": attr.string_list(mandatory = True, doc = "Packages to bake, with everything they depend on."),
         "cpu_target": attr.string(default = PORTABLE_X86_64_CPU_TARGET, doc = "The sysimage's CPU targets. The portable default costs build time; the image runs on any x86_64 host."),
         "path": attr.string(default = "/opt/julia-sysimage/sys.so", doc = "Where the image keeps the sysimage."),
@@ -470,7 +473,7 @@ julia_precompile_test = rule(
 Unpacks the layers into one tree with the image's layout and, in each entry project, loads its
 modules with Julia's loading debug output on. Fails when any cache is rejected or any package is
 compiled, which is what a container would otherwise do at its first start. Runs the image's own
-Julia when a julia_dist_layer is among the layers, and the toolchain's otherwise.
+Julia when a julia_dist_layer is among the layers, and the distribution's otherwise.
 """,
     attrs = _tool_attrs() | _image_attrs() | {
         "modules": attr.string_list(doc = "What to load in every entry project. Default: each project's direct dependencies, and the project itself when it is a package."),

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # The actions behind julia/image.bzl: one subcommand per layer rule, plus the precompile check.
+# INTERNAL: its subcommands and arguments are not part of the module's interface.
 #
 #   image_layers.sh dist      <julia> <prefix> <out.tar>
 #   image_layers.sh depot     <julia> <out.tar> <source stamp|-> [<rel> <file>]...
@@ -72,8 +73,8 @@ julia_root() {
 
 # The depot path a julia_depot stamp.txt records: the one the fetch ran with, every entry of it,
 # since a package or artifact the fetch found already present may live in any of them. Without a
-# trailing separator, which would hand Julia's defaults (and ~/.julia) back in; callers that want
-# the bundled depots append them by name.
+# trailing separator, which would hand back the bundled depots of whichever Julia reads it;
+# callers that want the bundled depots append them by name.
 stamp_depot() {
     local d
     d="$(sed -n 's/^depot=//p' "$1")"
@@ -228,7 +229,7 @@ cmd_dist() {
 }
 
 # --- depot: image_depot.sh on a staged project ---------------------------------------------
-# image_depot.sh reads its options from the environment (JULIA_DEPOT_CONTENTS and friends), and the
+# image_depot.sh reads its options from the environment (RULES_JULIA_DEPOT_CONTENTS and friends), and the
 # rule sets them; this only supplies what it needs from the build: Julia, the staged project, and
 # a source depot for registries and server credentials. With no stamp the source depot is EMPTY, so
 # the registry is fetched into the clean depot rather than copied from whatever this host has; the
@@ -245,7 +246,7 @@ cmd_depot() {
         JULIA_DEPOT_PATH="$(stamp_depot "$stamp")"
         export JULIA_DEPOT_PATH
     fi
-    JULIA_BIN="$(abspath "$julia")" "$here/image_depot.sh" "$project" "$(abspath "$out")"
+    RULES_JULIA_DEPOT_BIN="$(abspath "$julia")" "$here/image_depot.sh" "$project" "$(abspath "$out")"
 }
 
 # --- sysimage: sysimage.sh on a staged project, at a path in the image ---------------------
@@ -261,7 +262,7 @@ cmd_sysimage() {
     root="$(julia_root "$julia")"
     mkdir -p "$scratch/depot" "$stage/$(dirname "$path")"
     JULIA_DEPOT_PATH="$scratch/depot:$(stamp_depot "$stamp"):$root/local/share/julia:$root/share/julia" \
-        JULIA_BIN="$(abspath "$julia")" \
+        RULES_JULIA_DEPOT_BIN="$(abspath "$julia")" \
         "$here/sysimage.sh" "$project" auto "$stage/$path"
     write_layer "$out" "$stage"
 }

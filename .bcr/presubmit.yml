@@ -5,9 +5,9 @@
 # A smoke subset rather than //...: the full suite downloads two Julias, builds
 # PackageCompiler sysimages and pulls a container base image, which is CI's job (see
 # .github/workflows/e2e.yml), not the registry's. These targets cover the consumer seam:
-# the toolchain, a depot fetch, a hook, and a declared depot.
+# the distribution, a depot fetch, a hook, and a declared depot.
 #
-# Linux x86_64 only, because the toolchain defaults to the official Linux x86_64 tarball.
+# Linux x86_64 only, because julia.dist defaults to the official Linux x86_64 tarball.
 # Bazel 9 only, because e2e/MODULE.bazel needs it (see the aspect_bazel_lib note there).
 bcr_test_module:
   module_path: "e2e"
@@ -20,7 +20,7 @@ bcr_test_module:
       platform: ${{ platform }}
       bazel: ${{ bazel }}
       test_targets:
-        - "//tests:toolchain_version_1_12_test"
+        - "//tests:dist_version_1_12_test"
         - "//tests:depot_stamp_1_12_test"
         - "//tests:hook_1_12_test"
         - "//tests:declared_depot_1_12_test"
