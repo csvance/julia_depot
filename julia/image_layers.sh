@@ -69,7 +69,10 @@ julia_root() {
     cd "$(dirname "$(readlink -f "$1")")/.." && pwd
 }
 
-# The first entry of the depot a julia_depot stamp.txt records, which is the depot the fetch filled.
+# The depot path a julia_depot stamp.txt records: the one the fetch ran with, every entry of it,
+# since a package or artifact the fetch found already present may live in any of them. Without a
+# trailing separator, which would hand Julia's defaults (and ~/.julia) back in; callers that want
+# the bundled depots append them by name.
 stamp_depot() {
     local d
     d="$(sed -n 's/^depot=//p' "$1")"
@@ -77,7 +80,8 @@ stamp_depot() {
         echo "FAILED: $1 records no depot=" >&2
         exit 1
     }
-    printf '%s\n' "${d%%:*}"
+    d="${d%:}"
+    printf '%s\n' "${d#:}"
 }
 
 # stage_project <dir> [<rel> <file>]...: copies each file to <dir>/<rel>. -L because Bazel stages
@@ -233,7 +237,7 @@ cmd_depot() {
 }
 
 # --- sysimage: sysimage.sh on a staged project, at a path in the image ---------------------
-# The project's packages come from the depot the stamp names, which julia.depot has already
+# The project's packages come from the depot path the stamp names, which julia.depot has already
 # instantiated. It is read, never written: a scratch depot sits in front for anything PackageCompiler
 # writes (its own environment, when the depot lacks it, and the caches of the build), and the
 # distribution's bundled depots sit behind for the stdlib.
