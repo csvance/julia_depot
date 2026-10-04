@@ -135,3 +135,28 @@ depot, say) prepend to `JULIA_DEPOT_PATH` after sourcing `env.sh`; Julia writes 
 and reads packages, artifacts and compiled caches from all of them. Note that Pkg reads
 package-server credentials (`servers/<host>/auth.toml`) from the first depot only, so a front
 depot needs its own copy when the environment resolves through a private server.
+
+## Loading an image with podman on a host that also has docker
+
+Not Julia-specific, but it costs an afternoon the first time. rules_oci's `oci_load` probes
+`command -v docker` first and falls back to podman only when that fails, so on a host where a
+docker CLI is installed but its socket is not reachable the probe wins and the load dies with
+"permission denied while trying to connect to the docker API". Name the loader instead of
+depending on which CLIs happen to be on PATH: a one-line script, exported as a file, because
+`loader` must be a single file and an `sh_binary` brings runfiles with it.
+
+```bash
+#!/usr/bin/env bash
+exec podman "$@"
+```
+
+```python
+exports_files(["podman.sh"])
+
+oci_load(
+    name = "image_load",
+    image = ":image",
+    loader = ":podman.sh",
+    repo_tags = ["my-app:bazel"],
+)
+```

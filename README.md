@@ -62,7 +62,6 @@ else. Private registries plug in through the depot's `hook`.
 | `julia.depot` | the Manifest-pinned depot repository, with an optional pre-instantiate hook |
 | `//julia:image_depot.sh` | a clean depot as a deterministic image layer, artifacts-only or with packages, with artifact overrides for locally built binaries |
 | `//julia:sysimage.sh` | a PackageCompiler sysimage, with a pinned build environment per Julia minor |
-| `//oci:podman.sh` | an explicit `oci_load` loader for hosts where docker is on PATH but unusable |
 
 ## Documentation
 

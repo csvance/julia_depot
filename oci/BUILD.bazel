@@ -1,4 +1,0 @@
-# podman.sh is passed as oci_load's `loader`, which requires a SINGLE file, so it is
-# exported directly rather than wrapped in an sh_binary (that produces a script plus
-# runfiles and fails analysis with "must produce a single file").
-exports_files(["podman.sh"])
