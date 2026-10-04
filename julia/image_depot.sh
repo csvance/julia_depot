@@ -34,10 +34,10 @@
 # which is also why the artifacts can live at a different path in the image than they did
 # at build time. Pointed at an empty depot, startup dies in the first JLL's __init__.
 #
-# NO PRECOMPILATION, in either mode. Julia's compile cache is keyed on the absolute paths
-# the code was loaded from, so a cache built against this temporary depot is invalid the
-# moment the layer is unpacked at the image prefix. A full-mode image therefore pays its
-# precompilation once at first start; a sysimage is the real fix.
+# NO PRECOMPILATION, in either mode. A cache built against this temporary depot, which
+# has none of the image's layout around it, is not one the image can trust. A full-mode
+# image either pays its precompilation once at first start, or ships the caches of
+# julia_compiled_layer (image.bzl), which precompiles in a tree laid out like the image.
 #
 # ARTIFACT OVERRIDES substitute a locally built artifact for a registry one. Two files,
 # because the path differs between build and image: the build-time file names a directory
@@ -67,7 +67,9 @@ if [ -n "${JULIA_DEPOT_OVERRIDES_BUILD:-}" ] && [ -z "${JULIA_DEPOT_OVERRIDES_IM
     exit 1
 fi
 
+# Relative inside the tar either way; a leading slash is accepted and dropped.
 depot_prefix="${JULIA_DEPOT_IMAGE_PREFIX:-opt/julia-depot}"
+depot_prefix="${depot_prefix#/}"
 contents="${JULIA_DEPOT_CONTENTS:-artifacts}"
 min_artifacts="${JULIA_DEPOT_MIN_ARTIFACTS:-1}"
 src_depot="${JULIA_DEPOT_PATH%%:*}"
@@ -183,12 +185,18 @@ case "$contents" in
         ;;
 esac
 
-# Deterministic tar: sorted, epoch mtimes, root-owned by number. Without these the
-# layer digest changes on every build and nothing downstream can be cached or compared.
+# Deterministic tar: sorted, epoch mtimes, root-owned by number, permissions normalised
+# (0755 for directories and executables, 0644 otherwise, whatever Pkg and the umask left).
+# Without these the layer digest changes on every build and nothing downstream can be
+# cached or compared. The prefix's top directory is what is archived, so its parents are
+# entries too, with the same normalised modes, rather than whatever a container runtime
+# invents for them. These are the flags of write_layer in image_layers.sh.
 echo "==> writing $out"
-tar --create --file "$out" \
+LC_ALL=C tar --create --file "$out" \
+    --format=gnu \
     --sort=name \
     --mtime=@0 \
     --owner=0 --group=0 --numeric-owner \
+    --mode='u=rwX,go=rX' \
     --directory "$stage" \
-    "$depot_prefix"
+    "${depot_prefix%%/*}"

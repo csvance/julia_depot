@@ -1,0 +1,22 @@
+# The image example: an oci_image assembled from the module's layers with rules_oci, once per Julia
+# version in the matrix, and the tests over it. See defs.bzl for what each call declares, and
+# docs/images.md for the same recipe written out for a consumer.
+#
+#   bazel build //image:image_1_13
+#   bazel test //image:all
+
+load(":defs.bzl", "julia_image_tests")
+
+julia_image_tests(
+    depot_repo = "@depot_1_12",
+    julia_repo = "@julia_1_12",
+    minor = "1.12",
+    project = "//projects/v1.12",
+)
+
+julia_image_tests(
+    depot_repo = "@depot_1_13",
+    julia_repo = "@julia_1_13",
+    minor = "1.13",
+    project = "//projects/v1.13",
+)

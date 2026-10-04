@@ -72,10 +72,11 @@ env JULIA_BIN="$julia_bin" \
     "$image_depot" "$project" "$TEST_TMPDIR/overridden.tar"
 
 listing="$(tar -tf "$TEST_TMPDIR/overridden.tar")"
-if printf '%s\n' "$listing" | grep -q "^opt/julia-depot/artifacts/$hash/"; then
+# Here-strings rather than pipes: see image_depot_modes_test.sh.
+if grep -q "^opt/julia-depot/artifacts/$hash/" <<<"$listing"; then
     fail "artifact $hash was shipped despite being overridden to $local_build"
 fi
-printf '%s\n' "$listing" | grep -qx 'opt/julia-depot/artifacts/Overrides.toml' ||
+grep -qx 'opt/julia-depot/artifacts/Overrides.toml' <<<"$listing" ||
     fail "the image Overrides.toml did not ship:
 $listing"
 

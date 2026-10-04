@@ -2,10 +2,23 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "image_depot.sh",
+    "image_layers.sh",
     "instantiate.sh",
     "sysimage.sh",
     "artifact_paths.jl",
 ])
+
+# What image_layers.sh runs beside itself, for the rules in image.bzl: the two scripts it wraps and
+# the PackageCompiler environments sysimage.sh selects from with `auto`.
+filegroup(
+    name = "image_scripts",
+    srcs = [
+        "image_depot.sh",
+        "image_layers.sh",
+        "sysimage.sh",
+        ":sysimage_envs",
+    ],
+)
 
 # The PackageCompiler environments, one per Julia minor version (sysimage/v1.12,
 # sysimage/v1.13, ...). sysimage.sh picks the one matching the running Julia when told

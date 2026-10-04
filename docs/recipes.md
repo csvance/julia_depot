@@ -7,6 +7,10 @@ also disables remote caching.
 
 ## A depot layer for an image
 
+`julia_depot_layer` in `julia/image.bzl` is this recipe as a rule, alongside the other image
+layers; see [Images](images.md). The genrule form below is the script underneath, for a build
+that wants to drive it directly.
+
 ```python
 genrule(
     name = "depot_layer",
@@ -37,7 +41,8 @@ copies the source depot's registries and server credentials into the clean depot
 duration of the instantiate and never into the layer.
 
 Stack it with `rules_oci`: a base image, this layer, the Julia distribution as a layer,
-and your application, with `JULIA_DEPOT_PATH=/opt/julia-depot` in the image environment.
+and your application, with the depot first in the image's `JULIA_DEPOT_PATH` and the
+distribution's bundled depots after it. `julia_image_env` writes that environment for you.
 
 ### Substituting a locally built artifact
 
@@ -135,3 +140,28 @@ depot, say) prepend to `JULIA_DEPOT_PATH` after sourcing `env.sh`; Julia writes 
 and reads packages, artifacts and compiled caches from all of them. Note that Pkg reads
 package-server credentials (`servers/<host>/auth.toml`) from the first depot only, so a front
 depot needs its own copy when the environment resolves through a private server.
+
+## Loading an image with podman on a host that also has docker
+
+Not Julia-specific, but it costs an afternoon the first time. rules_oci's `oci_load` probes
+`command -v docker` first and falls back to podman only when that fails, so on a host where a
+docker CLI is installed but its socket is not reachable the probe wins and the load dies with
+"permission denied while trying to connect to the docker API". Name the loader instead of
+depending on which CLIs happen to be on PATH: a one-line script, exported as a file, because
+`loader` must be a single file and an `sh_binary` brings runfiles with it.
+
+```bash
+#!/usr/bin/env bash
+exec podman "$@"
+```
+
+```python
+exports_files(["podman.sh"])
+
+oci_load(
+    name = "image_load",
+    image = ":image",
+    loader = ":podman.sh",
+    repo_tags = ["my-app:bazel"],
+)
+```

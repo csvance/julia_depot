@@ -4,6 +4,10 @@
 # workstation as they do on a CI runner with no private network at all.
 common --repo_env=JULIA_PKG_SERVER=https://pkg.julialang.org
 
+# The same pin for build actions, which inherit nothing either: the depot layers in image/
+# instantiate their manifests in an action, through image_depot.sh.
+common --action_env=JULIA_PKG_SERVER=https://pkg.julialang.org
+
 # Read by the hook fixture, named in that depot's `hook_environ`, so changing it
 # refetches the repository and reruns the hook. tests/hook_test.sh asserts this value
 # came through, so the two have to agree.

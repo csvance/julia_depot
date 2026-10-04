@@ -10,6 +10,10 @@
 # depot's servers/ into its clean depot so a private package server resolves the way the
 # developer's does, and servers/ holds credentials. Those exist during the build and must
 # not leave it.
+#
+# Listings are searched as here-strings, never piped: under pipefail, `printf | grep -q`
+# fails whenever grep matches and exits before printf has written the rest, which a loaded
+# CI runner does often enough to fail a layer that is correct.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -33,9 +37,9 @@ build_layer() {
 
 assert_no_secrets() {
     local listing="$1"
-    if printf '%s\n' "$listing" | grep -qE '(^|/)(servers|registries)/'; then
+    if grep -qE '(^|/)(servers|registries)/' <<<"$listing"; then
         fail "the layer carries depot state that is not artifacts or packages:
-$(printf '%s\n' "$listing" | grep -E '(^|/)(servers|registries)/')"
+$(grep -E '(^|/)(servers|registries)/' <<<"$listing")"
     fi
 }
 
@@ -51,11 +55,11 @@ $artifacts_listing"
 
 # The one JLL in the project is Bzip2_jll, so its native library is what an image would
 # actually be missing if the artifact selection silently came up empty.
-printf '%s\n' "$artifacts_listing" | grep -qE '^opt/julia-depot/artifacts/[0-9a-f]{40}/.*libbz2' ||
+grep -qE '^opt/julia-depot/artifacts/[0-9a-f]{40}/.*libbz2' <<<"$artifacts_listing" ||
     fail "the artifact layer has no libbz2 under it:
 $artifacts_listing"
 
-if printf '%s\n' "$artifacts_listing" | grep -q '^opt/julia-depot/packages/'; then
+if grep -q '^opt/julia-depot/packages/' <<<"$artifacts_listing"; then
     fail "artifacts mode shipped packages/, which is the whole difference from full mode"
 fi
 assert_no_secrets "$artifacts_listing"
@@ -64,20 +68,21 @@ assert_no_secrets "$artifacts_listing"
 build_layer full "$TEST_TMPDIR/full.tar"
 full_listing="$(tar -tf "$TEST_TMPDIR/full.tar")"
 
-printf '%s\n' "$full_listing" | grep -q '^opt/julia-depot/packages/' ||
+grep -q '^opt/julia-depot/packages/' <<<"$full_listing" ||
     fail "full mode shipped no packages/:
 $full_listing"
-printf '%s\n' "$full_listing" | grep -qE '^opt/julia-depot/packages/Crayons/' ||
+grep -qE '^opt/julia-depot/packages/Crayons/' <<<"$full_listing" ||
     fail "full mode shipped packages/ without the project's own packages in it"
-printf '%s\n' "$full_listing" | grep -qE '^opt/julia-depot/artifacts/[0-9a-f]{40}/' ||
+grep -qE '^opt/julia-depot/artifacts/[0-9a-f]{40}/' <<<"$full_listing" ||
     fail "full mode dropped the artifacts the artifacts mode found"
 assert_no_secrets "$full_listing"
 
 # --- the prefix is configurable ---------------------------------------------------
 build_layer artifacts "$TEST_TMPDIR/prefixed.tar" JULIA_DEPOT_IMAGE_PREFIX=srv/depot
-tar -tf "$TEST_TMPDIR/prefixed.tar" | grep -qE '^srv/depot/artifacts/[0-9a-f]{40}/' ||
+prefixed_listing="$(tar -tf "$TEST_TMPDIR/prefixed.tar")"
+grep -qE '^srv/depot/artifacts/[0-9a-f]{40}/' <<<"$prefixed_listing" ||
     fail "JULIA_DEPOT_IMAGE_PREFIX was ignored:
-$(tar -tf "$TEST_TMPDIR/prefixed.tar" | head)"
+$(head <<<"$prefixed_listing")"
 
 # --- the artifact floor is a real floor -------------------------------------------
 rc=0
