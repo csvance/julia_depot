@@ -16,8 +16,8 @@ package server, pinned in `e2e/.bazelrc`, so a shell pointing `JULIA_PKG_SERVER`
 private mirror does not change what the tests fetch.
 
 Expect a few minutes cold, most of it downloading the two Julia distributions and
-building one sysimage per version; warm, the whole matrix takes about two and a half
-minutes.
+building two sysimages per version (one for the sysimage tests, one portable one for the image
+example); warm, the whole matrix takes a few minutes.
 
 ## The matrix
 
@@ -40,6 +40,18 @@ selects that version's PackageCompiler environment, builds an image, and that im
 starts and loads what was baked into it. Across versions, a manifest resolved under one
 Julia is refused by the other in both directions, and a PackageCompiler environment
 pinned to the wrong minor is refused before any work starts.
+
+Each version also builds the image example in `e2e/image`: the dist, full depot, compiled and
+application layers from `julia/image.bzl`, the image environment, and an `oci_image` assembled
+from them with rules_oci on a digest-pinned Debian base. rules_oci is a dependency of the e2e
+module only. Every layer entry must be normalised (uid and gid 0, epoch mtime, 0755 or 0644),
+the dist and depot layers must come out byte-identical from two separate actions, the compiled
+layer the same entries up to the cache file hash, and rules_oci's config must carry the
+environment file and the layers in order. `julia_precompile_test` must pass on the image's layers
+and must fail, naming what it compiled, on the same layers without the compiled layer. A
+sysimage layer over an artifacts-only depot, whose registry is fetched fresh, must start without
+precompiling too. The layers are large: the distribution alone is about a gigabyte per copy, and
+the determinism test builds it twice.
 
 One test sits outside the per-version set. The matrix's sysimage tests run over a depot
 that already holds PackageCompiler, so on 1.13 `sysimage.sh auto` is also run on an empty

@@ -7,6 +7,10 @@ also disables remote caching.
 
 ## A depot layer for an image
 
+`julia_depot_layer` in `julia/image.bzl` is this recipe as a rule, alongside the other image
+layers; see [Images](images.md). The genrule form below is the script underneath, for a build
+that wants to drive it directly.
+
 ```python
 genrule(
     name = "depot_layer",
@@ -37,7 +41,8 @@ copies the source depot's registries and server credentials into the clean depot
 duration of the instantiate and never into the layer.
 
 Stack it with `rules_oci`: a base image, this layer, the Julia distribution as a layer,
-and your application, with `JULIA_DEPOT_PATH=/opt/julia-depot` in the image environment.
+and your application, with the depot first in the image's `JULIA_DEPOT_PATH` and the
+distribution's bundled depots after it. `julia_image_env` writes that environment for you.
 
 ### Substituting a locally built artifact
 

@@ -47,9 +47,10 @@ Two details that cost real time when missed:
   caches live, and `using Pkg` then recompiles Pkg serially before anything else. The
   script appends exactly the two bundled depots, not a trailing colon, which would also
   pull in the developer's `~/.julia` and let instantiate treat its artifacts as present.
-- Nothing is precompiled into the layer. Julia's compile cache is keyed on the absolute
-  paths code was loaded from, so a cache built in a temporary depot is invalid at the
-  image's path. An image without a sysimage precompiles once at first start.
+- Nothing is precompiled into the layer. A cache built in the script's temporary depot,
+  laid out differently from the image, would not be valid there. `julia_compiled_layer`
+  precompiles in a tree with the image's own layout instead, so its caches load unchanged
+  from the image's paths; see [Images](images.md).
 
 In `full` mode the script also runs `download_source`, because `Pkg.instantiate` skips
 weak dependencies' sources and a source-loaded image then fails precompiling extensions

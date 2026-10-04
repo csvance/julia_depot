@@ -45,6 +45,7 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
 
 **Four.** The declarations: four repositories in `e2e/MODULE.bazel` (toolchain, depot,
 sysimage depot, hook depot), a `julia_version_tests()` call in `e2e/tests/BUILD.bazel`, a
-`version_mismatch_test()` call for each pair worth covering, a copy of
+`julia_image_tests()` call in `e2e/image/BUILD.bazel`, a `version_mismatch_test()` call for
+each pair worth covering, a copy of
 `.github/workflows/julia-1.13.yml` as `julia-1.14.yml` with the version and tag changed,
 and its badge beside the others at the top of `README.md`.

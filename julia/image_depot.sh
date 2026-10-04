@@ -34,10 +34,10 @@
 # which is also why the artifacts can live at a different path in the image than they did
 # at build time. Pointed at an empty depot, startup dies in the first JLL's __init__.
 #
-# NO PRECOMPILATION, in either mode. Julia's compile cache is keyed on the absolute paths
-# the code was loaded from, so a cache built against this temporary depot is invalid the
-# moment the layer is unpacked at the image prefix. A full-mode image therefore pays its
-# precompilation once at first start; a sysimage is the real fix.
+# NO PRECOMPILATION, in either mode. A cache built against this temporary depot, which
+# has none of the image's layout around it, is not one the image can trust. A full-mode
+# image either pays its precompilation once at first start, or ships the caches of
+# julia_compiled_layer (image.bzl), which precompiles in a tree laid out like the image.
 #
 # ARTIFACT OVERRIDES substitute a locally built artifact for a registry one. Two files,
 # because the path differs between build and image: the build-time file names a directory
