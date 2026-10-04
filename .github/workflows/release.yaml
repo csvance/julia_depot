@@ -1,0 +1,55 @@
+# Cuts a release when a version tag is pushed: builds the archive, opens a draft GitHub
+# release, publishes it to the Bazel Central Registry, then finalizes the release.
+#
+# The same tag push also runs docs.yml, which deploys the versioned docs site
+# (/<tag>/, and /stable/ for the newest). That is why the tag has to be pushed from a
+# clone rather than created by a workflow: a tag created with GITHUB_TOKEN triggers no
+# further workflows, so the docs would never build.
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# MODULE.bazel's version must already say 0.1.0; release_prep.sh refuses otherwise.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  id-token: write       # attest provenance
+  attestations: write   # attest provenance
+  contents: write       # create the release and upload the archive
+
+jobs:
+  release:
+    # https://github.com/bazel-contrib/.github/blob/master/.github/workflows/release_ruleset.yaml
+    # Runs .github/workflows/release_prep.sh to build the archive and the notes.
+    uses: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@v7.7.0
+    with:
+      release_files: rules_julia_depot-*.tar.gz
+      # The root module declares no tests (they are in e2e/, a separate module), and
+      # `bazel test` with nothing to run exits nonzero, so this only checks it builds.
+      bazel_test_command: "bazel build //..."
+      prerelease: false
+      # A draft, so publish.yaml can attach attestations before the release becomes
+      # immutable. finalize publishes it.
+      draft: true
+      tag_name: ${{ github.ref_name }}
+
+  publish:
+    needs: release
+    uses: ./.github/workflows/publish.yaml
+    with:
+      tag_name: ${{ github.ref_name }}
+    secrets:
+      publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
+
+  finalize:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: false

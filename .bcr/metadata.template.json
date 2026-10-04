@@ -1,0 +1,15 @@
+{
+  "homepage": "https://csvance.github.io/rules_julia_depot/",
+  "maintainers": [
+    {
+      "name": "Carroll Vance",
+      "github": "csvance",
+      "github_user_id": 6805096
+    }
+  ],
+  "repository": [
+    "github:csvance/rules_julia_depot"
+  ],
+  "versions": [],
+  "yanked_versions": {}
+}

@@ -8,13 +8,20 @@ using Documenter
 using DocumenterLandingPage
 using MaterialDocs
 
+# The version this build documents, from the module itself, so a versioned deploy never
+# claims another one. release_prep.sh refuses a tag that disagrees with it.
+const MODULE_VERSION = match(
+    r"^\s*version\s*=\s*\"([^\"]+)\""m,
+    read(joinpath(@__DIR__, "..", "MODULE.bazel"), String),
+)[1]
+
 makedocs(
     sitename = "rules_julia_depot",
     doctest = false,
     format = Material3(
         edit_link = "main",
         canonical = "https://csvance.github.io/rules_julia_depot/",
-        inventory_version = "0.1.0",
+        inventory_version = MODULE_VERSION,
     ),
     repo = Documenter.Remotes.GitHub("csvance", "rules_julia_depot"),
     plugins = [

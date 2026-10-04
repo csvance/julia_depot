@@ -1,0 +1,4 @@
+# Left out of `git archive`, and so of the release archive BCR pins. e2e/ stays in: it is
+# the module BCR's presubmit tests (.bcr/presubmit.yml).
+.github/ export-ignore
+docs/ export-ignore
