@@ -385,6 +385,11 @@ def _image_args(ctx):
         args += ["--project", _check_absolute("projects", p)]
     if ctx.attr.sysimage:
         args += ["--sysimage", _check_absolute("sysimage", ctx.attr.sysimage)]
+
+    # As flags rather than the action's environment: `{root}` is only known once the script has
+    # unpacked the layers, so the script sets them, after expanding it.
+    for k in sorted(ctx.attr.env.keys()):
+        args += ["--env", "{}={}".format(k, ctx.attr.env[k])]
     return info, args
 
 def _image_attrs():
@@ -394,20 +399,18 @@ def _image_attrs():
         "layers": attr.label_list(mandatory = True, allow_files = [".tar"], doc = "The image's layers, in oci_image order: at least the depot layer with packages, and every layer an entry project's files come from."),
         "projects": attr.string_list(mandatory = True, doc = "The entry projects, as absolute paths in the image: every project the image starts Julia in."),
         "sysimage": attr.string(doc = "The sysimage the image starts Julia with, as a path in the image, when it is not Julia's own."),
-        "env": attr.string_dict(doc = "Further variables for Julia, e.g. what a package reads in __init__ or to select an artifact."),
+        "env": attr.string_dict(doc = "Further variables for Julia, e.g. what a package reads in __init__ or to select an artifact. `{root}` in a value is the directory the layers are unpacked into, so a variable can name a file that only a build-time layer carries, such as a driver stub on LD_LIBRARY_PATH."),
     }
 
 def _julia_compiled_layer_impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name + ".tar")
     info, args = _image_args(ctx)
-    env = dict(ctx.attr.env)
-    env["JULIA_CPU_TARGET"] = info.cpu_target
     _layer_run(
         ctx,
         out,
         ["compiled", _julia_bin(ctx).path, out.path] + [a for layer in ctx.files.layers for a in ("--layer", layer.path)] + args,
         ctx.files.layers,
-        env = env,
+        env = {"JULIA_CPU_TARGET": info.cpu_target},
         mnemonic = "JuliaCompiledLayer",
         message = "Precompiling Julia layer %{output}",
     )
@@ -446,8 +449,6 @@ def _julia_precompile_test_impl(ctx):
         "#!/usr/bin/env bash\nset -euo pipefail\nexec {}\n".format(" ".join([_shell_quote(w) for w in words])),
         is_executable = True,
     )
-    env = dict(ctx.attr.env)
-    env["JULIA_CPU_TARGET"] = info.cpu_target
     runfiles = ctx.runfiles(files = [ctx.executable._tool] + ctx.files.layers).merge_all([
         ctx.attr.julia[DefaultInfo].default_runfiles,
         ctx.runfiles(transitive_files = ctx.attr.julia[DefaultInfo].files),
@@ -455,7 +456,7 @@ def _julia_precompile_test_impl(ctx):
     ])
     return [
         DefaultInfo(executable = launcher, runfiles = runfiles),
-        RunEnvironmentInfo(environment = env),
+        RunEnvironmentInfo(environment = {"JULIA_CPU_TARGET": info.cpu_target}),
     ]
 
 def _shell_quote(s):

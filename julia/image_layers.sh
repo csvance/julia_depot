@@ -16,6 +16,7 @@
 #   --depot <dir>          one JULIA_DEPOT_PATH entry, in search order (repeatable)
 #   --project <dir>        an entry project, as the image names it (repeatable)
 #   --sysimage <path>      the sysimage the image starts Julia with, if not Julia's own
+#   --env <KEY=VALUE>      a variable for Julia, with {root} expanded to the unpacked tree (repeatable)
 #
 # This is a script rather than inline Starlark so the rules stay small and the logic stays in one
 # place with the scripts it wraps: `depot` is image_depot.sh and `sysimage` is sysimage.sh, each
@@ -106,6 +107,7 @@ projects=()
 julia_prefix=""
 sysimage=""
 modules=""
+envs=()
 
 parse_image_flags() {
     while [ "$#" -gt 0 ]; do
@@ -116,6 +118,7 @@ parse_image_flags() {
             --julia-prefix) julia_prefix="$2" ;;
             --sysimage) sysimage="$2" ;;
             --modules) modules="$2" ;;
+            --env) envs+=("$2") ;;
             *)
                 echo "unknown flag $1" >&2
                 exit 2
@@ -174,6 +177,15 @@ unpack_image() {
             *) d="$root$d" ;;
         esac
         image_depot_path="${image_depot_path:+$image_depot_path:}$d"
+    done
+    # The rule's variables, set only now that <root> exists: a value may name a file in a layer
+    # that the image never ships, such as a driver stub that lets a package load on a build host
+    # with no driver.
+    local e v
+    for e in ${envs[@]+"${envs[@]}"}; do
+        v="${e#*=}"
+        # The replacement quoted, so bash 5.2 does not read an & in the path as the match.
+        export "${e%%=*}=${v//\{root\}/"$root"}"
     done
     image_julia_args=(--startup-file=no)
     if [ -n "$sysimage" ]; then

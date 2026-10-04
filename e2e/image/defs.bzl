@@ -234,6 +234,25 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         tags = tags,
     )
 
+    # `{root}` in `env` is the unpacked tree. The active project is reachable only through the
+    # load path given here, so the packages load only when `{root}` was expanded; an unexpanded
+    # entry names no directory and the check fails to find them.
+    julia_precompile_test(
+        name = n("precompile_check_root_env") + "_test",
+        size = "medium",
+        env = {"JULIA_LOAD_PATH": "{root}" + _APP + ":@stdlib"},
+        image_env = n("image_env"),
+        julia = julia,
+        layers = [
+            n("dist_layer"),
+            n("depot_layer"),
+            n("compiled_layer"),
+            n("app_layer"),
+        ],
+        projects = [_APP],
+        tags = tags,
+    )
+
     # The same check on the image WITHOUT its compiled layer, which must fail: a check that cannot
     # fail proves nothing. Run by precompile_check_catches_<minor>_test, never on its own.
     julia_precompile_test(

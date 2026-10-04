@@ -78,7 +78,7 @@ All layer rules write `<name>.tar` and take `julia`, the toolchain's `@<toolchai
 | `julia_dist_layer` | the distribution at `prefix`, its own relative symlinks kept | `prefix` (`/opt/julia`) |
 | `julia_depot_layer` | a clean depot for the project at `prefix`: `image_depot.sh` as a rule | `project`, `manifest`, `srcs`, `contents` (`artifacts` or `full`), `prefix` (`/opt/julia-depot`), `depot`, `min_artifacts`, `overrides_build`, `overrides_image`, `env` |
 | `julia_sysimage_layer` | a PackageCompiler sysimage at `path`: `sysimage.sh` as a rule | `project`, `manifest`, `srcs`, `depot` (required), `packages`, `cpu_target`, `path` (`/opt/julia-sysimage/sys.so`), `env` |
-| `julia_compiled_layer` | the depot's `compiled/`, for the entry projects | `image_env`, `layers`, `projects`, `sysimage`, `env` |
+| `julia_compiled_layer` | the depot's `compiled/`, for the entry projects | `image_env`, `layers`, `projects`, `sysimage`, `env` (`{root}` expands to the unpacked tree) |
 
 `julia_image_env` writes `<name>.env` and provides `JuliaImageEnvInfo`. Its attributes are
 `julia_prefix`, `depot_prefix`, `extra_depots`, `project`, `load_path`, `cpu_target`, `offline`
@@ -159,6 +159,29 @@ without its compiled layer and requires the failure.
 A container is still a different place: a package whose `__init__` needs a device, a driver or a
 mounted file the test does not have fails there and not here. Give the test what it needs with
 `env`, or check the loaded image itself.
+
+## Build-time layers and `{root}`
+
+`env` on `julia_compiled_layer` and `julia_precompile_test` may write `{root}`, which becomes the
+directory the layers are unpacked into. Together with a layer that is passed to these rules but
+not to `oci_image`, that lets a package load on a build host that lacks something the image's
+runtime provides. The case it was made for is a CUDA build of a library that lists
+`libcuda.so.1` as a dependency, so loading it fails without a driver: ship the driver stub in a
+build-time layer and point the loader at it.
+
+```python
+julia_compiled_layer(
+    name = "compiled_layer",
+    env = {
+        "CUDA_VISIBLE_DEVICES": "",
+        "LD_LIBRARY_PATH": "{root}/opt/build/cuda-stub",
+    },
+    layers = [":julia_layer", ":depot_layer", ":app_layer", ":cuda_stub_layer"],
+    ...
+)
+```
+
+The stub then never reaches the image, where the container runtime supplies the real driver.
 
 ## Reproducibility
 
