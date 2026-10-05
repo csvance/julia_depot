@@ -15,7 +15,7 @@ hero:
       link: /images/
     - theme: alt
       text: View on GitHub
-      link: https://github.com/csvance/rules_julia_depot
+      link: https://github.com/csvance/julia_depot
 
 features:
   - icon: 📌

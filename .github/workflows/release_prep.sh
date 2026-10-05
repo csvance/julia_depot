@@ -36,5 +36,5 @@ Add to your \`MODULE.bazel\` file:
 bazel_dep(name = "julia_depot", version = "${VERSION}")
 \`\`\`
 
-Documentation for this release: https://csvance.github.io/rules_julia_depot/${TAG}/
+Documentation for this release: https://csvance.github.io/julia_depot/${TAG}/
 NOTES

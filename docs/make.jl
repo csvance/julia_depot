@@ -20,10 +20,10 @@ makedocs(
     doctest = false,
     format = Material3(
         edit_link = "main",
-        canonical = "https://csvance.github.io/rules_julia_depot/",
+        canonical = "https://csvance.github.io/julia_depot/",
         inventory_version = MODULE_VERSION,
     ),
-    repo = Documenter.Remotes.GitHub("csvance", "rules_julia_depot"),
+    repo = Documenter.Remotes.GitHub("csvance", "julia_depot"),
     plugins = [
         LandingPage(),
     ],
@@ -38,7 +38,7 @@ makedocs(
 )
 
 Documenter.deploydocs(
-    repo = "github.com/csvance/rules_julia_depot.git",
+    repo = "github.com/csvance/julia_depot.git",
     push_preview = true,
     devbranch = "main",
 )

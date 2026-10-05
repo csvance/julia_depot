@@ -1,9 +1,9 @@
 # julia_depot
 
-[![ci](https://github.com/csvance/rules_julia_depot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/ci.yml)
-[![julia 1.12](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.12.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.12.yml)
-[![julia 1.13](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.13.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.13.yml)
-[![docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://csvance.github.io/rules_julia_depot/dev/)
+[![ci](https://github.com/csvance/julia_depot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/ci.yml)
+[![julia 1.12](https://github.com/csvance/julia_depot/actions/workflows/julia-1.12.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/julia-1.12.yml)
+[![julia 1.13](https://github.com/csvance/julia_depot/actions/workflows/julia-1.13.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/julia-1.13.yml)
+[![docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://csvance.github.io/julia_depot/dev/)
 
 Reproducible Julia environments, sysimages and container images with Bazel, pinned to
 the `Manifest.toml` you already commit.
@@ -86,7 +86,7 @@ local development; see [Recipes](docs/src/recipes.md).
 ## Documentation
 
 The pages below are published as a site at
-[csvance.github.io/rules_julia_depot](https://csvance.github.io/rules_julia_depot/dev/).
+[csvance.github.io/julia_depot](https://csvance.github.io/julia_depot/dev/).
 
 - [Images](docs/src/images.md): the image layers, the environment, the precompile test, and the recipe.
 - [Recipes](docs/src/recipes.md): the depot layer, the sysimage, a REPL target, the hook.
