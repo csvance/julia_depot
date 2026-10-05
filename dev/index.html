@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Index — rules_julia_depot</title>
-  <link rel="stylesheet" href="./assets/materialdocs.css?v=886f56ed">
+  <link rel="stylesheet" href="./assets/materialdocs.css?v=776c07e9">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Index — rules_julia_depot">
   <meta property="og:title" content="Index — rules_julia_depot">
@@ -129,6 +129,7 @@ julia.depot(
 )
 use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 </div>
+<p>In a module that others depend on, prefix these names with your module name, since every    module&#39;s names share one namespace; see <a href="./contract/#Repository-names">the contract</a>.</p>
 <ol class="md-list-tight">
 <li><p>Build on it. Fetching <code class="md-code-inline">@my_depot</code> instantiates and precompiles the manifest, checks that it was resolved under the Julia you pinned, and produces an <code class="md-code-inline">env.sh</code> to source. From there, a genrule or <code class="md-code-inline">sh_binary</code> sources <code class="md-code-inline">env.sh</code>, takes Julia by label, and runs whatever you need: your code, <code class="md-code-inline">sysimage.sh</code> for a sysimage, or <code class="md-code-inline">image_depot.sh</code> for a clean depot layer to stack into an OCI image.</p>
 </li>
@@ -222,6 +223,6 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="./siteinfo.js"></script>
   <script src="./../versions.js"></script>
-  <script src="./assets/materialdocs.js?v=886f56ed"></script>
+  <script src="./assets/materialdocs.js?v=776c07e9"></script>
 </body>
 </html>
