@@ -80,6 +80,9 @@ julia.depot(
 use_repo(julia, "julia_dist", "my_depot")
 ```
 
+   In a module that others depend on, prefix these names with your module name, since every
+   module's names share one namespace; see [the contract](contract.md#Repository-names).
+
 3. Build on it. Fetching `@my_depot` instantiates and precompiles the manifest, checks
    that it was resolved under the Julia you pinned, and produces an `env.sh` to source.
    From there, a genrule or `sh_binary` sources `env.sh`, takes Julia by label, and runs

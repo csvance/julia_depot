@@ -43,6 +43,23 @@ The fetch is keyed on the manifest, the hook, the Julia version (through the
 distribution's version header), the declared `dir`, and the variables `HOME`,
 `JULIA_DEPOT_PATH`, `JULIA_PKG_SERVER` and every `hook_environ` entry.
 
+## Repository names
+
+The `julia` extension is evaluated once for the whole module graph, so the names given to
+`julia.dist` and `julia.depot` share one namespace across every module that uses it. A name
+can be declared once: a second declaration, in any module, fails with an error naming both
+modules, even when the two are identical.
+
+The convention that keeps names apart:
+
+- The root module names its repositories freely: `julia_dist`, `my_depot`.
+- A module that others depend on prefixes every name it declares with its own module name:
+  `my_library_julia`, `my_library_depot`.
+
+Neither declaration wins a clash, by design. Had the root's won, the other module would
+build against a Julia or a manifest it never declared, and a module with no depot, one that
+only builds image layers, would ship the root's Julia with nothing to say so.
+
 ## The image script
 
 `image_depot.sh` is the opposite choice, on purpose: it instantiates into a clean depot,

@@ -13,6 +13,14 @@ NAMING. A rule attribute that takes a repository is named after what it takes an
 the repository itself: `julia = "@julia_dist"`, `depot = "@my_depot"`. Each repository's
 default target, the one named after it, is what the rules need from it. The named targets
 (`:dist`, `bin/julia`, `:env`, `env.sh`, `stamp.txt`) stay for genrules and scripts.
+
+REPOSITORY NAMES ARE SHARED. The extension is evaluated once for the whole module graph,
+so every module's `julia.dist` and `julia.depot` names land in one namespace, and two
+modules declaring the same name is an error, even when the declarations are identical.
+Nobody's declaration wins, because either way a module would silently build against a
+Julia or a manifest it never asked for. The convention that keeps names apart: the root
+module names its repositories freely, and a module that others depend on prefixes every
+name it declares with its own module name (`reactant_server_julia`, not `julia_dist`).
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -56,9 +64,36 @@ alias(
 )
 """
 
+def _module_desc(mod):
+    return "{} ({})".format(mod.name, "the root module" if mod.is_root else "version " + (mod.version or "unversioned"))
+
+def _claim(names, mod, kind, name):
+    """Records that `mod` declares `name`, failing clearly when another declaration has it."""
+    if name in names:
+        other_mod, other_kind = names[name]
+        fail("""julia.{kind}(name = "{name}") in {mod} clashes with julia.{other_kind}(name = "{name}") in {other}.
+
+Repository names from the `julia` extension are shared by every module in the graph, so each
+name can be declared once. Rename one of them: a module that others depend on prefixes its
+names with its own module name (for example "{prefix}_{name}"), and the root module keeps the
+plain ones. Neither declaration can win, since the other module would then build against a
+Julia or a manifest it never declared.""".format(
+            kind = kind,
+            name = name,
+            mod = _module_desc(mod),
+            other_kind = other_kind,
+            other = _module_desc(other_mod),
+            prefix = (other_mod if mod.is_root else mod).name,
+        ))
+    names[name] = (mod, kind)
+
 def _julia_impl(module_ctx):
+    # Every repository this extension creates, by name, with the module and tag that declared
+    # it: one namespace for the whole graph. See REPOSITORY NAMES ARE SHARED above.
+    names = {}
     for mod in module_ctx.modules:
         for tc in mod.tags.dist:
+            _claim(names, mod, "dist", tc.name)
             sha256 = tc.sha256
             if not sha256:
                 if tc.version not in _KNOWN_SHA256:
@@ -74,6 +109,7 @@ def _julia_impl(module_ctx):
                 urls = [url],
             )
         for depot in mod.tags.depot:
+            _claim(names, mod, "depot", depot.name)
             julia_depot(
                 name = depot.name,
                 manifest = depot.manifest,
