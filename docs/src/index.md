@@ -95,16 +95,25 @@ else. Private registries plug in through the depot's `hook`.
 
 ## What is in the box
 
+In `MODULE.bazel`, from the `julia` extension:
+
 | | |
 | --- | --- |
 | `julia.dist` | an official Julia distribution, fetched and pinned by sha256 |
-| `julia.depot` | the Manifest-pinned depot repository, with an optional pre-instantiate hook |
-| `//julia:image_depot.sh` | a clean depot as a deterministic image layer, artifacts-only or with packages, with artifact overrides for locally built binaries |
-| `//julia:sysimage.sh` | a PackageCompiler sysimage, with a pinned build environment per Julia minor |
+| `julia.depot` | the Manifest-pinned depot, with an optional pre-instantiate hook |
+
+In `BUILD` files, from `@rules_julia_depot//julia:image.bzl`:
+
+| | |
+| --- | --- |
 | `julia_dist_layer`, `julia_depot_layer`, `julia_sysimage_layer` | the distribution, a clean depot and a sysimage, each as one deterministic image layer |
 | `julia_compiled_layer` | precompile caches for the image's entry projects, built for its layout and a portable CPU target list |
 | `julia_image_env` | the image's layout declared once, written as the environment file `oci_image` takes |
 | `julia_precompile_test` | a test, run on the layers without a container, that the image starts without precompiling |
+
+The depot and sysimage layers are `image_depot.sh` and `sysimage.sh` as rules. Both scripts
+are public too, for a genrule that needs them outside an image, such as a sysimage for
+local development; see [Recipes](recipes.md).
 
 ## Where to go next
 
