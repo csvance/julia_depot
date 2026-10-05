@@ -57,6 +57,11 @@ on a pinned environment, a sysimage that removes load time, a container image wh
 depot holds exactly the closure and nothing else, and a build that refuses to proceed
 when the Julia and the manifest disagree instead of producing something subtly wrong.
 
+This is not a Julia language ruleset. [rules_julia](https://github.com/periareon/rules_julia)
+models Julia code as Bazel targets (`julia_library`, `julia_binary`, `julia_test`) with a Bazel
+toolchain; this module instead pins whole environments to the `Manifest.toml` Pkg already
+writes, and packages them into images. The two answer different questions.
+
 ## The core workflow
 
 1. Resolve your project the ordinary way and commit `Project.toml` and `Manifest.toml`.

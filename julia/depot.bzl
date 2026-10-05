@@ -22,7 +22,8 @@ via $(location ...). The depot is the one path in env.sh, and it is per user by 
 
 WHAT REFETCHES IT. The manifest, the hook and instantiate.sh, by content; the Julia
 version, through the distribution's version header; the declared `dir`; and HOME,
-JULIA_DEPOT_PATH, JULIA_PKG_SERVER and every `hook_environ` variable.
+JULIA_PKG_SERVER, every `hook_environ` variable and, when no `dir` is declared,
+JULIA_DEPOT_PATH.
 
 THE HOOK. Environments that resolve through a private registry or package server need
 that registry in the depot BEFORE Pkg.instantiate, and fetch time is the only place
@@ -57,16 +58,16 @@ def _watch(rctx, path):
     rctx.read(path, watch = "auto")
 
 def _expand_depot(rctx, template):
-    """Expands {HOME} and {USER} in a depot template from the fetch environment."""
+    """Expands {HOME} and {USER} in the `dir` template from the fetch environment."""
     out = template
     for name in ["HOME", "USER"]:
         if ("{" + name + "}") in out:
             value = _env_value(rctx, name)
             if value == None:
-                fail("julia_depot: depot template {} needs ${} but it is not set".format(template, name))
+                fail("julia_depot: dir = \"{}\" needs ${} but it is not set".format(template, name))
             out = out.replace("{" + name + "}", value)
     if not out.startswith("/"):
-        fail("julia_depot: depot must expand to an absolute path, got {}".format(out))
+        fail("julia_depot: dir must expand to an absolute path, got {}".format(out))
     return out
 
 def _julia_depot_impl(rctx):
@@ -106,7 +107,10 @@ def _julia_depot_impl(rctx):
         ))
 
     env = {"RULES_JULIA_DEPOT_BIN": str(julia)}
-    for name in ["JULIA_DEPOT_PATH", "JULIA_PKG_SERVER", "HOME"] + rctx.attr.hook_environ:
+    # JULIA_DEPOT_PATH only when no `dir` is declared: a declared depot replaces it, so reading
+    # it would refetch on every change to a variable that cannot change the result.
+    ambient = [] if rctx.attr.dir else ["JULIA_DEPOT_PATH"]
+    for name in ambient + ["JULIA_PKG_SERVER", "HOME"] + rctx.attr.hook_environ:
         value = _env_value(rctx, name)
         if value != None:
             env[name] = value
@@ -228,5 +232,5 @@ julia_depot = repository_rule(
             allow_single_file = True,
         ),
     },
-    doc = "Instantiates and precompiles a Julia project into the ambient depot, failing loudly on a version mismatch.",
+    doc = "Instantiates and precompiles a Julia project into the declared or ambient depot, failing loudly on a version mismatch.",
 )

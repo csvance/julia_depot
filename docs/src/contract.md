@@ -41,7 +41,8 @@ Julia version, each pinned by its own `julia.depot`.
 
 The fetch is keyed on the manifest, the hook, the Julia version (through the
 distribution's version header), the declared `dir`, and the variables `HOME`,
-`JULIA_DEPOT_PATH`, `JULIA_PKG_SERVER` and every `hook_environ` entry.
+`JULIA_PKG_SERVER`, every `hook_environ` entry and, when no `dir` is declared,
+`JULIA_DEPOT_PATH`.
 
 ## Repository names
 

@@ -91,10 +91,10 @@ def julia_image_env_vars(
         extra_depots = [],
         project = None,
         load_path = None,
-        cpu_target = None,
+        cpu_target = PORTABLE_X86_64_CPU_TARGET,
         offline = True,
         path = True):
-    """The environment variables a Julia image needs, for oci_image's `env`.
+    """The environment variables a Julia image needs, as a dict for oci_image's `env`.
 
     The same variables `julia_image_env` writes, for a BUILD file that merges them with its own:
 
@@ -109,44 +109,16 @@ def julia_image_env_vars(
       project: JULIA_PROJECT, the project Julia starts in. Unset when None.
       load_path: JULIA_LOAD_PATH entries. Unset when None, which leaves Julia's default.
       cpu_target: JULIA_CPU_TARGET. Must match the compiled layer's, which julia_image_env
-        guarantees by handing this value to it. When None, the portable list for the target
-        platform's CPU, as a select().
+        guarantees by handing this value to it. A plain value, not chosen by platform, because
+        oci_image takes `env` only as a dict or a label: the x86_64 list by default, and
+        PORTABLE_AARCH64_CPU_TARGET passed explicitly for an aarch64 image.
       offline: JULIA_PKG_OFFLINE=true, so Pkg in the image never reaches for the network.
       path: prepend Julia's bin/ to the base image's PATH, as `<julia>/bin:$PATH`, which rules_oci
         expands against the base image's own PATH.
 
     Returns:
-      A dict of variable name to value, or a select() of such dicts when `cpu_target` is None.
-      Both merge with `|`.
+      A dict of variable name to value.
     """
-    if cpu_target == None:
-        args = dict(
-            julia_prefix = julia_prefix,
-            depot_prefix = depot_prefix,
-            extra_depots = extra_depots,
-            project = project,
-            load_path = load_path,
-            offline = offline,
-            path = path,
-        )
-        return select({
-            _X86_64: _env_vars(cpu_target = PORTABLE_X86_64_CPU_TARGET, **args),
-            _AARCH64: _env_vars(cpu_target = PORTABLE_AARCH64_CPU_TARGET, **args),
-        })
-    return _env_vars(
-        julia_prefix = julia_prefix,
-        depot_prefix = depot_prefix,
-        extra_depots = extra_depots,
-        project = project,
-        load_path = load_path,
-        cpu_target = cpu_target,
-        offline = offline,
-        path = path,
-    )
-
-# The work of julia_image_env_vars for one cpu_target, apart so the select() above can call it:
-# Starlark forbids recursion.
-def _env_vars(julia_prefix, depot_prefix, extra_depots, project, load_path, cpu_target, offline, path):
     julia_prefix = _check_absolute("julia_prefix", julia_prefix)
     depot_prefix = _check_absolute("depot_prefix", depot_prefix)
     extra_depots = [_check_absolute("extra_depots", d) for d in extra_depots]

@@ -114,7 +114,7 @@ def _julia_dist_impl(rctx):
     rctx.download_and_extract(
         url = _expand(rctx.attr.url, subs),
         sha256 = sha256,
-        stripPrefix = _expand(rctx.attr.strip_prefix, subs),
+        strip_prefix = _expand(rctx.attr.strip_prefix, subs),
     )
     name = rctx.original_name
     rctx.file("BUILD.bazel", _BUILD + ("" if name == "dist" else _ALIAS.format(name = name)))

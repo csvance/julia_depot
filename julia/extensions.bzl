@@ -27,12 +27,23 @@ load(":depot.bzl", "julia_depot")
 load(":dist.bzl", "DEFAULT_STRIP_PREFIX", "DEFAULT_URL", "julia_dist")
 
 def _module_desc(mod):
-    return "{} ({})".format(mod.name, "the root module" if mod.is_root else "version " + (mod.version or "unversioned"))
+    if mod.is_root:
+        return "{} (the root module)".format(mod.name) if mod.name else "the root module"
+    return "{} (version {})".format(mod.name, mod.version or "unversioned")
 
 def _claim(names, mod, kind, name):
     """Records that `mod` declares `name`, failing clearly when another declaration has it."""
     if name in names:
         other_mod, other_kind = names[name]
+        if other_mod.name == mod.name:
+            fail("""julia.{kind}(name = "{name}") in {mod} reuses a name it already gave to a julia.{other_kind}.
+
+Each repository from the `julia` extension needs its own name; rename one of the two.""".format(
+                kind = kind,
+                name = name,
+                mod = _module_desc(mod),
+                other_kind = other_kind,
+            ))
         fail("""julia.{kind}(name = "{name}") in {mod} clashes with julia.{other_kind}(name = "{name}") in {other}.
 
 Repository names from the `julia` extension are shared by every module in the graph, so each
@@ -79,7 +90,7 @@ julia = module_extension(
     implementation = _julia_impl,
     tag_classes = {
         "dist": tag_class(
-            doc = "Fetch the official Julia distribution for the host (Linux x86_64 or aarch64), pinned by sha256.",
+            doc = "Fetch the official Julia distribution for the host, pinned by sha256. Linux x86_64 is supported; aarch64 is mapped but untested.",
             attrs = {
                 "name": attr.string(mandatory = True, doc = "Repository name, e.g. julia_dist."),
                 "version": attr.string(mandatory = True, doc = "Julia version, e.g. 1.12.7."),

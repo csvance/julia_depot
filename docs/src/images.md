@@ -146,8 +146,9 @@ compiled for it carries a clone per target, and Julia picks the best one for the
 the build machine's own CPU, Julia's default, they would be rejected on any host whose CPU
 differs and recompiled at the first start, the cost the layer exists to remove. The same value
 is in the image's environment, so anything compiled at run time is portable too. The sysimage
-layer's `cpu_target` has the same default, and `julia_image_env_vars` returns a `select()` over
-the two when no `cpu_target` is given.
+layer's `cpu_target` has the same default. `julia_image_env_vars` returns a plain dict, because
+`oci_image` takes `env` only as a dict or a label, so its `cpu_target` defaults to the x86_64
+list; pass `PORTABLE_AARCH64_CPU_TARGET` for an aarch64 image.
 
 ## The test
 
