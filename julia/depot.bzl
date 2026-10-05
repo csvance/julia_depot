@@ -107,6 +107,7 @@ def _julia_depot_impl(rctx):
         ))
 
     env = {"RULES_JULIA_DEPOT_BIN": str(julia)}
+
     # JULIA_DEPOT_PATH only when no `dir` is declared: a declared depot replaces it, so reading
     # it would refetch on every change to a variable that cannot change the result.
     ambient = [] if rctx.attr.dir else ["JULIA_DEPOT_PATH"]
