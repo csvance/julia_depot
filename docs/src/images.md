@@ -140,9 +140,9 @@ own environment. If the image starts Julia with a sysimage of its own, pass its 
 ## CPU targets
 
 `JULIA_CPU_TARGET` defaults to the official Julia build's list for the target platform's CPU:
-`PORTABLE_X86_64_CPU_TARGET` on x86_64, `PORTABLE_AARCH64_CPU_TARGET` on aarch64, both exported
-from `image.bzl`. A cache compiled for it carries a clone per target, and Julia picks the best
-one for the CPU it lands on, so the caches load on any host of that architecture. Compiled for
+`PORTABLE_X86_64_CPU_TARGET` on x86_64, `PORTABLE_AARCH64_CPU_TARGET` on aarch64 (untested,
+see [Julia versions](julia-versions.md#Platforms)), both exported from `image.bzl`. A cache
+compiled for it carries a clone per target, and Julia picks the best one for the CPU it lands on, so the caches load on any host of that architecture. Compiled for
 the build machine's own CPU, Julia's default, they would be rejected on any host whose CPU
 differs and recompiled at the first start, the cost the layer exists to remove. The same value
 is in the image's environment, so anything compiled at run time is portable too. The sysimage

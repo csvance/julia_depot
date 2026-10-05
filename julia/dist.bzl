@@ -8,8 +8,10 @@ same on every host.
     Linux x86_64    linux-x86_64     https://julialang-s3.julialang.org/bin/linux/x64/...
     Linux aarch64   linux-aarch64    https://julialang-s3.julialang.org/bin/linux/aarch64/...
 
-macOS and Windows are refused, as is any other architecture: the module's scripts need GNU
-tar, coreutils and a Linux layout, so a distribution that downloaded would still fail later.
+Linux x86_64 is the supported platform. Linux aarch64 is mapped too, but untested and not
+supported: it may work. macOS and Windows are refused, as is any other architecture: the
+module's scripts need GNU tar, coreutils and a Linux layout, so a distribution that
+downloaded would still fail later.
 
 `url` and `strip_prefix` are templates, so one declaration serves every supported platform,
 a mirror included: {version} (1.12.7), {minor} (1.12), {platform} (linux-x86_64) and
@@ -58,13 +60,13 @@ def host_platform(os_name, arch, what = "julia.dist"):
     """
     name = os_name.lower()
     if name.startswith("mac") or "darwin" in name:
-        fail("{}: macOS is not supported yet; rules_julia_depot runs on Linux x86_64 and aarch64".format(what))
+        fail("{}: macOS is not supported yet; rules_julia_depot supports Linux x86_64".format(what))
     if name.startswith("windows"):
-        fail("{}: Windows is not supported yet; rules_julia_depot runs on Linux x86_64 and aarch64".format(what))
+        fail("{}: Windows is not supported yet; rules_julia_depot supports Linux x86_64".format(what))
     if not name.startswith("linux"):
-        fail("{}: {} is not supported; rules_julia_depot runs on Linux x86_64 and aarch64".format(what, os_name))
+        fail("{}: {} is not supported; rules_julia_depot supports Linux x86_64".format(what, os_name))
     if arch not in _ARCHES:
-        fail("{}: Linux on {} is not supported yet; rules_julia_depot runs on x86_64 and aarch64".format(what, arch))
+        fail("{}: Linux on {} is not supported yet; rules_julia_depot supports Linux x86_64".format(what, arch))
     julia_arch, arch_dir = _ARCHES[arch]
     return "linux-" + julia_arch, arch_dir
 

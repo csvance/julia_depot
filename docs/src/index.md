@@ -64,12 +64,6 @@ when the Julia and the manifest disagree instead of producing something subtly w
 
 ```python
 bazel_dep(name = "rules_julia_depot", version = "0.1.0")
-git_override(
-    module_name = "rules_julia_depot",
-    remote = "https://github.com/csvance/rules_julia_depot.git",
-    commit = "<commit>",
-)
-
 julia = use_extension("@rules_julia_depot//julia:extensions.bzl", "julia")
 julia.dist(name = "julia_dist", version = "1.12.7")
 julia.depot(

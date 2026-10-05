@@ -39,10 +39,16 @@ m = TOML.parsefile(pinned)
 want = get(m, "julia_version", nothing)
 have = string(VERSION)
 
+# No julia_version means a manifest older than the format Julia 1.7 introduced, which
+# records nothing to check the running Julia against. Refuse it rather than skip the
+# check: the pin would then hold for every manifest except the ones it cannot verify.
+want === nothing && error("$(basename(pinned)) records no julia_version, so it cannot be checked against Julia $have; " *
+                          "re-resolve it with this Julia (Pkg.resolve() writes the current format)")
+
 # Fail loudly rather than hand back a subtly wrong environment. A Manifest resolved
 # under a different Julia can instantiate and then behave differently, which is the
 # failure this pin exists to prevent.
-if want !== nothing && want != have
+if want != have
     error("$(basename(pinned)) was resolved under Julia $want but this is Julia $have; " *
           "align the distribution or re-resolve the manifest deliberately")
 end

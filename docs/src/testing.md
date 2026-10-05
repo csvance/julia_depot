@@ -15,6 +15,18 @@ itself, so no Julia has to be installed to run the suite. It resolves against th
 package server, pinned in `e2e/.bazelrc`, so a shell pointing `JULIA_PKG_SERVER` at a
 private mirror does not change what the tests fetch.
 
+The suite assumes `JULIA_DEPOT_PATH` is unset or names a single depot, which is what CI
+runs with. A few tests look for what the fetch installed in the first depot only, so with a
+multi-entry path, where packages and artifacts may already live in a later entry, they fail
+without anything being wrong with the rules. To run the suite from such a shell, clear the
+variable for the fetch:
+
+```bash
+bazel test //... --repo_env=JULIA_DEPOT_PATH=
+```
+
+That instantiates into Julia's default depot, `~/.julia`.
+
 Expect a few minutes cold, most of it downloading the two Julia distributions and
 building two sysimages per version (one for the sysimage tests, one portable one for the image
 example); warm, the whole matrix takes a few minutes.

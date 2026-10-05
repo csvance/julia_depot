@@ -28,10 +28,11 @@ available ones when yours is missing.
 
 ## Platforms
 
-`julia.dist` downloads the official build for the host, detected when the distribution is
-fetched: Linux x86_64 or Linux aarch64. macOS, Windows and other architectures fail with a
-message saying they are not supported yet, because the scripts need GNU tar, coreutils and a
-Linux Julia; the check runs only when a Julia repository is actually fetched, so a host that
+Linux x86_64 is the supported platform. `julia.dist` downloads the official build for the
+host, detected when the distribution is fetched. Linux aarch64 is mapped to its official build
+too, with its own CPU target list below, but it is untested and not supported: it may work, and
+your mileage may vary. macOS, Windows and other architectures fail with a message saying they
+are not supported yet, because the scripts need GNU tar, coreutils and a Linux Julia; the check runs only when a Julia repository is actually fetched, so a host that
 never builds a Julia target is unaffected. `url` and `strip_prefix` are templates, so one
 declaration serves both architectures, and a mirror too: `{version}` (1.12.7), `{minor}`
 (1.12), `{platform}` (`linux-x86_64`) and `{arch_dir}` (`x64`, the directory julialang-s3
@@ -39,8 +40,7 @@ files the build under) expand.
 
 The CPU targets follow the architecture: the image rules and `sysimage.sh` default to the
 official build's list for it, `PORTABLE_X86_64_CPU_TARGET` or `PORTABLE_AARCH64_CPU_TARGET`;
-see [Images](images.md#CPU-targets). Linux x86_64 is what the end-to-end suite runs on; aarch64
-follows the same paths but is not tested here.
+see [Images](images.md#CPU-targets). The end-to-end suite runs on Linux x86_64 only.
 
 ## Adding a Julia version
 
