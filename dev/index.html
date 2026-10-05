@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Index — rules_julia_depot</title>
-  <link rel="stylesheet" href="./assets/materialdocs.css?v=909566a5">
+  <link rel="stylesheet" href="./assets/materialdocs.css?v=886f56ed">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Index — rules_julia_depot">
   <meta property="og:title" content="Index — rules_julia_depot">
@@ -137,6 +137,7 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 </ol>
 <p>Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing else. Private registries plug in through the depot&#39;s <code class="md-code-inline">hook</code>.</p>
 <h2 id="What-is-in-the-box" class="md-heading">What is in the box<a href="#What-is-in-the-box" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>In <code class="md-code-inline">MODULE.bazel</code>, from the <code class="md-code-inline">julia</code> extension:</p>
 <div class="md-table-wrap">
 <table class="md-table">
 <thead>
@@ -152,16 +153,21 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 </tr>
 <tr>
 <td style="text-align:right"><code class="md-code-inline">julia.depot</code></td>
-<td style="text-align:right">the Manifest-pinned depot repository, with an optional pre-instantiate hook</td>
+<td style="text-align:right">the Manifest-pinned depot, with an optional pre-instantiate hook</td>
 </tr>
+</tbody>
+</table>
+</div>
+<p>In <code class="md-code-inline">BUILD</code> files, from <code class="md-code-inline">@rules_julia_depot//julia:image.bzl</code>:</p>
+<div class="md-table-wrap">
+<table class="md-table">
+<thead>
 <tr>
-<td style="text-align:right"><code class="md-code-inline">//julia:image_depot.sh</code></td>
-<td style="text-align:right">a clean depot as a deterministic image layer, artifacts-only or with packages, with artifact overrides for locally built binaries</td>
+<th style="text-align:right"></th>
+<th style="text-align:right"></th>
 </tr>
-<tr>
-<td style="text-align:right"><code class="md-code-inline">//julia:sysimage.sh</code></td>
-<td style="text-align:right">a PackageCompiler sysimage, with a pinned build environment per Julia minor</td>
-</tr>
+</thead>
+<tbody>
 <tr>
 <td style="text-align:right"><code class="md-code-inline">julia_dist_layer</code>, <code class="md-code-inline">julia_depot_layer</code>, <code class="md-code-inline">julia_sysimage_layer</code></td>
 <td style="text-align:right">the distribution, a clean depot and a sysimage, each as one deterministic image layer</td>
@@ -181,6 +187,7 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 </tbody>
 </table>
 </div>
+<p>The depot and sysimage layers are <code class="md-code-inline">image_depot.sh</code> and <code class="md-code-inline">sysimage.sh</code> as rules. Both scripts are public too, for a genrule that needs them outside an image, such as a sysimage for local development; see <a href="./recipes/">Recipes</a>.</p>
 <h2 id="Where-to-go-next" class="md-heading">Where to go next<a href="#Where-to-go-next" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <ul class="md-list-tight">
 <li><p><a href="./images/">Images</a>: the image layers, the environment, the precompile test, and the recipe.</p>
@@ -215,6 +222,6 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="./siteinfo.js"></script>
   <script src="./../versions.js"></script>
-  <script src="./assets/materialdocs.js?v=909566a5"></script>
+  <script src="./assets/materialdocs.js?v=886f56ed"></script>
 </body>
 </html>
