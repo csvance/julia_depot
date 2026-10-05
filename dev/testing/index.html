@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Testing — rules_julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=f479dc0f">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=8cf2c830">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Testing — rules_julia_depot">
   <meta property="og:title" content="Testing — rules_julia_depot">
@@ -63,6 +63,12 @@
 bazel test //...</code></pre>
 </div>
 <p>Nothing else is needed. The Julia distributions are fetched and pinned by the module itself, so no Julia has to be installed to run the suite. It resolves against the public package server, pinned in <code class="md-code-inline">e2e/.bazelrc</code>, so a shell pointing <code class="md-code-inline">JULIA_PKG_SERVER</code> at a private mirror does not change what the tests fetch.</p>
+<p>The suite assumes <code class="md-code-inline">JULIA_DEPOT_PATH</code> is unset or names a single depot, which is what CI runs with. A few tests look for what the fetch installed in the first depot only, so with a multi-entry path, where packages and artifacts may already live in a later entry, they fail without anything being wrong with the rules. To run the suite from such a shell, clear the variable for the fetch:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-bash">bazel test //... --repo_env=JULIA_DEPOT_PATH=</code></pre>
+</div>
+<p>That instantiates into Julia&#39;s default depot, <code class="md-code-inline">~/.julia</code>.</p>
 <p>Expect a few minutes cold, most of it downloading the two Julia distributions and building two sysimages per version (one for the sysimage tests, one portable one for the image example); warm, the whole matrix takes a few minutes.</p>
 <h2 id="The-matrix" class="md-heading">The matrix<a href="#The-matrix" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>Every Julia version in the matrix (currently 1.12.7 and 1.13.0) gets the same set of tests, tagged <code class="md-code-inline">julia&lt;minor&gt;</code> for the Julia they run, so a CI shard needs only that version&#39;s distribution and depot:</p>
@@ -94,6 +100,6 @@ bazel test //...</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=f479dc0f"></script>
+  <script src="../assets/materialdocs.js?v=8cf2c830"></script>
 </body>
 </html>

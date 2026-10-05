@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The contract — rules_julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=fedc57c5">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=5cbab95b">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="The contract — rules_julia_depot">
   <meta property="og:title" content="The contract — rules_julia_depot">
@@ -64,7 +64,7 @@
 <p>It runs <code class="md-code-inline">instantiate.sh</code> on the ambient depot (<code class="md-code-inline">JULIA_DEPOT_PATH</code>, or Julia&#39;s default), not a private one: a fresh depot per manifest would mean gigabytes of artifacts on every change, and the ambient depot already has most of them. The trade is that <code class="md-code-inline">compiled/</code> can thrash between branches with different manifests. The script refuses a manifest whose <code class="md-code-inline">julia_version</code> differs from the running Julia, since such a manifest can instantiate and then behave differently, which is exactly the failure the pin exists to prevent.</p>
 <p>The rule produces <code class="md-code-inline">env.sh</code>, which always exports <code class="md-code-inline">JULIA_DEPOT_PATH</code>: the depot the fetch instantiated into, whether declared with <code class="md-code-inline">dir</code>, set in the launching environment, or Julia&#39;s default made explicit. A hook is given the same value. It also produces <code class="md-code-inline">stamp.txt</code> with the manifest sha256, Julia version, host triplet and depot. Julia itself is deliberately not in <code class="md-code-inline">env.sh</code>: consumers take it as a label from the distribution (<code class="md-code-inline">@julia_dist//:bin/julia</code>). The depot is the one machine-specific path in the file, and it is per user by nature.</p>
 <p>The manifest is the file Julia actually instantiates from, and the rule checks that. Julia prefers a versioned <code class="md-code-inline">Manifest-v&lt;major&gt;.&lt;minor&gt;.toml</code> beside <code class="md-code-inline">Manifest.toml</code>, and a <code class="md-code-inline">Project.toml</code> can name another file with <code class="md-code-inline">manifest = ...</code>; the fetch fails unless <code class="md-code-inline">manifest</code> points at the file Julia uses. A project can therefore carry one manifest per Julia version, each pinned by its own <code class="md-code-inline">julia.depot</code>.</p>
-<p>The fetch is keyed on the manifest, the hook, the Julia version (through the distribution&#39;s version header), the declared <code class="md-code-inline">dir</code>, and the variables <code class="md-code-inline">HOME</code>, <code class="md-code-inline">JULIA_DEPOT_PATH</code>, <code class="md-code-inline">JULIA_PKG_SERVER</code> and every <code class="md-code-inline">hook_environ</code> entry.</p>
+<p>The fetch is keyed on the manifest, the hook, the Julia version (through the distribution&#39;s version header), the declared <code class="md-code-inline">dir</code>, and the variables <code class="md-code-inline">HOME</code>, <code class="md-code-inline">JULIA_PKG_SERVER</code>, every <code class="md-code-inline">hook_environ</code> entry and, when no <code class="md-code-inline">dir</code> is declared, <code class="md-code-inline">JULIA_DEPOT_PATH</code>.</p>
 <h2 id="Repository-names" class="md-heading">Repository names<a href="#Repository-names" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>The <code class="md-code-inline">julia</code> extension is evaluated once for the whole module graph, so the names given to <code class="md-code-inline">julia.dist</code> and <code class="md-code-inline">julia.depot</code> share one namespace across every module that uses it. A name can be declared once: a second declaration, in any module, fails with an error naming both modules, even when the two are identical.</p>
 <p>The convention that keeps names apart:</p>
@@ -109,6 +109,6 @@
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=fedc57c5"></script>
+  <script src="../assets/materialdocs.js?v=5cbab95b"></script>
 </body>
 </html>

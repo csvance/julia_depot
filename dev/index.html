@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Index — rules_julia_depot</title>
-  <link rel="stylesheet" href="./assets/materialdocs.css?v=776c07e9">
+  <link rel="stylesheet" href="./assets/materialdocs.css?v=211a18c8">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Index — rules_julia_depot">
   <meta property="og:title" content="Index — rules_julia_depot">
@@ -104,6 +104,7 @@
 <h2 id="Why-these-rules" class="md-heading">Why these rules<a href="#Why-these-rules" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>They work with Julia&#39;s package manager rather than against it. The unit of pinning is Pkg&#39;s own: a resolved <code class="md-code-inline">Manifest.toml</code>, which already names every package by tree hash and every artifact by content hash. The rules never re-resolve, never model packages themselves, and never invent a second lockfile. They hand Pkg your project and make the result a Bazel input, so everything Pkg understands keeps working unchanged: path sources, artifact overrides, private registries and package servers, and the workspaces Julia 1.12 introduced, where several packages share one manifest.</p>
 <p>That makes them simple, and simple turns out to be enough for a lot: a developer REPL on a pinned environment, a sysimage that removes load time, a container image whose depot holds exactly the closure and nothing else, and a build that refuses to proceed when the Julia and the manifest disagree instead of producing something subtly wrong.</p>
+<p>This is not a Julia language ruleset. <a href="https://github.com/periareon/rules_julia">rules_julia</a> models Julia code as Bazel targets (<code class="md-code-inline">julia_library</code>, <code class="md-code-inline">julia_binary</code>, <code class="md-code-inline">julia_test</code>) with a Bazel toolchain; this module instead pins whole environments to the <code class="md-code-inline">Manifest.toml</code> Pkg already writes, and packages them into images. The two answer different questions.</p>
 <h2 id="The-core-workflow" class="md-heading">The core workflow<a href="#The-core-workflow" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <ol class="md-list-tight">
 <li><p>Resolve your project the ordinary way and commit <code class="md-code-inline">Project.toml</code> and <code class="md-code-inline">Manifest.toml</code>.</p>
@@ -114,12 +115,6 @@
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
 <pre><code class="language-python">bazel_dep(name = &quot;rules_julia_depot&quot;, version = &quot;0.1.0&quot;)
-git_override(
-    module_name = &quot;rules_julia_depot&quot;,
-    remote = &quot;https://github.com/csvance/rules_julia_depot.git&quot;,
-    commit = &quot;&lt;commit&gt;&quot;,
-)
-
 julia = use_extension(&quot;@rules_julia_depot//julia:extensions.bzl&quot;, &quot;julia&quot;)
 julia.dist(name = &quot;julia_dist&quot;, version = &quot;1.12.7&quot;)
 julia.depot(
@@ -223,6 +218,6 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="./siteinfo.js"></script>
   <script src="./../versions.js"></script>
-  <script src="./assets/materialdocs.js?v=776c07e9"></script>
+  <script src="./assets/materialdocs.js?v=211a18c8"></script>
 </body>
 </html>
