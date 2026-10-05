@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Recipes — rules_julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=6f23caad">
+  <title>Recipes — julia_depot</title>
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=3cfde0ec">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <meta name="title" content="Recipes — rules_julia_depot">
-  <meta property="og:title" content="Recipes — rules_julia_depot">
-  <meta property="twitter:title" content="Recipes — rules_julia_depot">
-  <meta name="description" content="Documentation for rules_julia_depot.">
-  <meta property="og:description" content="Documentation for rules_julia_depot.">
-  <meta property="twitter:description" content="Documentation for rules_julia_depot.">
+  <meta name="title" content="Recipes — julia_depot">
+  <meta property="og:title" content="Recipes — julia_depot">
+  <meta property="twitter:title" content="Recipes — julia_depot">
+  <meta name="description" content="Documentation for julia_depot.">
+  <meta property="og:description" content="Documentation for julia_depot.">
+  <meta property="twitter:description" content="Documentation for julia_depot.">
   <meta property="og:url" content="https://csvance.github.io/rules_julia_depot/recipes/">
   <meta property="twitter:url" content="https://csvance.github.io/rules_julia_depot/recipes/">
   <link rel="canonical" href="https://csvance.github.io/rules_julia_depot/recipes/">
@@ -27,7 +27,7 @@
 <body data-warn-outdated>
   <header class="md-navbar">
     <button id="md-hamburger" class="md-icon-btn md-hamburger" aria-label="Toggle navigation" aria-expanded="false"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
-    <span class="md-navbar-title">rules_julia_depot</span>
+    <span class="md-navbar-title">julia_depot</span>
     <span class="md-navbar-spacer"></span>
     <button id="md-search-btn" class="md-search-bar" aria-label="Search documentation" aria-expanded="false">
       <svg class="md-icon md-search-bar-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -71,12 +71,12 @@
         &quot;@julia_dist//:bin/julia&quot;,
     ],
     outs = [&quot;depot.tar&quot;],
-    tools = [&quot;@rules_julia_depot//julia:image_depot.sh&quot;],
+    tools = [&quot;@julia_depot//julia:image_depot.sh&quot;],
     cmd = &quot;&quot;&quot;
 set -euo pipefail
 . $(location @my_depot//:env.sh)
 export RULES_JULIA_DEPOT_BIN=&quot;$$(cd &quot;$$(dirname $(location @julia_dist//:bin/julia))&quot; &amp;&amp; pwd)/julia&quot;
-$(location @rules_julia_depot//julia:image_depot.sh) &quot;$$(dirname $(location Manifest.toml))&quot; &quot;$@&quot;
+$(location @julia_depot//julia:image_depot.sh) &quot;$$(dirname $(location Manifest.toml))&quot; &quot;$@&quot;
 &quot;&quot;&quot;,
     tags = [&quot;no-sandbox&quot;, &quot;requires-network&quot;],
 )</code></pre>
@@ -102,10 +102,10 @@ RULES_JULIA_DEPOT_OVERRIDES_IMAGE=image.toml    # names the path inside the imag
         &quot;@my_depot//:env.sh&quot;,
         &quot;@julia_dist//:dist&quot;,
         &quot;@julia_dist//:bin/julia&quot;,
-        &quot;@rules_julia_depot//julia:sysimage_envs&quot;,
+        &quot;@julia_depot//julia:sysimage_envs&quot;,
     ],
     outs = [&quot;app.so&quot;],
-    tools = [&quot;@rules_julia_depot//julia:sysimage.sh&quot;],
+    tools = [&quot;@julia_depot//julia:sysimage.sh&quot;],
     cmd = &quot;&quot;&quot;
 set -euo pipefail
 . $(location @my_depot//:env.sh)
@@ -113,7 +113,7 @@ export RULES_JULIA_DEPOT_BIN=&quot;$$(cd &quot;$$(dirname $(location @julia_dist
 export RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES=&quot;MyApp&quot;
 proj=&quot;$$(mktemp -d)&quot;; trap &#39;rm -rf &quot;$$proj&quot;&#39; EXIT
 cp -rL &quot;$$(dirname $(location Manifest.toml))&quot;/. &quot;$$proj&quot;/
-$(location @rules_julia_depot//julia:sysimage.sh) &quot;$$proj&quot; auto &quot;$@&quot;
+$(location @julia_depot//julia:sysimage.sh) &quot;$$proj&quot; auto &quot;$@&quot;
 &quot;&quot;&quot;,
     tags = [&quot;no-sandbox&quot;, &quot;requires-network&quot;],
 )</code></pre>
@@ -187,6 +187,6 @@ oci_load(
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=6f23caad"></script>
+  <script src="../assets/materialdocs.js?v=3cfde0ec"></script>
 </body>
 </html>

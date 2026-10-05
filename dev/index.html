@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Index — rules_julia_depot</title>
-  <link rel="stylesheet" href="./assets/materialdocs.css?v=211a18c8">
+  <title>Index — julia_depot</title>
+  <link rel="stylesheet" href="./assets/materialdocs.css?v=f52beb6c">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-  <meta name="title" content="Index — rules_julia_depot">
-  <meta property="og:title" content="Index — rules_julia_depot">
-  <meta property="twitter:title" content="Index — rules_julia_depot">
-  <meta name="description" content="Documentation for rules_julia_depot.">
-  <meta property="og:description" content="Documentation for rules_julia_depot.">
-  <meta property="twitter:description" content="Documentation for rules_julia_depot.">
+  <meta name="title" content="Index — julia_depot">
+  <meta property="og:title" content="Index — julia_depot">
+  <meta property="twitter:title" content="Index — julia_depot">
+  <meta name="description" content="Documentation for julia_depot.">
+  <meta property="og:description" content="Documentation for julia_depot.">
+  <meta property="twitter:description" content="Documentation for julia_depot.">
   <meta property="og:url" content="https://csvance.github.io/rules_julia_depot/">
   <meta property="twitter:url" content="https://csvance.github.io/rules_julia_depot/">
   <link rel="canonical" href="https://csvance.github.io/rules_julia_depot/">
@@ -27,7 +27,7 @@
 <body data-warn-outdated>
   <header class="md-navbar">
     <button id="md-hamburger" class="md-icon-btn md-hamburger" aria-label="Toggle navigation" aria-expanded="false"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
-    <span class="md-navbar-title">rules_julia_depot</span>
+    <span class="md-navbar-title">julia_depot</span>
     <span class="md-navbar-spacer"></span>
     <button id="md-search-btn" class="md-search-bar" aria-label="Search documentation" aria-expanded="false">
       <svg class="md-icon md-search-bar-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -58,7 +58,7 @@
 <div id="landing" class="landing">
 <header class="landing-hero">
   <div class="landing-hero__text">
-    <p class="landing-name" style="--landing-name-chars: 17">rules_julia_depot</p>
+    <p class="landing-name" style="--landing-name-chars: 11">julia_depot</p>
     <h1 class="landing-title">Reproducible Julia environments with Bazel</h1>
     <p class="landing-tagline">Depots, sysimages and container images pinned to the Manifest.toml you already commit. The rules never re-resolve, never model packages themselves, and never invent a second lockfile.</p>
     <div class="landing-actions">
@@ -114,8 +114,8 @@
 </ol>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
-<pre><code class="language-python">bazel_dep(name = &quot;rules_julia_depot&quot;, version = &quot;0.1.0&quot;)
-julia = use_extension(&quot;@rules_julia_depot//julia:extensions.bzl&quot;, &quot;julia&quot;)
+<pre><code class="language-python">bazel_dep(name = &quot;julia_depot&quot;, version = &quot;0.1.0&quot;)
+julia = use_extension(&quot;@julia_depot//julia:extensions.bzl&quot;, &quot;julia&quot;)
 julia.dist(name = &quot;julia_dist&quot;, version = &quot;1.12.7&quot;)
 julia.depot(
     name = &quot;my_depot&quot;,
@@ -154,7 +154,7 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 </tbody>
 </table>
 </div>
-<p>In <code class="md-code-inline">BUILD</code> files, from <code class="md-code-inline">@rules_julia_depot//julia:image.bzl</code>:</p>
+<p>In <code class="md-code-inline">BUILD</code> files, from <code class="md-code-inline">@julia_depot//julia:image.bzl</code>:</p>
 <div class="md-table-wrap">
 <table class="md-table">
 <thead>
@@ -218,6 +218,6 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="./siteinfo.js"></script>
   <script src="./../versions.js"></script>
-  <script src="./assets/materialdocs.js?v=211a18c8"></script>
+  <script src="./assets/materialdocs.js?v=f52beb6c"></script>
 </body>
 </html>
