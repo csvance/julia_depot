@@ -20,7 +20,7 @@ depot="$(first_depot "$(stamp_value "$stamp" depot)")"
 # One marker per Julia version: every version in the matrix has a hooked depot and they
 # share this depot, so a single filename would have them overwriting each other and this
 # test comparing one version's marker against another version's stamp.
-marker="$depot/rules_julia_depot_e2e/hook_marker_$(stamp_value "$stamp" julia_version).txt"
+marker="$depot/julia_depot_e2e/hook_marker_$(stamp_value "$stamp" julia_version).txt"
 
 [ -f "$marker" ] ||
     fail "no $marker: the hook did not run, or it ran against a different depot than instantiate did"

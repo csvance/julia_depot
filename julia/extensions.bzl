@@ -1,6 +1,6 @@
 """The `julia` module extension: a pinned Julia distribution and Manifest-pinned depots.
 
-    julia = use_extension("@rules_julia_depot//julia:extensions.bzl", "julia")
+    julia = use_extension("@julia_depot//julia:extensions.bzl", "julia")
     julia.dist(name = "julia_dist", version = "1.12.7")
     julia.depot(
         name = "my_depot",

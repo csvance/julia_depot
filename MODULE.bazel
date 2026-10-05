@@ -1,4 +1,4 @@
-# rules_julia_depot: a Julia environment pinned to a committed Manifest.toml, as Bazel
+# julia_depot: a Julia environment pinned to a committed Manifest.toml, as Bazel
 # repositories and scripts. See README.md for the contract and the consumer interface.
 #
 # compatibility_level is declared, and starts at 1, because the consumer interface here
@@ -23,7 +23,7 @@
 #
 # Bazel 9 is the only version this is built and tested with.
 module(
-    name = "rules_julia_depot",
+    name = "julia_depot",
     version = "0.1.0",
     bazel_compatibility = [">=9.0.0"],
     compatibility_level = 1,

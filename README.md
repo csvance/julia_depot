@@ -1,4 +1,4 @@
-# rules_julia_depot
+# julia_depot
 
 [![ci](https://github.com/csvance/rules_julia_depot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/ci.yml)
 [![julia 1.12](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.12.yml/badge.svg?branch=main)](https://github.com/csvance/rules_julia_depot/actions/workflows/julia-1.12.yml)
@@ -34,8 +34,8 @@ writes, and packages them into images. The two answer different questions.
 2. Declare a Julia and a depot in `MODULE.bazel`:
 
 ```python
-bazel_dep(name = "rules_julia_depot", version = "0.1.0")
-julia = use_extension("@rules_julia_depot//julia:extensions.bzl", "julia")
+bazel_dep(name = "julia_depot", version = "0.1.0")
+julia = use_extension("@julia_depot//julia:extensions.bzl", "julia")
 julia.dist(name = "julia_dist", version = "1.12.7")
 julia.depot(
     name = "my_depot",
@@ -70,7 +70,7 @@ In `MODULE.bazel`, from the `julia` extension:
 | `julia.dist` | an official Julia distribution, fetched and pinned by sha256 |
 | `julia.depot` | the Manifest-pinned depot, with an optional pre-instantiate hook |
 
-In `BUILD` files, from `@rules_julia_depot//julia:image.bzl`:
+In `BUILD` files, from `@julia_depot//julia:image.bzl`:
 
 | | |
 | --- | --- |

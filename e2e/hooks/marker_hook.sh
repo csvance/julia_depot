@@ -31,7 +31,7 @@ depot="${JULIA_DEPOT_PATH%%:*}"
 # the rule handed over a Julia that runs, not just a variable that is set.
 version="$("$RULES_JULIA_DEPOT_BIN" --startup-file=no -e 'print(VERSION)')"
 
-dir="$depot/rules_julia_depot_e2e"
+dir="$depot/julia_depot_e2e"
 mkdir -p "$dir"
 printf '%s\n' "$E2E_HOOK_VALUE" > "$dir/hook_marker_$version.txt"
 echo "hook: wrote $dir/hook_marker_$version.txt"

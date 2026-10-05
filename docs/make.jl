@@ -1,4 +1,4 @@
-# The documentation site for rules_julia_depot, published to GitHub Pages by
+# The documentation site for julia_depot, published to GitHub Pages by
 # .github/workflows/Documenter.yml. This repository is a Bazel module, not a Julia
 # package, so there are no modules or docstrings to document: the site is the prose
 # in docs/src, rendered with MaterialDocs' Material3 writer and a DocumenterLandingPage
@@ -16,7 +16,7 @@ const MODULE_VERSION = match(
 )[1]
 
 makedocs(
-    sitename = "rules_julia_depot",
+    sitename = "julia_depot",
     doctest = false,
     format = Material3(
         edit_link = "main",

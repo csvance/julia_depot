@@ -64,7 +64,7 @@ sh_test(
     size = "medium",
     srcs = ["manifest_choice_test.sh"],
     args = [
-        "$(rootpath @rules_julia_depot//julia:instantiate.sh)",
+        "$(rootpath @julia_depot//julia:instantiate.sh)",
         "$(rootpath @julia_1_12//:bin/julia)",
         "$(rootpath //projects/v1.12:Manifest.toml)",
         "$(rootpath @depot_1_12//:stamp.txt)",
@@ -77,7 +77,7 @@ sh_test(
         "@depot_1_12//:stamp.txt",
         "@julia_1_12//:bin/julia",
         "@julia_1_12//:dist",
-        "@rules_julia_depot//julia:instantiate.sh",
+        "@julia_depot//julia:instantiate.sh",
     ],
     env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
     tags = ["julia1_12"],
@@ -92,7 +92,7 @@ sh_test(
     args = [
         "$(rootpath @declared_depot_1_12//:env.sh)",
         "$(rootpath @declared_depot_1_12//:stamp.txt)",
-        ".rules-julia-depot-e2e/declared",
+        ".julia-depot-e2e/declared",
     ],
     data = [
         "common.sh",
@@ -110,7 +110,7 @@ sh_test(
     size = "large",
     srcs = ["sysimage_fresh_depot_test.sh"],
     args = [
-        "$(rootpath @rules_julia_depot//julia:sysimage.sh)",
+        "$(rootpath @julia_depot//julia:sysimage.sh)",
         "$(rootpath @julia_1_13//:bin/julia)",
         "$(rootpath //projects/v1.13:Manifest.toml)",
     ],
@@ -120,8 +120,8 @@ sh_test(
         "//projects/v1.13:Project.toml",
         "@julia_1_13//:bin/julia",
         "@julia_1_13//:dist",
-        "@rules_julia_depot//julia:sysimage.sh",
-        "@rules_julia_depot//julia:sysimage_envs",
+        "@julia_depot//julia:sysimage.sh",
+        "@julia_depot//julia:sysimage_envs",
     ],
     env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
     tags = [

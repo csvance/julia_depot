@@ -22,12 +22,12 @@ genrule(
         "@julia_dist//:bin/julia",
     ],
     outs = ["depot.tar"],
-    tools = ["@rules_julia_depot//julia:image_depot.sh"],
+    tools = ["@julia_depot//julia:image_depot.sh"],
     cmd = """
 set -euo pipefail
 . $(location @my_depot//:env.sh)
 export RULES_JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
-$(location @rules_julia_depot//julia:image_depot.sh) "$$(dirname $(location Manifest.toml))" "$@"
+$(location @julia_depot//julia:image_depot.sh) "$$(dirname $(location Manifest.toml))" "$@"
 """,
     tags = ["no-sandbox", "requires-network"],
 )
@@ -72,10 +72,10 @@ genrule(
         "@my_depot//:env.sh",
         "@julia_dist//:dist",
         "@julia_dist//:bin/julia",
-        "@rules_julia_depot//julia:sysimage_envs",
+        "@julia_depot//julia:sysimage_envs",
     ],
     outs = ["app.so"],
-    tools = ["@rules_julia_depot//julia:sysimage.sh"],
+    tools = ["@julia_depot//julia:sysimage.sh"],
     cmd = """
 set -euo pipefail
 . $(location @my_depot//:env.sh)
@@ -83,7 +83,7 @@ export RULES_JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/jul
 export RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="MyApp"
 proj="$$(mktemp -d)"; trap 'rm -rf "$$proj"' EXIT
 cp -rL "$$(dirname $(location Manifest.toml))"/. "$$proj"/
-$(location @rules_julia_depot//julia:sysimage.sh) "$$proj" auto "$@"
+$(location @julia_depot//julia:sysimage.sh) "$$proj" auto "$@"
 """,
     tags = ["no-sandbox", "requires-network"],
 )

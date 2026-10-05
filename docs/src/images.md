@@ -10,7 +10,7 @@ the base, the application layer, the entrypoint, how it is loaded or pushed.
 
 ```python
 load(
-    "@rules_julia_depot//julia:image.bzl",
+    "@julia_depot//julia:image.bzl",
     "julia_compiled_layer",
     "julia_depot_layer",
     "julia_dist_layer",

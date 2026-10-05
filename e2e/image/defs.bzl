@@ -11,7 +11,7 @@ Every test is tagged `julia<minor>`, like tests/defs.bzl, so a CI shard runs one
 """
 
 load(
-    "@rules_julia_depot//julia:image.bzl",
+    "@julia_depot//julia:image.bzl",
     "julia_compiled_layer",
     "julia_depot_layer",
     "julia_dist_layer",

@@ -1,4 +1,4 @@
-"""End-to-end tests for rules_julia_depot, over a matrix of Julia versions.
+"""End-to-end tests for julia_depot, over a matrix of Julia versions.
 
 This is a separate Bazel module rather than a package of the module under test, because
 what is being tested IS the consumer interface: a root module that declares
@@ -14,15 +14,15 @@ and one `julia_image_tests()` call in image/BUILD.bazel. See docs/src/julia-vers
 """
 
 module(
-    name = "rules_julia_depot_e2e",
+    name = "julia_depot_e2e",
     version = "0.0.0",
 )
 
-bazel_dep(name = "rules_julia_depot", version = "0.1.0")
+bazel_dep(name = "julia_depot", version = "0.1.0")
 bazel_dep(name = "rules_shell", version = "0.6.1")
 
 local_path_override(
-    module_name = "rules_julia_depot",
+    module_name = "julia_depot",
     path = "..",
 )
 
@@ -49,7 +49,7 @@ oci.pull(
 )
 use_repo(oci, "debian_base", "debian_base_linux_amd64")
 
-julia = use_extension("@rules_julia_depot//julia:extensions.bzl", "julia")
+julia = use_extension("@julia_depot//julia:extensions.bzl", "julia")
 
 # --- Julia 1.12 -------------------------------------------------------------------
 julia.dist(
@@ -71,7 +71,7 @@ julia.depot(
 julia.depot(
     name = "sysimage_depot_1_12",
     julia = "@julia_1_12",
-    manifest = "@rules_julia_depot//julia:sysimage/v1.12/Manifest.toml",
+    manifest = "@julia_depot//julia:sysimage/v1.12/Manifest.toml",
 )
 
 # The same project again, fetched through a `hook`. The hook records that it ran and
@@ -91,7 +91,7 @@ julia.depot(
 # there.
 julia.depot(
     name = "declared_depot_1_12",
-    dir = "{HOME}/.rules-julia-depot-e2e/declared",
+    dir = "{HOME}/.julia-depot-e2e/declared",
     julia = "@julia_1_12",
     manifest = "//projects/v1.12:Manifest.toml",
 )
@@ -114,7 +114,7 @@ julia.depot(
 julia.depot(
     name = "sysimage_depot_1_13",
     julia = "@julia_1_13",
-    manifest = "@rules_julia_depot//julia:sysimage/v1.13/Manifest.toml",
+    manifest = "@julia_depot//julia:sysimage/v1.13/Manifest.toml",
 )
 
 # The same project again, fetched through a hook.

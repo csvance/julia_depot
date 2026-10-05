@@ -7,7 +7,7 @@
 #   <build project>  the PackageCompiler environment, or `auto` to use the one shipped
 #                    beside this script for the running Julia's minor version
 #                    (sysimage/v1.12, sysimage/v1.13, ...). Under Bazel, `auto` needs
-#                    @rules_julia_depot//julia:sysimage_envs among the action's srcs.
+#                    @julia_depot//julia:sysimage_envs among the action's srcs.
 #   <out.so>         sysimage path to write
 #
 # Environment:

@@ -27,7 +27,8 @@ jobs:
     # Runs .github/workflows/release_prep.sh to build the archive and the notes.
     uses: bazel-contrib/.github/.github/workflows/release_ruleset.yaml@v7.7.0
     with:
-      release_files: rules_julia_depot-*.tar.gz
+      # Named after the repository, to match .bcr/source.template.json; see release_prep.sh.
+      release_files: ${{ github.event.repository.name }}-*.tar.gz
       # The root module declares no tests (they are in e2e/, a separate module), and
       # `bazel test` with nothing to run exits nonzero, so this only checks it builds.
       bazel_test_command: "bazel build //..."

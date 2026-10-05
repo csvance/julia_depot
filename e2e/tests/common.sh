@@ -1,4 +1,4 @@
-# Shared helpers for the rules_julia_depot end-to-end tests. Sourced, never executed.
+# Shared helpers for the julia_depot end-to-end tests. Sourced, never executed.
 #
 # Two things every test here has to get right. Runfiles arrive as paths relative to the
 # test's working directory, and every script under test changes directory, so paths are
