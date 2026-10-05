@@ -7,7 +7,8 @@
 # .github/workflows/e2e.yml), not the registry's. These targets cover the consumer seam:
 # the distribution, a depot fetch, a hook, and a declared depot.
 #
-# Linux x86_64 only, because julia.dist defaults to the official Linux x86_64 tarball.
+# Linux only, because julia.dist refuses macOS and Windows; x86_64 only, which is what the
+# e2e suite is verified on (aarch64 is supported but untested).
 # Bazel 9 only, because e2e/MODULE.bazel needs it (see the aspect_bazel_lib note there).
 bcr_test_module:
   module_path: "e2e"

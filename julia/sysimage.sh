@@ -14,10 +14,11 @@
 #   RULES_JULIA_DEPOT_BIN                    the julia to use (falls back to PATH for hand runs)
 #   RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES      required, space-separated package names to bake
 #   RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET    default: the CPU targets of the official
-#                                x86_64 Julia build (generic plus Sandy Bridge, Haswell
-#                                and x86-64-v4 clones), so the sysimage runs on any
-#                                x86_64 host and uses the best clone for the CPU it lands
-#                                on. Kept equal to PORTABLE_X86_64_CPU_TARGET in image.bzl.
+#                                Julia build for the running Julia's architecture, so the
+#                                sysimage runs on any host of that architecture and uses
+#                                the best clone for the CPU it lands on. Kept equal to
+#                                PORTABLE_X86_64_CPU_TARGET and PORTABLE_AARCH64_CPU_TARGET
+#                                in image.bzl.
 #
 # WHAT IT COSTS. Code baked into a sysimage cannot be revised. Use the sysimage when the
 # baked packages are fixed underneath you, and an ordinary Revise loop when they are not.
@@ -89,13 +90,20 @@ using PackageCompiler
 project, out = ARGS[1], ARGS[2]
 packages = Symbol.(split(ENV["RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES"]))
 
+# The portable list for this architecture unless one is given; see the header.
+cpu_target = get(ENV, "RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET", "")
+if isempty(cpu_target)
+    cpu_target = Sys.ARCH === :x86_64  ? "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1);x86-64-v4,-rdrnd,base(1)" :
+                 Sys.ARCH === :aarch64 ? "generic;cortex-a57;thunderx2t99;carmel,clone_all;apple-m1,base(3);neoverse-512tvb,-rand,-fpac,base(3)" :
+                 error("no portable CPU target list for $(Sys.ARCH); set RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET")
+end
+
 # Bake the named packages and, transitively, everything they depend on.
 create_sysimage(
     packages;
     project = project,
     sysimage_path = out,
     incremental = true,
-    cpu_target = get(ENV, "RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET",
-                     "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1);x86-64-v4,-rdrnd,base(1)"),
+    cpu_target = cpu_target,
 )
 ' "$PROJECT_DIR" "$OUT_ABS"

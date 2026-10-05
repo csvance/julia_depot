@@ -23,3 +23,7 @@ module(
     bazel_compatibility = [">=9.0.0"],
     compatibility_level = 1,
 )
+
+# The CPU constraints the image rules read to pick a portable CPU target list for the target
+# platform (x86_64 or aarch64).
+bazel_dep(name = "platforms", version = "1.0.0")

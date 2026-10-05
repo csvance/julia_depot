@@ -23,46 +23,8 @@ module names its repositories freely, and a module that others depend on prefixe
 name it declares with its own module name (`reactant_server_julia`, not `julia_dist`).
 """
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load(":depot.bzl", "julia_depot")
-
-# Official Linux x86_64 (glibc) tarballs, by version, from
-# https://julialang-s3.julialang.org/bin/checksums/julia-<version>.sha256. Add a row when
-# you move to a version that is not here, or pass `sha256` (and `url`) on the tag for any
-# version, platform or mirror.
-_KNOWN_SHA256 = {
-    "1.11.9": "b36363356d7a05eaf8b7b9e7a91c710f6bd3d2940be4d4e6d14b9a9f2927de35",
-    "1.12.7": "4e7e9e776634d24835250de67cde39b0d4af15bc432eb20697e6be6c28ea69e8",
-    "1.13.0": "8975da61c128a5e5ded3e719e868da8c8781deb7ad7913d37fb99be02a81904b",
-}
-
-_DIST_URL = "https://julialang-s3.julialang.org/bin/linux/x64/{minor}/julia-{version}-linux-x86_64.tar.gz"
-
-# The WHOLE distribution is exposed, not just bin/julia. Julia locates its bundled
-# depots (share/julia, where the stdlib JLLs live) relative to Sys.BINDIR, so a consumer
-# that took only the binary would come up without a stdlib.
-#
-# The version header is exported for julia_depot, which reads it so that a version change
-# refetches the depot. bin/julia is a small launcher that need not change between releases,
-# so it cannot serve as that key.
-_DIST_BUILD = """
-filegroup(
-    name = "dist",
-    srcs = glob(["**"], exclude = ["BUILD.bazel", "WORKSPACE"]),
-    visibility = ["//visibility:public"],
-)
-
-exports_files(["bin/julia", "include/julia/julia_version.h"])
-"""
-
-# The default target, so `@<name>` alone means the distribution.
-_DIST_ALIAS = """
-alias(
-    name = "{name}",
-    actual = ":dist",
-    visibility = ["//visibility:public"],
-)
-"""
+load(":dist.bzl", "DEFAULT_STRIP_PREFIX", "DEFAULT_URL", "julia_dist")
 
 def _module_desc(mod):
     return "{} ({})".format(mod.name, "the root module" if mod.is_root else "version " + (mod.version or "unversioned"))
@@ -94,19 +56,12 @@ def _julia_impl(module_ctx):
     for mod in module_ctx.modules:
         for tc in mod.tags.dist:
             _claim(names, mod, "dist", tc.name)
-            sha256 = tc.sha256
-            if not sha256:
-                if tc.version not in _KNOWN_SHA256:
-                    fail("julia.dist: no known sha256 for Julia {}; pass sha256 = ...".format(tc.version))
-                sha256 = _KNOWN_SHA256[tc.version]
-            minor = ".".join(tc.version.split(".")[:2])
-            url = tc.url or _DIST_URL.format(minor = minor, version = tc.version)
-            http_archive(
+            julia_dist(
                 name = tc.name,
-                build_file_content = _DIST_BUILD + ("" if tc.name == "dist" else _DIST_ALIAS.format(name = tc.name)),
-                sha256 = sha256,
-                strip_prefix = tc.strip_prefix or ("julia-" + tc.version),
-                urls = [url],
+                version = tc.version,
+                sha256 = tc.sha256,
+                url = tc.url,
+                strip_prefix = tc.strip_prefix,
             )
         for depot in mod.tags.depot:
             _claim(names, mod, "depot", depot.name)
@@ -124,13 +79,13 @@ julia = module_extension(
     implementation = _julia_impl,
     tag_classes = {
         "dist": tag_class(
-            doc = "Fetch an official Julia distribution, pinned by sha256, as a repository.",
+            doc = "Fetch the official Julia distribution for the host (Linux x86_64 or aarch64), pinned by sha256.",
             attrs = {
                 "name": attr.string(mandatory = True, doc = "Repository name, e.g. julia_dist."),
                 "version": attr.string(mandatory = True, doc = "Julia version, e.g. 1.12.7."),
-                "sha256": attr.string(doc = "Tarball sha256. Optional for versions this module knows."),
-                "url": attr.string(doc = "Tarball URL. Defaults to the official Linux x86_64 tarball."),
-                "strip_prefix": attr.string(doc = "Defaults to julia-<version>."),
+                "sha256": attr.string_dict(doc = "Tarball sha256 by platform (linux-x86_64, linux-aarch64). Optional for versions this module knows."),
+                "url": attr.string(default = DEFAULT_URL, doc = "Tarball URL template; {version}, {minor}, {platform} and {arch_dir} expand. Defaults to julialang-s3."),
+                "strip_prefix": attr.string(default = DEFAULT_STRIP_PREFIX, doc = "Archive prefix template, expanded like `url`."),
             },
         ),
         "depot": tag_class(

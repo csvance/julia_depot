@@ -32,6 +32,8 @@ of them refetches. The hook is the consumer's: this module knows nothing about a
 particular registry.
 """
 
+load(":dist.bzl", "host_platform")
+
 def _env_value(rctx, name):
     # getenv registers a dependency on the variable, so a change refetches.
     return rctx.getenv(name)
@@ -68,6 +70,9 @@ def _expand_depot(rctx, template):
     return out
 
 def _julia_depot_impl(rctx):
+    # The scripts need GNU tar and coreutils and a Linux Julia, whatever distribution is given.
+    host_platform(rctx.os.name, rctx.os.arch, "julia_depot")
+
     # The declared input. Change the Manifest, Bazel refetches: see _watch.
     manifest = rctx.path(rctx.attr.manifest)
     _watch(rctx, manifest)
@@ -88,6 +93,17 @@ def _julia_depot_impl(rctx):
     if not version_h.exists:
         fail("julia_depot: {} has no include/julia/julia_version.h; is it an official Julia distribution?".format(rctx.attr.julia))
     _watch(rctx, version_h)
+
+    # julia.dist always matches the host; a hand-declared distribution may not, and running
+    # one built for another platform fails with an exec format error buried in a fetch log.
+    res = rctx.execute([str(julia), "--startup-file=no", "--version"])
+    if res.return_code != 0:
+        fail("julia_depot: {} does not run on this host ({}/{}); declare it with julia.dist, which picks the build for the host:\n{}".format(
+            rctx.attr.julia,
+            rctx.os.name,
+            rctx.os.arch,
+            res.stderr,
+        ))
 
     env = {"RULES_JULIA_DEPOT_BIN": str(julia)}
     for name in ["JULIA_DEPOT_PATH", "JULIA_PKG_SERVER", "HOME"] + rctx.attr.hook_environ:

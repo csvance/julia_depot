@@ -103,7 +103,7 @@ and sysimage layers, the depot a fetch filled on this host.
 
 ## The environment
 
-`julia_image_env` with the defaults and `project = "/opt/app"` writes:
+`julia_image_env` with the defaults and `project = "/opt/app"` writes, on x86_64:
 
 ```
 JULIA_CPU_TARGET=generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1);x86-64-v4,-rdrnd,base(1)
@@ -139,13 +139,15 @@ own environment. If the image starts Julia with a sysimage of its own, pass its 
 
 ## CPU targets
 
-`JULIA_CPU_TARGET` defaults to `PORTABLE_X86_64_CPU_TARGET`, the official x86_64 build's list. A
-cache compiled for it carries a clone per target, and Julia picks the best one for the CPU it
-lands on, so the caches load on any x86_64 host. Compiled for the build machine's own CPU,
-Julia's default, they would be rejected on any host whose CPU differs and recompiled at the
-first start, the cost the layer exists to remove. The same value is in the image's environment,
-so anything compiled at run time is portable too. The sysimage layer's `cpu_target` has the same
-default.
+`JULIA_CPU_TARGET` defaults to the official Julia build's list for the target platform's CPU:
+`PORTABLE_X86_64_CPU_TARGET` on x86_64, `PORTABLE_AARCH64_CPU_TARGET` on aarch64, both exported
+from `image.bzl`. A cache compiled for it carries a clone per target, and Julia picks the best
+one for the CPU it lands on, so the caches load on any host of that architecture. Compiled for
+the build machine's own CPU, Julia's default, they would be rejected on any host whose CPU
+differs and recompiled at the first start, the cost the layer exists to remove. The same value
+is in the image's environment, so anything compiled at run time is portable too. The sysimage
+layer's `cpu_target` has the same default, and `julia_image_env_vars` returns a `select()` over
+the two when no `cpu_target` is given.
 
 ## The test
 

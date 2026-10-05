@@ -2,7 +2,19 @@
 
 Nothing here requires one Julia version. `julia.dist` fetches any: the sha256 is
 looked up for versions the module knows (1.11.9, 1.12.7, 1.13.0) and passed explicitly
-otherwise, from `https://julialang-s3.julialang.org/bin/checksums/julia-<version>.sha256`.
+otherwise, per platform, from
+`https://julialang-s3.julialang.org/bin/checksums/julia-<version>.sha256`:
+
+```python
+julia.dist(
+    name = "julia_dist",
+    version = "1.12.8",
+    sha256 = {
+        "linux-x86_64": "<sha256 of julia-1.12.8-linux-x86_64.tar.gz>",
+        "linux-aarch64": "<sha256 of julia-1.12.8-linux-aarch64.tar.gz>",
+    },
+)
+```
 The depot rule pins nothing itself; it enforces that YOUR manifest was resolved under the
 Julia you fetched. Moving to a new Julia is therefore one change in two places, the
 distribution version and a re-resolved manifest, and a mismatch fails at fetch time with a
@@ -14,8 +26,21 @@ on the Julia minor. There is one per minor under `julia/sysimage/v<major>.<minor
 `sysimage.sh auto` picks the one matching the running Julia, failing with the list of
 available ones when yours is missing.
 
-Linux x86_64 is what this is used with. Other platforms work by passing `sha256` and
-`url` to `julia.dist`.
+## Platforms
+
+`julia.dist` downloads the official build for the host, detected when the distribution is
+fetched: Linux x86_64 or Linux aarch64. macOS, Windows and other architectures fail with a
+message saying they are not supported yet, because the scripts need GNU tar, coreutils and a
+Linux Julia; the check runs only when a Julia repository is actually fetched, so a host that
+never builds a Julia target is unaffected. `url` and `strip_prefix` are templates, so one
+declaration serves both architectures, and a mirror too: `{version}` (1.12.7), `{minor}`
+(1.12), `{platform}` (`linux-x86_64`) and `{arch_dir}` (`x64`, the directory julialang-s3
+files the build under) expand.
+
+The CPU targets follow the architecture: the image rules and `sysimage.sh` default to the
+official build's list for it, `PORTABLE_X86_64_CPU_TARGET` or `PORTABLE_AARCH64_CPU_TARGET`;
+see [Images](images.md#CPU-targets). Linux x86_64 is what the end-to-end suite runs on; aarch64
+follows the same paths but is not tested here.
 
 ## Adding a Julia version
 
@@ -41,7 +66,7 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
     -e 'using Pkg; Pkg.add([PackageSpec(name = "Bzip2_jll"), PackageSpec(name = "Crayons")])'
 ```
 
-**Three.** The sha256 in `_KNOWN_SHA256` in `julia/extensions.bzl`.
+**Three.** The sha256 for each platform in `_KNOWN_SHA256` in `julia/dist.bzl`.
 
 **Four.** The declarations: four repositories in `e2e/MODULE.bazel` (distribution, depot,
 sysimage depot, hook depot), a `julia_version_tests()` call in `e2e/tests/BUILD.bazel`, a

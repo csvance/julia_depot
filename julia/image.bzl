@@ -26,14 +26,37 @@ The rules shell out to image_layers.sh, which wraps image_depot.sh and sysimage.
 scripts decide is not repeated here.
 """
 
-# The CPU targets of the official Julia x86_64 build: a generic baseline plus clones for Sandy
-# Bridge, Haswell and x86-64-v4. A cache compiled for this list loads on any x86_64 host, picking
-# the best clone for the CPU it lands on. Compiled for the build machine's CPU instead (Julia's
-# default, "native"), a cache is rejected on any host whose CPU differs and the package is
-# recompiled at startup, which is the cost a compiled layer exists to remove.
+# The CPU targets of the official Julia builds, from JuliaCI's julia-buildkite
+# (utilities/build_envs.sh). For x86_64, a generic baseline plus clones for Sandy Bridge, Haswell
+# and x86-64-v4; for Linux aarch64, a generic baseline plus Cortex-A57, ThunderX2, Carmel, Apple M1
+# and Neoverse V1/V2. A cache compiled for the list loads on any host of that architecture,
+# picking the best clone for the CPU it lands on. Compiled for the build machine's CPU instead
+# (Julia's default, "native"), a cache is rejected on any host whose CPU differs and the package
+# is recompiled at startup, which is the cost a compiled layer exists to remove.
 #
-# sysimage.sh carries the same string as its default; change both together.
+# The rules default to the list for the target platform's CPU. sysimage.sh carries the same two
+# strings as its default, chosen by the running Julia's architecture; change them together.
 PORTABLE_X86_64_CPU_TARGET = "generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1);x86-64-v4,-rdrnd,base(1)"
+PORTABLE_AARCH64_CPU_TARGET = "generic;cortex-a57;thunderx2t99;carmel,clone_all;apple-m1,base(3);neoverse-512tvb,-rand,-fpac,base(3)"
+
+_X86_64 = Label("@platforms//cpu:x86_64")
+_AARCH64 = Label("@platforms//cpu:aarch64")
+
+def _cpu_attrs():
+    return {
+        "_x86_64": attr.label(default = _X86_64),
+        "_aarch64": attr.label(default = _AARCH64),
+    }
+
+def _cpu_target(ctx):
+    """The rule's cpu_target, or the portable list for the target platform's CPU when unset."""
+    if ctx.attr.cpu_target:
+        return ctx.attr.cpu_target
+    if ctx.target_platform_has_constraint(ctx.attr._x86_64[platform_common.ConstraintValueInfo]):
+        return PORTABLE_X86_64_CPU_TARGET
+    if ctx.target_platform_has_constraint(ctx.attr._aarch64[platform_common.ConstraintValueInfo]):
+        return PORTABLE_AARCH64_CPU_TARGET
+    fail("cpu_target: the target platform is neither x86_64 nor aarch64; set cpu_target explicitly")
 
 JuliaImageEnvInfo = provider(
     doc = "The Julia layout of an image and the environment that describes it, from julia_image_env.",
@@ -68,10 +91,10 @@ def julia_image_env_vars(
         extra_depots = [],
         project = None,
         load_path = None,
-        cpu_target = PORTABLE_X86_64_CPU_TARGET,
+        cpu_target = None,
         offline = True,
         path = True):
-    """The environment variables a Julia image needs, as a dict for oci_image's `env`.
+    """The environment variables a Julia image needs, for oci_image's `env`.
 
     The same variables `julia_image_env` writes, for a BUILD file that merges them with its own:
 
@@ -86,14 +109,44 @@ def julia_image_env_vars(
       project: JULIA_PROJECT, the project Julia starts in. Unset when None.
       load_path: JULIA_LOAD_PATH entries. Unset when None, which leaves Julia's default.
       cpu_target: JULIA_CPU_TARGET. Must match the compiled layer's, which julia_image_env
-        guarantees by handing this value to it.
+        guarantees by handing this value to it. When None, the portable list for the target
+        platform's CPU, as a select().
       offline: JULIA_PKG_OFFLINE=true, so Pkg in the image never reaches for the network.
       path: prepend Julia's bin/ to the base image's PATH, as `<julia>/bin:$PATH`, which rules_oci
         expands against the base image's own PATH.
 
     Returns:
-      A dict of variable name to value.
+      A dict of variable name to value, or a select() of such dicts when `cpu_target` is None.
+      Both merge with `|`.
     """
+    if cpu_target == None:
+        args = dict(
+            julia_prefix = julia_prefix,
+            depot_prefix = depot_prefix,
+            extra_depots = extra_depots,
+            project = project,
+            load_path = load_path,
+            offline = offline,
+            path = path,
+        )
+        return select({
+            _X86_64: _env_vars(cpu_target = PORTABLE_X86_64_CPU_TARGET, **args),
+            _AARCH64: _env_vars(cpu_target = PORTABLE_AARCH64_CPU_TARGET, **args),
+        })
+    return _env_vars(
+        julia_prefix = julia_prefix,
+        depot_prefix = depot_prefix,
+        extra_depots = extra_depots,
+        project = project,
+        load_path = load_path,
+        cpu_target = cpu_target,
+        offline = offline,
+        path = path,
+    )
+
+# The work of julia_image_env_vars for one cpu_target, apart so the select() above can call it:
+# Starlark forbids recursion.
+def _env_vars(julia_prefix, depot_prefix, extra_depots, project, load_path, cpu_target, offline, path):
     julia_prefix = _check_absolute("julia_prefix", julia_prefix)
     depot_prefix = _check_absolute("depot_prefix", depot_prefix)
     extra_depots = [_check_absolute("extra_depots", d) for d in extra_depots]
@@ -121,13 +174,14 @@ def _julia_image_env_impl(ctx):
     julia_prefix = _check_absolute("julia_prefix", ctx.attr.julia_prefix)
     depot_prefix = _check_absolute("depot_prefix", ctx.attr.depot_prefix)
     extra_depots = [_check_absolute("extra_depots", d) for d in ctx.attr.extra_depots]
+    cpu_target = _cpu_target(ctx)
     env = julia_image_env_vars(
         julia_prefix = julia_prefix,
         depot_prefix = depot_prefix,
         extra_depots = extra_depots,
         project = ctx.attr.project or None,
         load_path = ctx.attr.load_path if ctx.attr.load_path else None,
-        cpu_target = ctx.attr.cpu_target,
+        cpu_target = cpu_target,
         offline = ctx.attr.offline,
         path = ctx.attr.path,
     )
@@ -145,7 +199,7 @@ def _julia_image_env_impl(ctx):
             env = env,
             julia_prefix = julia_prefix,
             depot_path = _depot_path(julia_prefix, depot_prefix, extra_depots),
-            cpu_target = ctx.attr.cpu_target,
+            cpu_target = cpu_target,
             project = env.get("JULIA_PROJECT"),
         ),
     ]
@@ -158,13 +212,13 @@ Writes `<name>.env`, one KEY=VALUE per line, which plugs into rules_oci as `oci_
 ":<name>")`. Provides JuliaImageEnvInfo, which julia_compiled_layer and julia_precompile_test
 take as `image_env`, so the caches are compiled for, and checked against, this environment.
 """,
-    attrs = {
+    attrs = _cpu_attrs() | {
         "julia_prefix": attr.string(default = "/opt/julia", doc = "Where the image keeps Julia: a julia_dist_layer's prefix."),
         "depot_prefix": attr.string(default = "/opt/julia-depot", doc = "Where the image keeps the depot: a julia_depot_layer's prefix. Caches are written here."),
         "extra_depots": attr.string_list(doc = "Further depots, after `depot_prefix`. List the application's root here when it holds packages of its own, so their caches are relocatable."),
         "project": attr.string(doc = "JULIA_PROJECT. Unset when empty."),
         "load_path": attr.string_list(doc = "JULIA_LOAD_PATH entries. Unset when empty, which leaves Julia's default."),
-        "cpu_target": attr.string(default = PORTABLE_X86_64_CPU_TARGET, doc = "JULIA_CPU_TARGET, and the targets the compiled layer compiles for."),
+        "cpu_target": attr.string(doc = "JULIA_CPU_TARGET, and the targets the compiled layer compiles for. Default: the portable list for the target platform's CPU (PORTABLE_X86_64_CPU_TARGET or PORTABLE_AARCH64_CPU_TARGET)."),
         "offline": attr.bool(default = True, doc = "Set JULIA_PKG_OFFLINE=true."),
         "path": attr.bool(default = True, doc = "Set PATH to <julia>/bin:$PATH, which rules_oci expands against the base image."),
         "env": attr.string_dict(doc = "Further variables for the image, written to the same file. Not applied when caches are built; pass those to the compiled layer's own `env`."),
@@ -341,7 +395,7 @@ def _julia_sysimage_layer_impl(ctx):
     env = dict(ctx.attr.env)
     env.update({
         "RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES": " ".join(ctx.attr.packages),
-        "RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET": ctx.attr.cpu_target,
+        "RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET": _cpu_target(ctx),
     })
     _layer_run(
         ctx,
@@ -365,11 +419,11 @@ for this manifest; a scratch depot in front takes anything the build writes. A s
 replace the depot layer: artifacts are resolved at startup, so ship a julia_depot_layer beside it,
 and start Julia with `--sysimage <path>`.
 """,
-    attrs = _tool_attrs() | _project_attrs() | {
+    attrs = _tool_attrs() | _project_attrs() | _cpu_attrs() | {
         "julia": attr.label(mandatory = True, allow_files = True, doc = _JULIA_DOC),
         "depot": attr.label(mandatory = True, allow_files = True, doc = "The julia.depot repository over this manifest, e.g. `@my_depot`."),
         "packages": attr.string_list(mandatory = True, doc = "Packages to bake, with everything they depend on."),
-        "cpu_target": attr.string(default = PORTABLE_X86_64_CPU_TARGET, doc = "The sysimage's CPU targets. The portable default costs build time; the image runs on any x86_64 host."),
+        "cpu_target": attr.string(doc = "The sysimage's CPU targets. Default: the portable list for the target platform's CPU, which costs build time and runs on any host of that architecture."),
         "path": attr.string(default = "/opt/julia-sysimage/sys.so", doc = "Where the image keeps the sysimage."),
         "env": attr.string_dict(doc = "Variables for the build."),
     },
