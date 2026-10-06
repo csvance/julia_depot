@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Used by — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=8c5464a6">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=c1dbaefd">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Used by — julia_depot">
   <meta property="og:title" content="Used by — julia_depot">
@@ -57,24 +57,24 @@
       <article class="md-article">
       <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="https://github.com/csvance/julia_depot/blob/main/docs/src/used-by.md" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
 <h1 id="Used-by" class="md-heading">Used by<a href="#Used-by" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
-<p>Projects that build with julia_depot, and what they use it for.</p>
+<p>Projects that build with <code class="md-code-inline">julia_depot</code>, and what they use it for.</p>
 <div class="md-table-wrap">
 <table class="md-table">
 <thead>
 <tr>
 <th style="text-align:right">Project</th>
-<th style="text-align:right">How it uses julia_depot</th>
+<th style="text-align:right">How it uses <code class="md-code-inline">julia_depot</code></th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align:right"><a href="https://github.com/EnzymeAD/ReactantServer.jl">ReactantServer.jl</a></td>
-<td style="text-align:right">Builds its inference-server node image, published to GHCR with signed build provenance. <code class="md-code-inline">julia.dist</code> pins the Julia; <code class="md-code-inline">julia_image_env</code> declares the image&#39;s layout, with the workspace root as an extra depot so the application&#39;s own packages get relocatable caches; <code class="md-code-inline">julia_dist_layer</code>, <code class="md-code-inline">julia_depot_layer</code> (<code class="md-code-inline">contents = &quot;full&quot;</code>, since the image loads packages from source) and <code class="md-code-inline">julia_compiled_layer</code> produce the Julia layers; and <code class="md-code-inline">julia_precompile_test</code> checks the image starts without precompiling. The image is assembled with rules_oci on a CUDA base. See its <a href="https://github.com/EnzymeAD/ReactantServer.jl/tree/main/deploy"><code class="md-code-inline">deploy/</code></a> package.</td>
+<td style="text-align:right">Builds its inference-server node image, published to GHCR with signed build provenance. <code class="md-code-inline">julia.dist</code> pins the Julia; <code class="md-code-inline">julia_image_env</code> declares the image&#39;s layout, with the workspace root as an extra depot so the application&#39;s own packages get relocatable caches; <code class="md-code-inline">julia_dist_layer</code>, <code class="md-code-inline">julia_depot_layer</code> (<code class="md-code-inline">contents = &quot;full&quot;</code>, since the image loads packages from source) and <code class="md-code-inline">julia_compiled_layer</code> produce the Julia layers; and <code class="md-code-inline">julia_precompile_test</code> checks the image starts without precompiling. The image is assembled with <code class="md-code-inline">rules_oci</code> on a CUDA base. See its <a href="https://github.com/EnzymeAD/ReactantServer.jl/tree/main/deploy"><code class="md-code-inline">deploy/</code></a> package.</td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>Using julia_depot in a public project? Open a pull request adding a row.</p>
+<p>Using <code class="md-code-inline">julia_depot</code> in a public project? Open a pull request adding a row.</p>
       </article>
       <footer class="md-footer">
 <p>Built with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and <a href="https://github.com/mthelm85/MaterialDocs.jl">MaterialDocs.jl</a>.</p>
@@ -92,6 +92,6 @@
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=8c5464a6"></script>
+  <script src="../assets/materialdocs.js?v=c1dbaefd"></script>
 </body>
 </html>
