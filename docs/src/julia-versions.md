@@ -59,10 +59,12 @@ see [Images](images.md#CPU-targets). The end-to-end suite runs on Linux x86_64 o
 
 ## Adding a Julia version
 
-Four steps, with 1.14 as the example. The first two need that Julia installed locally
-(juliaup is the easy way); nothing after them does.
+The steps below use 1.14 as the example. The first two need that Julia installed locally
+(juliaup is the easy way); the rest do not.
 
-**One.** The PackageCompiler environment for the new minor:
+### 1. The PackageCompiler environment
+
+Resolve one for the new minor, so `sysimage.sh auto` has an environment to select:
 
 ```bash
 mkdir -p julia/sysimage/v1.14
@@ -70,9 +72,11 @@ cp julia/sysimage/v1.12/Project.toml julia/sysimage/v1.14/
 julia +1.14 --project=julia/sysimage/v1.14 -e 'using Pkg; Pkg.instantiate()'
 ```
 
-**Two.** A test project resolved under that exact Julia, against the PUBLIC server.
-`env -u JULIA_PKG_SERVER` matters: a manifest resolved through a private mirror is not one
-this repository can publish.
+### 2. The test project
+
+Resolve it under that exact Julia, against the public package server.
+`env -u JULIA_PKG_SERVER` matters: a manifest resolved through a private mirror is not one this
+repository can publish. Then update the version named in the copied `Project.toml`'s comment.
 
 ```bash
 mkdir -p e2e/projects/v1.14
@@ -81,18 +85,29 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
     -e 'using Pkg; Pkg.add([PackageSpec(name = "Bzip2_jll"), PackageSpec(name = "Crayons")])'
 ```
 
-**Three.** The sha256 for each platform in `_KNOWN_SHA256` in `julia/dist.bzl`.
+### 3. The checksums
 
-**Four.** The declarations: four repositories in `e2e/MODULE.bazel` (distribution, depot,
-sysimage depot, hook depot), a `julia_version_tests()` call in `e2e/tests/BUILD.bazel`, a
-`julia_image_tests()` call in `e2e/image/BUILD.bazel`, a `version_mismatch_test()` call for
-each pair worth covering, a copy of
-`.github/workflows/julia-1.13.yml` as `julia-1.14.yml` with the version and tag changed,
-and its badge beside the others at the top of `README.md`.
+Add the sha256 for each platform to `_KNOWN_SHA256` in `julia/dist.bzl`, from
+`https://julialang-s3.julialang.org/bin/checksums/julia-<version>.sha256`.
 
-A version run with the reduced set, as the LTS is, skips step One and needs only two
-repositories in step Four, the distribution and the depot, a `julia_version_tests()` call
-without `sysimage_depot_repo` and `hook_depot_repo`, and no `julia_image_tests()` call.
+### 4. The declarations
+
+- In `e2e/MODULE.bazel`, four repositories: the distribution, the depot, the sysimage depot and
+  the hook depot.
+- A `julia_version_tests()` call in `e2e/tests/BUILD.bazel`.
+- A `julia_image_tests()` call in `e2e/image/BUILD.bazel`.
+- A `version_mismatch_test()` call for each pair of versions worth covering.
+- `.github/workflows/julia-1.14.yml`, a copy of `julia-1.13.yml` with the version and tag
+  changed.
+- Its badge beside the others at the top of `README.md`.
+
+### The reduced set
+
+A version run with the reduced set, as the LTS is, skips step 1. In step 4 it needs only two
+repositories, the distribution and the depot, a `julia_version_tests()` call without
+`sysimage_depot_repo` and `hook_depot_repo`, and no `julia_image_tests()` call.
+
+### Retiring a version
 
 When a version leaves support, remove the same pieces: its workflow, badge, test calls,
 repositories, test project and, if nothing else uses it, its PackageCompiler environment.
