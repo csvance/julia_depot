@@ -93,7 +93,8 @@ further project files (a `LocalPreferences.toml`, workspace members) staged at t
 relative to the `Project.toml`. `depot` is a julia.depot repository, e.g. `@my_depot`: the depot layer
 copies its registries and package-server credentials for the instantiate and ships neither, and
 without it fetches the registry fresh; the sysimage layer reads the packages that depot already
-holds. `env` passes variables to the build, such as what a package's platform augmentation reads
+holds. Both take the whole depot path the stamp records, so a depot with `read_only_depots`
+works unchanged: registries come from every entry, credentials from the first. `env` passes variables to the build, such as what a package's platform augmentation reads
 to select an artifact.
 
 The depot and sysimage layers need the network (tagged `requires-network`); set

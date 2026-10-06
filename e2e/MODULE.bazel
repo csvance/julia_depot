@@ -111,6 +111,24 @@ julia.depot(
     manifest = "//projects/v1.12:Manifest.toml",
 )
 
+# The same project into a declared depot with READ-ONLY DEPOTS behind it: a shared depot the
+# hook seeds before instantiate (standing in for a host-wide one), and one that never exists.
+# tests/read_only_depots_test.sh checks that env.sh exports the stack in order with the
+# trailing separator, that the missing one neither failed the fetch nor was created, that what
+# the shared depot held was not installed into `dir` again, and that the shared depot was not
+# written to.
+julia.depot(
+    name = "read_only_depots_1_12",
+    dir = "{HOME}/.julia-depot-e2e/stacked",
+    hook = "//hooks:seed_shared_depot.sh",
+    julia = "@julia_1_12",
+    manifest = "//projects/v1.12:Manifest.toml",
+    read_only_depots = [
+        "{HOME}/.julia-depot-e2e/shared",
+        "{HOME}/.julia-depot-e2e/absent",
+    ],
+)
+
 # --- Julia 1.13 -------------------------------------------------------------------
 julia.dist(
     name = "julia_1_13",
@@ -153,6 +171,7 @@ use_repo(
     "julia_1_10",
     "julia_1_12",
     "julia_1_13",
+    "read_only_depots_1_12",
     "sysimage_depot_1_12",
     "sysimage_depot_1_13",
 )

@@ -63,6 +63,8 @@ use_repo(julia, "julia_dist", "my_depot")
 
 Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing
 else; see [Julia versions](https://csvance.github.io/julia_depot/dev/julia-versions/). Private registries plug in through the
-depot's `hook`; see [a private registry](https://csvance.github.io/julia_depot/dev/recipes/#A-private-registry).
+depot's `hook`; see [a private registry](https://csvance.github.io/julia_depot/dev/recipes/#A-private-registry). A host-wide
+shared depot can sit read-only behind a per-user one, so each user's depot holds only what it
+lacks; see [a shared depot](https://csvance.github.io/julia_depot/dev/recipes/#A-shared-depot-behind-a-declared-one).
 
 

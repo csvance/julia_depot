@@ -93,7 +93,8 @@ use_repo(julia, "julia_dist", "my_depot")
    rules_oci (or anything else that takes tars); this module does not depend on it.
 
 Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing
-else. Private registries plug in through the depot's `hook`.
+else. Private registries plug in through the depot's `hook`. A host-wide shared depot can sit
+read-only behind a per-user one; see [a shared depot](recipes.md#A-shared-depot-behind-a-declared-one).
 
 ## What is in the box
 
