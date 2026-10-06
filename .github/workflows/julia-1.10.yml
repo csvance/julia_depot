@@ -1,0 +1,29 @@
+name: julia 1.10
+
+# The end-to-end suite on Julia 1.10, the long-term support release, with the reduced set
+# (see e2e/tests/BUILD.bazel); the steps are in e2e.yml. One file per supported
+# version, so each has its own status badge in the README. Adding a version means copying
+# this file with the version and tag changed, and adding its badge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: julia-1.10-${{ github.ref }}
+  cancel-in-progress: true
+
+# pull-requests: read is for e2e.yml's changes job, which skips the suite on a
+# docs-only change.
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+    with:
+      julia: "1.10"
+      tag: julia1_10

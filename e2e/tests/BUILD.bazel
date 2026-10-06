@@ -12,6 +12,17 @@ package(default_testonly = True)
 # Sourced by the image tests in //image as well.
 exports_files(["common.sh"])
 
+# 1.10, the long-term support release, with the reduced set: no sysimage build (the module
+# ships no PackageCompiler environment for 1.10) and no hook test (version-independent).
+julia_version_tests(
+    depot_repo = "@depot_1_10",
+    julia_repo = "@julia_1_10",
+    minor = "1.10",
+    other_minor = "1.12",
+    patch = "1.10.12",
+    project = "//projects/v1.10",
+)
+
 julia_version_tests(
     depot_repo = "@depot_1_12",
     hook_depot_repo = "@hook_depot_1_12",

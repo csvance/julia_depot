@@ -51,6 +51,21 @@ use_repo(oci, "debian_base", "debian_base_linux_amd64")
 
 julia = use_extension("@julia_depot//julia:extensions.bzl", "julia")
 
+# --- Julia 1.10, the long-term support release ------------------------------------
+# A reduced set: the distribution and a depot, and no sysimage or hook depot, because the
+# module ships no PackageCompiler environment for 1.10 and the hook is version-independent.
+julia.dist(
+    name = "julia_1_10",
+    version = "1.10.12",
+)
+
+# The environment under test, pinned to a Manifest resolved under 1.10.12.
+julia.depot(
+    name = "depot_1_10",
+    julia = "@julia_1_10",
+    manifest = "//projects/v1.10:Manifest.toml",
+)
+
 # --- Julia 1.12 -------------------------------------------------------------------
 julia.dist(
     name = "julia_1_12",
@@ -130,10 +145,12 @@ julia.depot(
 use_repo(
     julia,
     "declared_depot_1_12",
+    "depot_1_10",
     "depot_1_12",
     "depot_1_13",
     "hook_depot_1_12",
     "hook_depot_1_13",
+    "julia_1_10",
     "julia_1_12",
     "julia_1_13",
     "sysimage_depot_1_12",

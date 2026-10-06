@@ -1,5 +1,15 @@
 # Julia versions
 
+## Supported versions
+
+julia_depot supports the long-term support release and the two most recent releases. When the
+LTS is one of those two, that is two versions rather than three. Each supported version has an
+end-to-end workflow, `.github/workflows/julia-<minor>.yml`, and its badge in the README; the
+workflows are the list. The LTS runs a reduced set, without a sysimage build; see
+[Testing](testing.md#The-matrix).
+
+## Fetching any version
+
 Nothing here requires one Julia version. `julia.dist` fetches any: the sha256 is
 looked up for the versions the module knows, listed in `_KNOWN_SHA256` in
 [`julia/dist.bzl`](https://github.com/csvance/julia_depot/blob/main/julia/dist.bzl), and passed
@@ -79,3 +89,10 @@ sysimage depot, hook depot), a `julia_version_tests()` call in `e2e/tests/BUILD.
 each pair worth covering, a copy of
 `.github/workflows/julia-1.13.yml` as `julia-1.14.yml` with the version and tag changed,
 and its badge beside the others at the top of `README.md`.
+
+A version run with the reduced set, as the LTS is, skips step One and needs only two
+repositories in step Four, the distribution and the depot, a `julia_version_tests()` call
+without `sysimage_depot_repo` and `hook_depot_repo`, and no `julia_image_tests()` call.
+
+When a version leaves support, remove the same pieces: its workflow, badge, test calls,
+repositories, test project and, if nothing else uses it, its PackageCompiler environment.

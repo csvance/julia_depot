@@ -33,9 +33,11 @@ example); warm, the whole matrix takes a few minutes.
 
 ## The matrix
 
-Every Julia version in the matrix (currently 1.12.7 and 1.13.0) gets the same set of
-tests, tagged `julia<minor>` for the Julia they run, so a CI shard needs only that
-version's distribution and depot:
+The matrix is every supported Julia version (see [supported versions](julia-versions.md#Supported-versions)),
+one `julia_version_tests()` call each in `e2e/tests/BUILD.bazel` and one workflow each,
+`.github/workflows/julia-<minor>.yml`, with its own badge in the README. The tests are tagged
+`julia<minor>` for the Julia they run, so a CI shard needs only that version's distribution
+and depot:
 
 ```bash
 bazel test $(bazel query "attr(tags, 'julia1_13', tests(//...))")
@@ -53,7 +55,13 @@ starts and loads what was baked into it. Across versions, a manifest resolved un
 Julia is refused by the other in both directions, and a PackageCompiler environment
 pinned to the wrong minor is refused before any work starts.
 
-Each version also builds the image example in `e2e/image`: the dist, full depot, compiled and
+The long-term support release runs a reduced set: the distribution, the depot stamp, both
+`image_depot.sh` modes, artifact overrides and the wrong-minor refusal. It has no sysimage build,
+since the module ships no PackageCompiler environment for it, no hook test, which is the same on
+every version, and no image example, which builds a sysimage layer. A `julia_version_tests()`
+call without `sysimage_depot_repo` and `hook_depot_repo` is that reduced set.
+
+Each version in the full set also builds the image example in `e2e/image`: the dist, full depot, compiled and
 application layers from `julia/image.bzl`, the image environment, and an `oci_image` assembled
 from them with rules_oci on a digest-pinned Debian base. rules_oci is a dependency of the e2e
 module only. Every layer entry must be normalised (uid and gid 0, epoch mtime, 0755 or 0644),

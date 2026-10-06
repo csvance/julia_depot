@@ -27,10 +27,10 @@ def julia_version_tests(
         patch,
         julia_repo,
         depot_repo,
-        sysimage_depot_repo,
-        hook_depot_repo,
         project,
-        other_minor):
+        other_minor,
+        sysimage_depot_repo = None,
+        hook_depot_repo = None):
     """Declares every single-version end-to-end test for one Julia version.
 
     Args:
@@ -38,10 +38,12 @@ def julia_version_tests(
       patch: the full version the distribution pins, e.g. "1.12.7".
       julia_repo: the distribution repository, e.g. "@julia_1_12".
       depot_repo: the depot over projects/v<minor>, e.g. "@depot_1_12".
-      sysimage_depot_repo: the depot over the module's PackageCompiler environment.
-      hook_depot_repo: the depot whose fetch runs hooks/marker_hook.sh.
       project: the project package, e.g. "//projects/v1.12".
       other_minor: a minor that is NOT this one, for the sysimage pin check.
+      sysimage_depot_repo: the depot over the module's PackageCompiler environment. None for
+        a minor the module ships no environment for, which skips the sysimage build.
+      hook_depot_repo: the depot whose fetch runs hooks/marker_hook.sh. None skips the hook
+        test, which is version-independent, for a version run with the reduced set.
     """
     tag = _tag(minor)
     tags = ["julia" + tag]
@@ -81,22 +83,24 @@ def julia_version_tests(
         tags = tags,
     )
 
-    sh_test(
-        name = "hook_{}_test".format(tag),
-        size = "small",
-        srcs = ["hook_test.sh"],
-        args = [
-            "$(rootpath {}//:stamp.txt)".format(hook_depot_repo),
-            "$(rootpath {}//:env.sh)".format(hook_depot_repo),
-            "julia-depot-e2e-hook",
-        ],
-        data = _HELPERS + [
-            hook_depot_repo + "//:env.sh",
-            hook_depot_repo + "//:stamp.txt",
-        ],
-        env = _TEST_ENV,
-        tags = tags,
-    )
+    # Only with a hook depot: the hook is version-independent.
+    if hook_depot_repo:
+        sh_test(
+            name = "hook_{}_test".format(tag),
+            size = "small",
+            srcs = ["hook_test.sh"],
+            args = [
+                "$(rootpath {}//:stamp.txt)".format(hook_depot_repo),
+                "$(rootpath {}//:env.sh)".format(hook_depot_repo),
+                "julia-depot-e2e-hook",
+            ],
+            data = _HELPERS + [
+                hook_depot_repo + "//:env.sh",
+                hook_depot_repo + "//:stamp.txt",
+            ],
+            env = _TEST_ENV,
+            tags = tags,
+        )
 
     sh_test(
         name = "image_depot_modes_{}_test".format(tag),
@@ -145,31 +149,33 @@ def julia_version_tests(
     )
 
     # Minutes, not seconds: PackageCompiler rebuilds the whole system image.
-    sh_test(
-        name = "sysimage_auto_{}_test".format(tag),
-        size = "large",
-        srcs = ["sysimage_auto_test.sh"],
-        args = [
-            "$(rootpath @julia_depot//julia:sysimage.sh)",
-            "$(rootpath {}//:bin/julia)".format(julia_repo),
-            "$(rootpath {}:Manifest.toml)".format(project),
-            "$(rootpath {}//:stamp.txt)".format(depot_repo),
-            "$(rootpath {}//:stamp.txt)".format(sysimage_depot_repo),
-            minor,
-        ],
-        data = _HELPERS + [
-            "@julia_depot//julia:sysimage.sh",
-            "@julia_depot//julia:sysimage_envs",
-            depot_repo + "//:stamp.txt",
-            julia_repo + "//:bin/julia",
-            julia_repo + "//:dist",
-            project + ":Manifest.toml",
-            project + ":Project.toml",
-            sysimage_depot_repo + "//:stamp.txt",
-        ],
-        env = _TEST_ENV,
-        tags = tags,
-    )
+    # Only where the module ships a PackageCompiler environment for this minor.
+    if sysimage_depot_repo:
+        sh_test(
+            name = "sysimage_auto_{}_test".format(tag),
+            size = "large",
+            srcs = ["sysimage_auto_test.sh"],
+            args = [
+                "$(rootpath @julia_depot//julia:sysimage.sh)",
+                "$(rootpath {}//:bin/julia)".format(julia_repo),
+                "$(rootpath {}:Manifest.toml)".format(project),
+                "$(rootpath {}//:stamp.txt)".format(depot_repo),
+                "$(rootpath {}//:stamp.txt)".format(sysimage_depot_repo),
+                minor,
+            ],
+            data = _HELPERS + [
+                "@julia_depot//julia:sysimage.sh",
+                "@julia_depot//julia:sysimage_envs",
+                depot_repo + "//:stamp.txt",
+                julia_repo + "//:bin/julia",
+                julia_repo + "//:dist",
+                project + ":Manifest.toml",
+                project + ":Project.toml",
+                sysimage_depot_repo + "//:stamp.txt",
+            ],
+            env = _TEST_ENV,
+            tags = tags,
+        )
 
     sh_test(
         name = "sysimage_wrong_minor_{}_test".format(tag),

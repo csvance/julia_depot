@@ -1,6 +1,7 @@
 # julia_depot
 
 [![ci](https://github.com/csvance/julia_depot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/ci.yml)
+[![julia 1.10](https://github.com/csvance/julia_depot/actions/workflows/julia-1.10.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/julia-1.10.yml)
 [![julia 1.12](https://github.com/csvance/julia_depot/actions/workflows/julia-1.12.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/julia-1.12.yml)
 [![julia 1.13](https://github.com/csvance/julia_depot/actions/workflows/julia-1.13.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/julia-1.13.yml)
 [![docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://csvance.github.io/julia_depot/stable/)
