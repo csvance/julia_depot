@@ -5,9 +5,10 @@
 #
 # Environment:
 #   JULIA_DEPOT_BIN               required, the julia to instantiate with
-#   JULIA_DEPOT_PATH              required, the SOURCE depot: its registries/ and servers/
-#                                 (package-server credentials) are copied into the clean
-#                                 depot so instantiate resolves the way the developer does
+#   JULIA_DEPOT_PATH              required, the SOURCE depot path: the registries/ of its
+#                                 entries and the servers/ (package-server credentials) of
+#                                 its first are copied into the clean depot so instantiate
+#                                 resolves the way the developer does
 #   JULIA_PKG_SERVER              optional, passed through to Pkg (default: Pkg's default)
 #   JULIA_DEPOT_CONTENTS          artifacts (default) | full, see below
 #   JULIA_DEPOT_IMAGE_PREFIX      path of the depot inside the image, default opt/julia-depot
@@ -102,10 +103,28 @@ if [ -d "$src_depot/servers" ]; then
 fi
 
 # The registries, copied rather than re-cloned. Cheap, and it keeps this action from
-# depending on git reachability as well as the package server.
-if [ -d "$src_depot/registries" ]; then
-    cp -a "$src_depot/registries" "$fresh/registries"
-fi
+# depending on git reachability as well as the package server. From EVERY entry of the
+# source path, as Julia reads them: with read-only depots behind the written one (julia.depot's
+# read_only_depots), a registry a shared depot already had was never installed into the first,
+# and without it here a private registry's packages would not resolve. A registry is a
+# directory or a <name>.toml with its tarball, so the first entry to have a name keeps it, the
+# way Julia's search order would. Credentials stay first-entry only: that is where Pkg reads them.
+declare -A registry_from=()
+IFS=: read -r -a src_entries <<<"$JULIA_DEPOT_PATH"
+for i in "${!src_entries[@]}"; do
+    d="${src_entries[$i]}"
+    [ -n "$d" ] && [ -d "$d/registries" ] || continue
+    for r in "$d"/registries/*; do
+        [ -e "$r" ] || continue
+        name="$(basename "$r")"
+        name="${name%.tar.gz}"
+        name="${name%.toml}"
+        [ "${registry_from[$name]:-$i}" = "$i" ] || continue
+        registry_from[$name]="$i"
+        mkdir -p "$fresh/registries"
+        cp -a "$r" "$fresh/registries/"
+    done
+done
 
 if [ -n "${JULIA_DEPOT_OVERRIDES_BUILD:-}" ]; then
     mkdir -p "$fresh/artifacts"

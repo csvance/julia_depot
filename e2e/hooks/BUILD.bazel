@@ -1,3 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["marker_hook.sh"])
+exports_files([
+    "marker_hook.sh",
+    "seed_shared_depot.sh",
+])

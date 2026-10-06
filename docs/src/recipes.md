@@ -146,6 +146,29 @@ and reads packages, artifacts and compiled caches from all of them. Note that Pk
 package-server credentials (`servers/<host>/auth.toml`) from the first depot only, so a front
 depot needs its own copy when the environment resolves through a private server.
 
+## A shared depot behind a declared one
+
+When the host already has a depot that holds most of what the manifest needs, a host-wide
+one maintained by someone else, say, stack it behind `dir` rather than downloading and
+precompiling it all again for every user:
+
+```python
+julia.depot(
+    name = "app_depot",
+    manifest = "//app:Manifest.toml",
+    julia = "@julia_dist",
+    dir = "/cache/{USER}/myproject/julia",
+    read_only_depots = ["/opt/julia-depot-shared"],
+)
+```
+
+`env.sh` then exports `/cache/<user>/myproject/julia:/opt/julia-depot-shared:`. Entries
+expand like `dir` and need it. Julia reads from every entry and writes only to the first, and
+Pkg installs nothing a later entry already has, so the per-user depot holds only what the
+shared one lacks. A host without the shared depot fetches into `dir` alone. Whether each
+read-only depot exists is an input, but not what is in it: if the shared depot is pruned of
+something the environment used, refetch with `bazel fetch --force @app_depot`.
+
 ## Loading an image with podman on a host that also has docker
 
 Not Julia-specific, but it costs an afternoon the first time. rules_oci's `oci_load` probes

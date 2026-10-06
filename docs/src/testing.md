@@ -73,6 +73,14 @@ sysimage layer over an artifacts-only depot, whose registry is fetched fresh, mu
 precompiling too. The layers are large: the distribution alone is about a gigabyte per copy, and
 the determinism test builds it twice.
 
+The depot attributes that do not depend on the Julia version are tested on 1.12 alone: `dir`,
+and `read_only_depots`, whose depot has a hook seed a shared depot behind `dir` before
+instantiate. That test checks the exported path and its order, that a missing read-only depot
+neither fails the fetch nor is created, that `dir` received none of what the shared depot held,
+that the shared depot is unchanged by the fetch, and that `image_depot.sh` on the stacked path
+copies the shared depot's registry rather than installing one. Its depots live under
+`~/.julia-depot-e2e`.
+
 One test sits outside the per-version set. The matrix's sysimage tests run over a depot
 that already holds PackageCompiler, so on 1.13 `sysimage.sh auto` is also run on an empty
 depot of the test's own, and has to install its PackageCompiler environment there before

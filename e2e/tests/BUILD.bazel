@@ -113,6 +113,40 @@ sh_test(
     tags = ["julia1_12"],
 )
 
+# `read_only_depots`: a declared depot with a shared depot and a missing one stacked behind it.
+# Version-independent, like `dir`. image_depot.sh runs on the stamp too, since its registries
+# then live only in the shared depot.
+sh_test(
+    name = "read_only_depots_1_12_test",
+    size = "large",
+    srcs = ["read_only_depots_test.sh"],
+    args = [
+        "$(rootpath @read_only_depots_1_12//:env.sh)",
+        "$(rootpath @read_only_depots_1_12//:stamp.txt)",
+        ".julia-depot-e2e/stacked",
+        ".julia-depot-e2e/shared",
+        ".julia-depot-e2e/absent",
+        "$(rootpath @julia_depot//julia:image_depot.sh)",
+        "$(rootpath @julia_1_12//:bin/julia)",
+        "$(rootpath //projects/v1.12:Manifest.toml)",
+    ],
+    data = [
+        "common.sh",
+        "//projects/v1.12:Manifest.toml",
+        "//projects/v1.12:Project.toml",
+        "@julia_1_12//:bin/julia",
+        "@julia_1_12//:dist",
+        "@julia_depot//julia:image_depot.sh",
+        "@read_only_depots_1_12//:env.sh",
+        "@read_only_depots_1_12//:stamp.txt",
+    ],
+    env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
+    tags = [
+        "julia1_12",
+        "requires-network",
+    ],
+)
+
 # sysimage.sh on a depot with no PackageCompiler in it, which is what a consumer following
 # docs/src/recipes.md has: the matrix's sysimage tests all run over a depot that already holds
 # it. The install step is version-independent, so 1.13 alone covers it.

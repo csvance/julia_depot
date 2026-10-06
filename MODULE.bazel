@@ -12,7 +12,8 @@
 #     values may gain CPU clones in any release, as Julia's official builds do)
 #   - what a depot repository provides: its default target, :env, env.sh (which exports
 #     JULIA_DEPOT_PATH and nothing else) and stamp.txt with its keys manifest_sha256,
-#     julia_version, host_triplet and depot
+#     julia_version, host_triplet and depot (the whole depot path env.sh exports, written
+#     to at its first entry, so `dir` followed by any read_only_depots)
 #   - what a dist repository provides: its default target, :dist and bin/julia
 #   - the arguments and JULIA_DEPOT_* variables of image_depot.sh and sysimage.sh,
 #     and what a hook is given. Until 0.1.1 these were spelled RULES_JULIA_DEPOT_*; the old

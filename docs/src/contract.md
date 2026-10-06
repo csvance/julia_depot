@@ -27,7 +27,8 @@ then behave differently, which is exactly the failure the pin exists to prevent.
 
 The rule produces `env.sh`, which always exports `JULIA_DEPOT_PATH`: the depot the fetch
 instantiated into, whether declared with `dir`, set in the launching environment, or
-Julia's default made explicit. A hook is given the same value. It also produces
+Julia's default made explicit, followed by any `read_only_depots`. A hook is given the same
+value, and writes, like Pkg, to its first entry. It also produces
 `stamp.txt` with the manifest sha256, Julia version, host triplet and depot. Julia itself
 is deliberately not in `env.sh`: consumers take it as a label from the distribution
 (`@julia_dist//:bin/julia`). The depot is the one machine-specific path in the file, and
@@ -40,9 +41,30 @@ prefers a versioned `Manifest-v<major>.<minor>.toml` beside `Manifest.toml`, and
 Julia version, each pinned by its own `julia.depot`.
 
 The fetch is keyed on the manifest, the hook, the Julia version (through the
-distribution's version header), the declared `dir`, and the variables `HOME`,
-`JULIA_PKG_SERVER`, every `hook_environ` entry and, when no `dir` is declared,
-`JULIA_DEPOT_PATH`.
+distribution's version header), the declared `dir` and `read_only_depots`, whether each
+read-only depot exists, and the variables `HOME`, `JULIA_PKG_SERVER`, every `hook_environ`
+entry and, when no `dir` is declared, `JULIA_DEPOT_PATH`. Not on what a read-only depot
+holds: watching a shared depot's whole tree would cost more than the fetch it guards, so a
+shared depot that loses something the environment relied on needs `bazel fetch --force`.
+
+### Read-only depots
+
+`read_only_depots` stacks depots after `dir`, so the path is `<dir>:<ro1>:<ro2>:...:`, the
+trailing separator keeping Julia's bundled depots last. Julia reads packages, artifacts and
+compiled caches from every entry and writes only to the first, and Pkg installs nothing some
+entry already holds, so `dir` ends up holding only what the read-only depots lack. The rule
+writes nothing to them: it neither creates them nor fails when one is missing, since Julia
+skips a missing entry and a host may not have the shared depot at all. Julia itself does
+update the timestamp of a cache file it loads, in whichever depot, and ignores the failure
+where it may not, so a shared depot should be read-only to its users in fact as well as in
+name. The attribute requires `dir`: without one the depot path is the ambient
+`JULIA_DEPOT_PATH`, which can already list as many depots as it likes, and the depot written
+to would then depend on the shell.
+
+The image side needs nothing of its own for this. `image_depot.sh` instantiates into a clean
+depot whatever the source depot holds, and copies the registries of every entry of the
+source path, so a registry that lives only in a shared depot still reaches the instantiate;
+the sysimage layer reads the whole path the stamp records.
 
 ## Repository names
 

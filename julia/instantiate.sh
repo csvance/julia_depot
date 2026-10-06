@@ -11,6 +11,11 @@
 # has most of them. The trade is that `compiled/` can thrash between branches with
 # different Manifests. The image side (image_depot.sh) does build a clean depot, because
 # an image must carry exactly the closure and nothing else.
+#
+# The depot may be a path of several (julia.depot's read_only_depots, or an ambient path that
+# lists more than one). Nothing here assumes otherwise: Pkg installs and precompiles into the
+# first entry only, skipping whatever a later entry already holds, and the stamp records the
+# whole path, since what this environment loads may live in any entry of it.
 set -euo pipefail
 
 JULIA="${JULIA_DEPOT_BIN:-julia}"   # the depot rule passes the pinned one; PATH keeps this runnable by hand

@@ -18,12 +18,27 @@ WHAT IT PRODUCES. `env.sh`, a shell fragment consumers source before running jul
 which always exports JULIA_DEPOT_PATH, and `stamp.txt`, the resolved facts (manifest
 sha256, Julia version, host triplet, depot). Julia itself is not in env.sh: consumers
 take it as a label from the distribution they passed as `julia` (`@julia_dist//:bin/julia`)
-via $(location ...). The depot is the one path in env.sh, and it is per user by nature.
+via $(location ...). The depot path is the one thing in env.sh, and it is per user by nature.
 
 WHAT REFETCHES IT. The manifest, the hook and instantiate.sh, by content; the Julia
-version, through the distribution's version header; the declared `dir`; and HOME,
-JULIA_PKG_SERVER, every `hook_environ` variable and, when no `dir` is declared,
-JULIA_DEPOT_PATH.
+version, through the distribution's version header; the declared `dir` and
+`read_only_depots`, and whether each read-only depot exists; and HOME, JULIA_PKG_SERVER,
+every `hook_environ` variable and, when no `dir` is declared, JULIA_DEPOT_PATH. NOT the
+contents of a read-only depot: see READ-ONLY DEPOTS.
+
+READ-ONLY DEPOTS. A host often has a shared depot, maintained by someone else, that already
+holds most of what a Manifest needs. `read_only_depots` stacks such depots after `dir`, so
+the path becomes `<dir>:<ro1>:<ro2>:...:`. Julia reads packages, artifacts and compiled
+caches from every entry and writes only to the first, and Pkg installs nothing that some
+entry already has, so `dir` ends up holding only what the shared depots lack. Nothing here
+writes to them either: they are never created, and a missing one is left on the path, where
+Julia ignores it, so a host without the shared depot still fetches, into `dir` alone.
+Whether each exists is an input, so one appearing or disappearing refetches; what is IN one
+is not, since watching a depot's whole tree would cost more than the fetch it guards. A
+shared depot that loses something `dir` relied on therefore needs a forced refetch
+(`bazel fetch --force @<name>`). They need `dir`: without it the depot is the ambient
+JULIA_DEPOT_PATH, which can already list as many depots as it likes, and appending to it
+would make the first entry, the one written to, depend on the shell.
 
 THE HOOK. Environments that resolve through a private registry or package server need
 that registry in the depot BEFORE Pkg.instantiate, and fetch time is the only place
@@ -31,7 +46,9 @@ that can guarantee it. `hook` is an executable run first, with JULIA_DEPOT_BIN a
 JULIA_DEPOT_PATH set, the latter to the same value env.sh exports, and with
 RULES_JULIA_DEPOT_BIN, the deprecated pre-0.1.1 name for JULIA_DEPOT_BIN. `hook_environ`
 names the variables it reads, so a change to any of them refetches. The hook is the consumer's: this module knows nothing about any
-particular registry.
+particular registry. With read-only depots the path has several entries, and a hook that
+writes must write to the first, as Pkg does; it may find what it would have added already
+present in a later one.
 """
 
 load(":dist.bzl", "host_platform")
@@ -58,17 +75,21 @@ def _watch(rctx, path):
     """
     rctx.read(path, watch = "auto")
 
-def _expand_depot(rctx, template):
-    """Expands {HOME} and {USER} in the `dir` template from the fetch environment."""
+def _expand_depot(rctx, template, attr = "dir"):
+    """Expands {HOME} and {USER} in a depot template (`dir`, or a `read_only_depots` entry) from the fetch environment."""
     out = template
     for name in ["HOME", "USER"]:
         if ("{" + name + "}") in out:
             value = _env_value(rctx, name)
             if value == None:
-                fail("julia_depot: dir = \"{}\" needs ${} but it is not set".format(template, name))
+                fail("julia_depot: {} = \"{}\" needs ${} but it is not set".format(attr, template, name))
             out = out.replace("{" + name + "}", value)
     if not out.startswith("/"):
-        fail("julia_depot: dir must expand to an absolute path, got {}".format(out))
+        fail("julia_depot: {} must expand to an absolute path, got {}".format(attr, out))
+
+    # The separator of JULIA_DEPOT_PATH: a depot whose path holds one would become two entries.
+    if ":" in out:
+        fail("julia_depot: {} must not contain ':', got {}".format(attr, out))
     return out
 
 def _julia_depot_impl(rctx):
@@ -129,9 +150,29 @@ def _julia_depot_impl(rctx):
     # bundled depots on the path, and (since Julia 1.10) leaves the user depot ~/.julia
     # OFF it; without the separator Pkg is recompiled into the fresh depot, see
     # instantiate.sh. The directory is created here so a hook can write into it.
+    #
+    # Read-only depots go between `dir` and the separator, so `dir` stays the one Julia and Pkg
+    # write to and the bundled depots stay last. They are not created, and a missing one stays
+    # on the path, where Julia skips it; watch() registers whether each exists (a directory's
+    # existence, not its contents), so the depot is re-conformed when one comes or goes. See
+    # READ-ONLY DEPOTS above.
+    if rctx.attr.read_only_depots and not rctx.attr.dir:
+        fail("julia_depot: read_only_depots needs `dir`, the depot written to in front of them; " +
+             "without it the ambient JULIA_DEPOT_PATH is used as it is, and can list them itself")
     if rctx.attr.dir:
         depot_dir = _expand_depot(rctx, rctx.attr.dir)
-        env["JULIA_DEPOT_PATH"] = depot_dir + ":"
+        stack = [depot_dir]
+        for template in rctx.attr.read_only_depots:
+            ro = _expand_depot(rctx, template, "read_only_depots")
+            if ro in stack:
+                fail("julia_depot: {} is on the depot path twice; read_only_depots must not repeat `dir` or each other".format(ro))
+            stack.append(ro)
+            ro_path = rctx.path(ro)
+            rctx.watch(ro_path)
+            if not ro_path.exists:
+                # buildifier: disable=print
+                print("julia_depot: read-only depot {} does not exist on this host; continuing without it".format(ro))
+        env["JULIA_DEPOT_PATH"] = ":".join(stack) + ":"
         res = rctx.execute(["mkdir", "-p", depot_dir])
         if res.return_code != 0:
             fail("julia_depot: cannot create depot {}:\n{}".format(depot_dir, res.stderr))
@@ -221,6 +262,11 @@ julia_depot = repository_rule(
             doc = "The depot directory to instantiate into, overriding JULIA_DEPOT_PATH. {HOME} and " +
                   "{USER} expand from the fetch environment. Exported through env.sh with a trailing " +
                   "separator so Julia's bundled depots stay on the path.",
+        ),
+        "read_only_depots": attr.string_list(
+            doc = "Depots searched after `dir` and never written to, such as a host's shared depot: " +
+                  "what they already hold is not installed into `dir`. Templates like `dir`; requires " +
+                  "`dir`. A missing one is skipped. Their contents are not watched.",
         ),
         "hook": attr.label(
             allow_single_file = True,
