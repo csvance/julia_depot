@@ -2,7 +2,7 @@
 
 `julia/image.bzl` owns what is Julia-specific about putting a depot into an OCI image: the
 layers, the environment the image runs with, and a test that it starts without compiling
-anything. It does not depend on rules_oci. Each layer rule writes one tar for `oci_image(tars =
+anything. It does not depend on `rules_oci`. Each layer rule writes one tar for `oci_image(tars =
 [...])`, the environment is a file for `oci_image(env = ...)`, and the image itself is yours:
 the base, the application layer, the entrypoint, how it is loaded or pushed.
 
@@ -104,7 +104,7 @@ and sysimage layers, the depot a fetch filled on this host.
 
 ## The environment
 
-`julia_image_env` with the defaults and `project = "/opt/app"` writes, on x86_64:
+`julia_image_env` with the defaults and `project = "/opt/app"` writes, on `x86_64`:
 
 ```
 JULIA_CPU_TARGET=generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1);x86-64-v4,-rdrnd,base(1)
@@ -118,7 +118,7 @@ The depot path is in search order. The image's depot comes first, because Julia 
 first entry and a cache that turns out stale at run time is rebuilt there. Then `extra_depots`.
 Then the two depots the distribution ships inside itself, which hold the stdlib caches; without
 them Julia recompiles the stdlib into the first depot. They are named rather than left to a
-trailing `:`, which expands to the same two, so the file says exactly what the path is. `$PATH` is expanded by rules_oci against the base
+trailing `:`, which expands to the same two, so the file says exactly what the path is. `$PATH` is expanded by `rules_oci` against the base
 image's own PATH. Variables of your own go in `env`, and are written to the same file.
 
 ## Caches that survive the move
@@ -141,14 +141,14 @@ own environment. If the image starts Julia with a sysimage of its own, pass its 
 ## CPU targets
 
 `JULIA_CPU_TARGET` defaults to the official Julia build's list for the target platform's CPU:
-`PORTABLE_X86_64_CPU_TARGET` on x86_64, `PORTABLE_AARCH64_CPU_TARGET` on aarch64 (untested,
+`PORTABLE_X86_64_CPU_TARGET` on `x86_64`, `PORTABLE_AARCH64_CPU_TARGET` on aarch64 (untested,
 see [Julia versions](julia-versions.md#Platforms)), both exported from `image.bzl`. A cache
 compiled for it carries a clone per target, and Julia picks the best one for the CPU it lands on, so the caches load on any host of that architecture. Compiled for
 the build machine's own CPU, Julia's default, they would be rejected on any host whose CPU
 differs and recompiled at the first start, the cost the layer exists to remove. The same value
 is in the image's environment, so anything compiled at run time is portable too. The sysimage
 layer's `cpu_target` has the same default. `julia_image_env_vars` returns a plain dict, because
-`oci_image` takes `env` only as a dict or a label, so its `cpu_target` defaults to the x86_64
+`oci_image` takes `env` only as a dict or a label, so its `cpu_target` defaults to the `x86_64`
 list; pass `PORTABLE_AARCH64_CPU_TARGET` for an aarch64 image.
 
 ## The test

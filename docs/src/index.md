@@ -57,7 +57,7 @@ on a pinned environment, a sysimage that removes load time, a container image wh
 depot holds exactly the closure and nothing else, and a build that refuses to proceed
 when the Julia and the manifest disagree instead of producing something subtly wrong.
 
-This is not a Julia language ruleset. [rules_julia](https://github.com/periareon/rules_julia)
+This is not a Julia language ruleset. [`rules_julia`](https://github.com/periareon/rules_julia)
 models Julia code as Bazel targets (`julia_library`, `julia_binary`, `julia_test`) with a Bazel
 toolchain; this module instead pins whole environments to the `Manifest.toml` Pkg already
 writes, and packages them into images. The two answer different questions.
@@ -90,7 +90,7 @@ use_repo(julia, "julia_dist", "my_depot")
 4. For an image, the rules in `julia/image.bzl` do the Julia-specific part: the distribution,
    depot, sysimage and precompile-cache layers as deterministic tars, the image's environment,
    and a test that the image starts without compiling anything. You assemble the image with
-   rules_oci (or anything else that takes tars); this module does not depend on it.
+   `rules_oci` (or anything else that takes tars); this module does not depend on it.
 
 Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing
 else. Private registries plug in through the depot's `hook`. A host-wide shared depot can sit

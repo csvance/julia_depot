@@ -171,7 +171,7 @@ something the environment used, refetch with `bazel fetch --force @app_depot`.
 
 ## Loading an image with podman on a host that also has docker
 
-Not Julia-specific, but it costs an afternoon the first time. rules_oci's `oci_load` probes
+Not Julia-specific, but it costs an afternoon the first time. `rules_oci`'s `oci_load` probes
 `command -v docker` first and falls back to podman only when that fails, so on a host where a
 docker CLI is installed but its socket is not reachable the probe wins and the load dies with
 "permission denied while trying to connect to the docker API". Name the loader instead of

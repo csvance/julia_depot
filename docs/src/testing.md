@@ -63,10 +63,10 @@ call without `sysimage_depot_repo` and `hook_depot_repo` is that reduced set.
 
 Each version in the full set also builds the image example in `e2e/image`: the dist, full depot, compiled and
 application layers from `julia/image.bzl`, the image environment, and an `oci_image` assembled
-from them with rules_oci on a digest-pinned Debian base. rules_oci is a dependency of the e2e
+from them with `rules_oci` on a digest-pinned Debian base. `rules_oci` is a dependency of the e2e
 module only. Every layer entry must be normalised (uid and gid 0, epoch mtime, 0755 or 0644),
 the dist and depot layers must come out byte-identical from two separate actions, the compiled
-layer the same entries up to the cache file hash, and rules_oci's config must carry the
+layer the same entries up to the cache file hash, and `rules_oci`'s config must carry the
 environment file and the layers in order. `julia_precompile_test` must pass on the image's layers
 and must fail, naming what it compiled, on the same layers without the compiled layer. A
 sysimage layer over an artifacts-only depot, whose registry is fetched fresh, must start without

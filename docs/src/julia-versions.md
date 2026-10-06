@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-julia_depot supports the long-term support release and the two most recent releases. When the
+`julia_depot` supports the long-term support release and the two most recent releases. When the
 LTS is one of those two, that is two versions rather than three. Each supported version has an
 end-to-end workflow, `.github/workflows/julia-<minor>.yml`, and its badge in the README; the
 workflows are the list. The LTS runs a reduced set, without a sysimage build; see
@@ -43,7 +43,7 @@ environment added as described below.
 
 ## Platforms
 
-Linux x86_64 is the supported platform. `julia.dist` downloads the official build for the
+Linux `x86_64` is the supported platform. `julia.dist` downloads the official build for the
 host, detected when the distribution is fetched. Linux aarch64 is mapped to its official build
 too, with its own CPU target list below, but it is untested and not supported: it may work, and
 your mileage may vary. macOS, Windows and other architectures fail with a message saying they
@@ -55,7 +55,7 @@ files the build under) expand.
 
 The CPU targets follow the architecture: the image rules and `sysimage.sh` default to the
 official build's list for it, `PORTABLE_X86_64_CPU_TARGET` or `PORTABLE_AARCH64_CPU_TARGET`;
-see [Images](images.md#CPU-targets). The end-to-end suite runs on Linux x86_64 only.
+see [Images](images.md#CPU-targets). The end-to-end suite runs on Linux `x86_64` only.
 
 ## Adding a Julia version
 
