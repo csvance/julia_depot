@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Julia versions — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=d7e3d034">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=eb1d9d1c">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Julia versions — julia_depot">
   <meta property="og:title" content="Julia versions — julia_depot">
@@ -51,12 +51,16 @@
       <a href="../contract/">The contract</a>
       <a href="../julia-versions/" class="md-nav-active">Julia versions</a>
       <a href="../testing/">Testing</a>
+      <a href="../used-by/">Used by</a>
     </nav>
     <main class="md-content">
       <article class="md-article">
       <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="https://github.com/csvance/julia_depot/blob/main/docs/src/julia-versions.md" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
 <h1 id="Julia-versions" class="md-heading">Julia versions<a href="#Julia-versions" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
-<p>Nothing here requires one Julia version. <code class="md-code-inline">julia.dist</code> fetches any: the sha256 is looked up for versions the module knows (1.11.9, 1.12.7, 1.13.0) and passed explicitly otherwise, per platform, from <code class="md-code-inline">https://julialang-s3.julialang.org/bin/checksums/julia-&lt;version&gt;.sha256</code>:</p>
+<h2 id="Supported-versions" class="md-heading">Supported versions<a href="#Supported-versions" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>julia_depot supports the long-term support release and the two most recent releases. When the LTS is one of those two, that is two versions rather than three. Each supported version has an end-to-end workflow, <code class="md-code-inline">.github/workflows/julia-&lt;minor&gt;.yml</code>, and its badge in the README; the workflows are the list. The LTS runs a reduced set, without a sysimage build; see <a href="../testing/#The-matrix">Testing</a>.</p>
+<h2 id="Fetching-any-version" class="md-heading">Fetching any version<a href="#Fetching-any-version" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>Nothing here requires one Julia version. <code class="md-code-inline">julia.dist</code> fetches any: the sha256 is looked up for the versions the module knows, listed in <code class="md-code-inline">_KNOWN_SHA256</code> in <a href="https://github.com/csvance/julia_depot/blob/main/julia/dist.bzl"><code class="md-code-inline">julia/dist.bzl</code></a>, and passed explicitly otherwise, per platform, from <code class="md-code-inline">https://julialang-s3.julialang.org/bin/checksums/julia-&lt;version&gt;.sha256</code>:</p>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
 <pre><code class="language-python">julia.dist(
@@ -69,7 +73,7 @@
 )</code></pre>
 </div>
 <p>The depot rule pins nothing itself; it enforces that YOUR manifest was resolved under the Julia you fetched. Moving to a new Julia is therefore one change in two places, the distribution version and a re-resolved manifest, and a mismatch fails at fetch time with a message rather than producing a subtly different depot.</p>
-<p>The one version-specific thing the module ships is the PackageCompiler environment a sysimage is built with, because PackageCompiler&#39;s compat and precompile cache are keyed on the Julia minor. There is one per minor under <code class="md-code-inline">julia/sysimage/v&lt;major&gt;.&lt;minor&gt;/</code>, and <code class="md-code-inline">sysimage.sh auto</code> picks the one matching the running Julia, failing with the list of available ones when yours is missing.</p>
+<p>The one version-specific thing the module ships is the PackageCompiler environment a sysimage is built with, because PackageCompiler&#39;s compat and precompile cache are keyed on the Julia minor. There is one per minor under <code class="md-code-inline">julia/sysimage/v&lt;major&gt;.&lt;minor&gt;/</code>, and <code class="md-code-inline">sysimage.sh auto</code> picks the one matching the running Julia, failing with the list of available ones when yours is missing. The minors the module ships one for are the directories under <a href="https://github.com/csvance/julia_depot/tree/main/julia/sysimage"><code class="md-code-inline">julia/sysimage/</code></a>; on any other minor the distribution, depots and image layers work, and a sysimage needs an environment added as described below.</p>
 <h2 id="Platforms" class="md-heading">Platforms<a href="#Platforms" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>Linux x86<em>64 is the supported platform. <code class="md-code-inline">julia.dist</code> downloads the official build for the host, detected when the distribution is fetched. Linux aarch64 is mapped to its official build too, with its own CPU target list below, but it is untested and not supported: it may work, and your mileage may vary. macOS, Windows and other architectures fail with a message saying they are not supported yet, because the scripts need GNU tar, coreutils and a Linux Julia; the check runs only when a Julia repository is actually fetched, so a host that never builds a Julia target is unaffected. <code class="md-code-inline">url</code> and `strip</em>prefix<code class="md-code-inline">are templates, so one declaration serves both architectures, and a mirror too:</code>{version}<code class="md-code-inline">(1.12.7),</code>{minor}<code class="md-code-inline">(1.12),</code>{platform}<code class="md-code-inline">(</code>linux-x86<em>64<code class="md-code-inline">) and</code>{arch</em>dir}<code class="md-code-inline">(</code>x64`, the directory julialang-s3 files the build under) expand.</p>
 <p>The CPU targets follow the architecture: the image rules and <code class="md-code-inline">sysimage.sh</code> default to the official build&#39;s list for it, <code class="md-code-inline">PORTABLE_X86_64_CPU_TARGET</code> or <code class="md-code-inline">PORTABLE_AARCH64_CPU_TARGET</code>; see <a href="../images/#CPU-targets">Images</a>. The end-to-end suite runs on Linux x86_64 only.</p>
@@ -92,6 +96,8 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
 </div>
 <p><strong>Three.</strong> The sha256 for each platform in <code class="md-code-inline">_KNOWN_SHA256</code> in <code class="md-code-inline">julia/dist.bzl</code>.</p>
 <p><strong>Four.</strong> The declarations: four repositories in <code class="md-code-inline">e2e/MODULE.bazel</code> (distribution, depot, sysimage depot, hook depot), a <code class="md-code-inline">julia_version_tests()</code> call in <code class="md-code-inline">e2e/tests/BUILD.bazel</code>, a <code class="md-code-inline">julia_image_tests()</code> call in <code class="md-code-inline">e2e/image/BUILD.bazel</code>, a <code class="md-code-inline">version_mismatch_test()</code> call for each pair worth covering, a copy of <code class="md-code-inline">.github/workflows/julia-1.13.yml</code> as <code class="md-code-inline">julia-1.14.yml</code> with the version and tag changed, and its badge beside the others at the top of <code class="md-code-inline">README.md</code>.</p>
+<p>A version run with the reduced set, as the LTS is, skips step One and needs only two repositories in step Four, the distribution and the depot, a <code class="md-code-inline">julia_version_tests()</code> call without <code class="md-code-inline">sysimage_depot_repo</code> and <code class="md-code-inline">hook_depot_repo</code>, and no <code class="md-code-inline">julia_image_tests()</code> call.</p>
+<p>When a version leaves support, remove the same pieces: its workflow, badge, test calls, repositories, test project and, if nothing else uses it, its PackageCompiler environment.</p>
       </article>
       <footer class="md-footer">
 <p>Built with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and <a href="https://github.com/mthelm85/MaterialDocs.jl">MaterialDocs.jl</a>.</p>
@@ -100,6 +106,8 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
     <aside class="md-toc">
       <div class="md-toc-inner">
         <p class="md-toc-title">On this page</p>
+          <a class="md-toc-link md-toc-h2" href="#Supported-versions">Supported versions</a>
+          <a class="md-toc-link md-toc-h2" href="#Fetching-any-version">Fetching any version</a>
           <a class="md-toc-link md-toc-h2" href="#Platforms">Platforms</a>
           <a class="md-toc-link md-toc-h2" href="#Adding-a-Julia-version">Adding a Julia version</a>
       </div>
@@ -111,6 +119,6 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=d7e3d034"></script>
+  <script src="../assets/materialdocs.js?v=eb1d9d1c"></script>
 </body>
 </html>
