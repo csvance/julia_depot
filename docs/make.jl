@@ -34,6 +34,7 @@ makedocs(
         "The contract" => "contract.md",
         "Julia versions" => "julia-versions.md",
         "Testing" => "testing.md",
+        "Used by" => "used-by.md",
     ],
 )
 
