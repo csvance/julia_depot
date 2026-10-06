@@ -26,7 +26,7 @@ depot="$(overlay_depot "$(first_depot "$(stamp_value "$stamp" depot)")" "$julia_
 
 rc=0
 output="$(
-    RULES_JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$depot" \
+    JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$depot" \
         "$instantiate" "$project" "$project/Manifest.toml" "$TEST_TMPDIR/refused.stamp" 2>&1
 )" || rc=$?
 [ "$rc" -ne 0 ] ||
@@ -39,7 +39,7 @@ esac
 [ ! -e "$TEST_TMPDIR/refused.stamp" ] ||
     fail "instantiate.sh wrote a stamp despite refusing the manifest"
 
-RULES_JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$depot" \
+JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$depot" \
     "$instantiate" "$project" "$project/Manifest-v$minor.toml" "$TEST_TMPDIR/accepted.stamp" ||
     fail "instantiate.sh refused the versioned manifest Julia actually uses"
 want_sha="$(sha256sum "$project/Manifest-v$minor.toml" | cut -d' ' -f1)"
@@ -50,7 +50,7 @@ old="$(copy_project "$manifest" "$TEST_TMPDIR/old_format")"
 sed -i '/^julia_version *=/d' "$old/Manifest.toml"
 rc=0
 output="$(
-    RULES_JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$depot" \
+    JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$depot" \
         "$instantiate" "$old" "$old/Manifest.toml" "$TEST_TMPDIR/old.stamp" 2>&1
 )" || rc=$?
 [ "$rc" -ne 0 ] || fail "instantiate.sh accepted a manifest that records no julia_version"

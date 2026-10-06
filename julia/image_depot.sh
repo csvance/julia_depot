@@ -4,17 +4,20 @@
 # Usage: image_depot.sh <project dir> <output tar>
 #
 # Environment:
-#   RULES_JULIA_DEPOT_BIN                     required, the julia to instantiate with
+#   JULIA_DEPOT_BIN               required, the julia to instantiate with
 #   JULIA_DEPOT_PATH              required, the SOURCE depot: its registries/ and servers/
 #                                 (package-server credentials) are copied into the clean
 #                                 depot so instantiate resolves the way the developer does
 #   JULIA_PKG_SERVER              optional, passed through to Pkg (default: Pkg's default)
-#   RULES_JULIA_DEPOT_CONTENTS          artifacts (default) | full, see below
-#   RULES_JULIA_DEPOT_IMAGE_PREFIX      path of the depot inside the image, default opt/julia-depot
-#   RULES_JULIA_DEPOT_MIN_ARTIFACTS     sanity floor on artifact directories, default 1
-#   RULES_JULIA_DEPOT_OVERRIDES_BUILD   optional artifacts/Overrides.toml for the build (see below)
-#   RULES_JULIA_DEPOT_OVERRIDES_IMAGE   the artifacts/Overrides.toml to ship in the image,
+#   JULIA_DEPOT_CONTENTS          artifacts (default) | full, see below
+#   JULIA_DEPOT_IMAGE_PREFIX      path of the depot inside the image, default opt/julia-depot
+#   JULIA_DEPOT_MIN_ARTIFACTS     sanity floor on artifact directories, default 1
+#   JULIA_DEPOT_OVERRIDES_BUILD   optional artifacts/Overrides.toml for the build (see below)
+#   JULIA_DEPOT_OVERRIDES_IMAGE   the artifacts/Overrides.toml to ship in the image,
 #                                 required whenever the build one is set
+#
+# JULIA_DEPOT_PATH is Julia's own; the others are this script's, and before 0.1.1 were spelled
+# RULES_JULIA_DEPOT_*. The old spelling still works, with a deprecation warning.
 #
 # WHY A SECOND DEPOT. depot.bzl conforms the developer's ambient depot to the Manifest,
 # which is right for building fast on a workstation and wrong for an image: that tree
@@ -50,10 +53,21 @@
 # TOML spelling, bare or quoted.
 set -euo pipefail
 
+# DEPRECATED SPELLINGS. Before 0.1.1 these variables were named RULES_JULIA_DEPOT_<name>. The old
+# spelling is still read, with a warning, when the new one is unset; it will be removed in a
+# release that raises the module's compatibility_level.
+for _name in BIN CONTENTS IMAGE_PREFIX MIN_ARTIFACTS OVERRIDES_BUILD OVERRIDES_IMAGE; do
+    _old="RULES_JULIA_DEPOT_$_name" _new="JULIA_DEPOT_$_name"
+    if [ -z "${!_new+set}" ] && [ -n "${!_old+set}" ]; then
+        echo "warning: $_old is deprecated; set $_new instead" >&2
+        export "$_new=${!_old}"
+    fi
+done
+
 proj="${1:?usage: image_depot.sh <project dir> <output tar>}"
 out="${2:?usage: image_depot.sh <project dir> <output tar>}"
 
-: "${RULES_JULIA_DEPOT_BIN:?RULES_JULIA_DEPOT_BIN must be set to the pinned julia}"
+: "${JULIA_DEPOT_BIN:?JULIA_DEPOT_BIN must be set to the pinned julia}"
 : "${JULIA_DEPOT_PATH:?JULIA_DEPOT_PATH must be set; source the depot rule env.sh first}"
 
 # The two override files are a PAIR. A build-time override with no image-time one would
@@ -61,17 +75,17 @@ out="${2:?usage: image_depot.sh <project dir> <output tar>}"
 # carry neither the registry artifact (the override stopped its download) nor a valid
 # path to a replacement, and would die in the first JLL's __init__ with a path that does
 # not exist. Refusing here costs a build; the alternative costs a deployment.
-if [ -n "${RULES_JULIA_DEPOT_OVERRIDES_BUILD:-}" ] && [ -z "${RULES_JULIA_DEPOT_OVERRIDES_IMAGE:-}" ]; then
-    echo "FAILED: RULES_JULIA_DEPOT_OVERRIDES_BUILD is set without RULES_JULIA_DEPOT_OVERRIDES_IMAGE," >&2
+if [ -n "${JULIA_DEPOT_OVERRIDES_BUILD:-}" ] && [ -z "${JULIA_DEPOT_OVERRIDES_IMAGE:-}" ]; then
+    echo "FAILED: JULIA_DEPOT_OVERRIDES_BUILD is set without JULIA_DEPOT_OVERRIDES_IMAGE," >&2
     echo "        which would ship this host's paths in the image. Set both." >&2
     exit 1
 fi
 
 # Relative inside the tar either way; a leading slash is accepted and dropped.
-depot_prefix="${RULES_JULIA_DEPOT_IMAGE_PREFIX:-opt/julia-depot}"
+depot_prefix="${JULIA_DEPOT_IMAGE_PREFIX:-opt/julia-depot}"
 depot_prefix="${depot_prefix#/}"
-contents="${RULES_JULIA_DEPOT_CONTENTS:-artifacts}"
-min_artifacts="${RULES_JULIA_DEPOT_MIN_ARTIFACTS:-1}"
+contents="${JULIA_DEPOT_CONTENTS:-artifacts}"
+min_artifacts="${JULIA_DEPOT_MIN_ARTIFACTS:-1}"
 src_depot="${JULIA_DEPOT_PATH%%:*}"
 
 fresh="$(mktemp -d)"
@@ -93,9 +107,9 @@ if [ -d "$src_depot/registries" ]; then
     cp -a "$src_depot/registries" "$fresh/registries"
 fi
 
-if [ -n "${RULES_JULIA_DEPOT_OVERRIDES_BUILD:-}" ]; then
+if [ -n "${JULIA_DEPOT_OVERRIDES_BUILD:-}" ]; then
     mkdir -p "$fresh/artifacts"
-    cp "$RULES_JULIA_DEPOT_OVERRIDES_BUILD" "$fresh/artifacts/Overrides.toml"
+    cp "$JULIA_DEPOT_OVERRIDES_BUILD" "$fresh/artifacts/Overrides.toml"
 fi
 
 echo "==> instantiating the Manifest into a clean depot"
@@ -118,14 +132,14 @@ fi
 # are named rather than left to a trailing colon, which expands to the same two (Julia
 # 1.10 and later leave ~/.julia out of it), so the path says exactly what it is. The layer is unaffected: only artifacts/,
 # packages/ and compiled/ of the fresh depot leave here.
-julia_prefix="$(cd "$(dirname "$(readlink -f "$RULES_JULIA_DEPOT_BIN")")/.." && pwd)"
+julia_prefix="$(cd "$(dirname "$(readlink -f "$JULIA_DEPOT_BIN")")/.." && pwd)"
 depot_path="$fresh:$julia_prefix/local/share/julia:$julia_prefix/share/julia"
 
 env_args=(JULIA_DEPOT_PATH="$depot_path" JULIA_PKG_PRECOMPILE_AUTO=0)
 if [ -n "${JULIA_PKG_SERVER:-}" ]; then
     env_args+=(JULIA_PKG_SERVER="$JULIA_PKG_SERVER")
 fi
-env "${env_args[@]}" "$RULES_JULIA_DEPOT_BIN" --startup-file=no --project="$proj" -e "$instantiate"
+env "${env_args[@]}" "$JULIA_DEPOT_BIN" --startup-file=no --project="$proj" -e "$instantiate"
 
 if [ ! -d "$fresh/artifacts" ]; then
     echo "FAILED: instantiate produced no artifacts/ in the clean depot" >&2
@@ -136,11 +150,11 @@ n="$(find "$fresh/artifacts" -mindepth 1 -maxdepth 1 -type d | wc -l)"
 kb="$(du -sk "$fresh/artifacts" | cut -f1)"
 echo "==> $n artifact directories, $((kb / 1024)) MiB"
 if [ "$n" -lt "$min_artifacts" ]; then
-    echo "FAILED: only $n artifact directories, below RULES_JULIA_DEPOT_MIN_ARTIFACTS=$min_artifacts" >&2
+    echo "FAILED: only $n artifact directories, below JULIA_DEPOT_MIN_ARTIFACTS=$min_artifacts" >&2
     exit 1
 fi
 
-if [ -n "${RULES_JULIA_DEPOT_OVERRIDES_BUILD:-}" ]; then
+if [ -n "${JULIA_DEPOT_OVERRIDES_BUILD:-}" ]; then
     # Hash-keyed entries only: those are the ones Pkg honours at DOWNLOAD time, and so
     # the only ones whose presence in artifacts/ means the override did not take. A TOML
     # key may be bare or quoted, and both spellings have to be recognised, because an
@@ -148,7 +162,7 @@ if [ -n "${RULES_JULIA_DEPOT_OVERRIDES_BUILD:-}" ]; then
     # the artifact and loads the registry one. A file with no hash-keyed entries at all
     # is legitimate (UUID and name overrides are resolved at load time), so a match is
     # not required, only checked.
-    for h in $(sed -nE 's/^[[:space:]]*"?([0-9a-f]{40})"?[[:space:]]*=.*/\1/p' "$RULES_JULIA_DEPOT_OVERRIDES_BUILD"); do
+    for h in $(sed -nE 's/^[[:space:]]*"?([0-9a-f]{40})"?[[:space:]]*=.*/\1/p' "$JULIA_DEPOT_OVERRIDES_BUILD"); do
         if [ -d "$fresh/artifacts/$h" ]; then
             echo "FAILED: artifact $h was downloaded despite the override" >&2
             exit 1
@@ -158,8 +172,8 @@ fi
 
 mkdir -p "$stage/$depot_prefix"
 mv "$fresh/artifacts" "$stage/$depot_prefix/artifacts"
-if [ -n "${RULES_JULIA_DEPOT_OVERRIDES_IMAGE:-}" ]; then
-    cp "$RULES_JULIA_DEPOT_OVERRIDES_IMAGE" "$stage/$depot_prefix/artifacts/Overrides.toml"
+if [ -n "${JULIA_DEPOT_OVERRIDES_IMAGE:-}" ]; then
+    cp "$JULIA_DEPOT_OVERRIDES_IMAGE" "$stage/$depot_prefix/artifacts/Overrides.toml"
 fi
 
 # WHAT ELSE GOES IN. Default is artifacts only, which is right when a sysimage carries
@@ -175,12 +189,12 @@ case "$contents" in
             fi
         done
         if [ ! -d "$stage/$depot_prefix/packages" ]; then
-            echo "FAILED: RULES_JULIA_DEPOT_CONTENTS=full but instantiate produced no packages/" >&2
+            echo "FAILED: JULIA_DEPOT_CONTENTS=full but instantiate produced no packages/" >&2
             exit 1
         fi
         ;;
     *)
-        echo "FAILED: RULES_JULIA_DEPOT_CONTENTS must be 'artifacts' or 'full'" >&2
+        echo "FAILED: JULIA_DEPOT_CONTENTS must be 'artifacts' or 'full'" >&2
         exit 1
         ;;
 esac

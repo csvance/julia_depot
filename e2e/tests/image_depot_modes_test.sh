@@ -28,9 +28,9 @@ src_depot="$(first_depot "$(stamp_value "$stamp" depot)")"
 build_layer() {
     local contents="$1" out="$2"
     shift 2
-    env RULES_JULIA_DEPOT_BIN="$julia_bin" \
+    env JULIA_DEPOT_BIN="$julia_bin" \
         JULIA_DEPOT_PATH="$src_depot" \
-        RULES_JULIA_DEPOT_CONTENTS="$contents" \
+        JULIA_DEPOT_CONTENTS="$contents" \
         "$@" \
         "$image_depot" "$project" "$out"
 }
@@ -78,20 +78,33 @@ grep -qE '^opt/julia-depot/artifacts/[0-9a-f]{40}/' <<<"$full_listing" ||
 assert_no_secrets "$full_listing"
 
 # --- the prefix is configurable ---------------------------------------------------
-build_layer artifacts "$TEST_TMPDIR/prefixed.tar" RULES_JULIA_DEPOT_IMAGE_PREFIX=srv/depot
+build_layer artifacts "$TEST_TMPDIR/prefixed.tar" JULIA_DEPOT_IMAGE_PREFIX=srv/depot
 prefixed_listing="$(tar -tf "$TEST_TMPDIR/prefixed.tar")"
 grep -qE '^srv/depot/artifacts/[0-9a-f]{40}/' <<<"$prefixed_listing" ||
-    fail "RULES_JULIA_DEPOT_IMAGE_PREFIX was ignored:
+    fail "JULIA_DEPOT_IMAGE_PREFIX was ignored:
 $(head <<<"$prefixed_listing")"
 
 # --- the artifact floor is a real floor -------------------------------------------
 rc=0
-output="$(build_layer artifacts "$TEST_TMPDIR/floor.tar" RULES_JULIA_DEPOT_MIN_ARTIFACTS=9999 2>&1)" || rc=$?
+output="$(build_layer artifacts "$TEST_TMPDIR/floor.tar" JULIA_DEPOT_MIN_ARTIFACTS=9999 2>&1)" || rc=$?
 [ "$rc" -ne 0 ] ||
-    fail "RULES_JULIA_DEPOT_MIN_ARTIFACTS=9999 was satisfied by a two-package project"
+    fail "JULIA_DEPOT_MIN_ARTIFACTS=9999 was satisfied by a two-package project"
 case "$output" in
-    *"below RULES_JULIA_DEPOT_MIN_ARTIFACTS"*) ;;
+    *"below JULIA_DEPOT_MIN_ARTIFACTS"*) ;;
     *) fail "the artifact floor failed with the wrong message:
+$output" ;;
+esac
+
+# --- the pre-0.1.1 spelling still works ------------------------------------------
+# RULES_JULIA_DEPOT_MIN_ARTIFACTS is honoured, with a deprecation warning, when the new
+# name is unset.
+rc=0
+output="$(build_layer artifacts "$TEST_TMPDIR/floor_old.tar" RULES_JULIA_DEPOT_MIN_ARTIFACTS=9999 2>&1)" || rc=$?
+[ "$rc" -ne 0 ] ||
+    fail "the deprecated RULES_JULIA_DEPOT_MIN_ARTIFACTS=9999 was ignored"
+case "$output" in
+    *"RULES_JULIA_DEPOT_MIN_ARTIFACTS is deprecated; set JULIA_DEPOT_MIN_ARTIFACTS instead"*) ;;
+    *) fail "no deprecation warning for RULES_JULIA_DEPOT_MIN_ARTIFACTS:
 $output" ;;
 esac
 

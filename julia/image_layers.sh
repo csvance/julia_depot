@@ -229,7 +229,7 @@ cmd_dist() {
 }
 
 # --- depot: image_depot.sh on a staged project ---------------------------------------------
-# image_depot.sh reads its options from the environment (RULES_JULIA_DEPOT_CONTENTS and friends), and the
+# image_depot.sh reads its options from the environment (JULIA_DEPOT_CONTENTS and friends), and the
 # rule sets them; this only supplies what it needs from the build: Julia, the staged project, and
 # a source depot for registries and server credentials. With no stamp the source depot is EMPTY, so
 # the registry is fetched into the clean depot rather than copied from whatever this host has; the
@@ -246,7 +246,7 @@ cmd_depot() {
         JULIA_DEPOT_PATH="$(stamp_depot "$stamp")"
         export JULIA_DEPOT_PATH
     fi
-    RULES_JULIA_DEPOT_BIN="$(abspath "$julia")" "$here/image_depot.sh" "$project" "$(abspath "$out")"
+    JULIA_DEPOT_BIN="$(abspath "$julia")" "$here/image_depot.sh" "$project" "$(abspath "$out")"
 }
 
 # --- sysimage: sysimage.sh on a staged project, at a path in the image ---------------------
@@ -262,7 +262,7 @@ cmd_sysimage() {
     root="$(julia_root "$julia")"
     mkdir -p "$scratch/depot" "$stage/$(dirname "$path")"
     JULIA_DEPOT_PATH="$scratch/depot:$(stamp_depot "$stamp"):$root/local/share/julia:$root/share/julia" \
-        RULES_JULIA_DEPOT_BIN="$(abspath "$julia")" \
+        JULIA_DEPOT_BIN="$(abspath "$julia")" \
         "$here/sysimage.sh" "$project" auto "$stage/$path"
     write_layer "$out" "$stage"
 }

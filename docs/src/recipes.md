@@ -5,6 +5,11 @@ machine path enters an action key, and run a script. `no-sandbox` rather than `l
 the actions that need the depot at its real path: both let the action see it, but `local`
 also disables remote caching.
 
+The scripts' own variables are spelled `JULIA_DEPOT_*`, beside Julia's `JULIA_DEPOT_PATH`.
+Before 0.1.1 they were `RULES_JULIA_DEPOT_*`; that spelling still works, with a deprecation
+warning, and a hook is still given `RULES_JULIA_DEPOT_BIN` too, until a future release raises
+the module's compatibility level.
+
 ## A depot layer for an image
 
 `julia_depot_layer` in `julia/image.bzl` is this recipe as a rule, alongside the other image
@@ -26,16 +31,16 @@ genrule(
     cmd = """
 set -euo pipefail
 . $(location @my_depot//:env.sh)
-export RULES_JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
+export JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
 $(location @julia_depot//julia:image_depot.sh) "$$(dirname $(location Manifest.toml))" "$@"
 """,
     tags = ["no-sandbox", "requires-network"],
 )
 ```
 
-The tar unpacks at `opt/julia-depot` (`RULES_JULIA_DEPOT_IMAGE_PREFIX` to change it) and holds
+The tar unpacks at `opt/julia-depot` (`JULIA_DEPOT_IMAGE_PREFIX` to change it) and holds
 `artifacts/` only. That is right when a sysimage carries the code. For an image that loads
-packages from source, set `RULES_JULIA_DEPOT_CONTENTS=full` to ship `packages/` too. Set
+packages from source, set `JULIA_DEPOT_CONTENTS=full` to ship `packages/` too. Set
 `JULIA_PKG_SERVER` in the command if your packages come from a private server; the script
 copies the source depot's registries and server credentials into the clean depot for the
 duration of the instantiate and never into the layer.
@@ -51,8 +56,8 @@ patched source, ship the replacement in its own layer at a fixed path and pass t
 override files:
 
 ```
-RULES_JULIA_DEPOT_OVERRIDES_BUILD=build.toml    # names the directory on the build host
-RULES_JULIA_DEPOT_OVERRIDES_IMAGE=image.toml    # names the path inside the image; this one ships
+JULIA_DEPOT_OVERRIDES_BUILD=build.toml    # names the directory on the build host
+JULIA_DEPOT_OVERRIDES_IMAGE=image.toml    # names the path inside the image; this one ships
 ```
 
 Both are `artifacts/Overrides.toml` files keyed by the artifact's git tree hash. Pkg skips
@@ -79,8 +84,8 @@ genrule(
     cmd = """
 set -euo pipefail
 . $(location @my_depot//:env.sh)
-export RULES_JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
-export RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="MyApp"
+export JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
+export JULIA_DEPOT_SYSIMAGE_PACKAGES="MyApp"
 proj="$$(mktemp -d)"; trap 'rm -rf "$$proj"' EXIT
 cp -rL "$$(dirname $(location Manifest.toml))"/. "$$proj"/
 $(location @julia_depot//julia:sysimage.sh) "$$proj" auto "$@"
@@ -102,7 +107,7 @@ the environment matches the manifest by the time the script runs.
 
 ## A private registry
 
-Give the depot a `hook`: an executable run before instantiate with `RULES_JULIA_DEPOT_BIN` and
+Give the depot a `hook`: an executable run before instantiate with `JULIA_DEPOT_BIN` and
 `JULIA_DEPOT_PATH` set, plus any variables named in `hook_environ`, which also become
 inputs so a change refetches. The hook adds the registry and writes the package server
 credential into the depot; it is yours, and the module knows nothing about it.

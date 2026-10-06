@@ -308,9 +308,9 @@ def _julia_depot_layer_impl(ctx):
     stamp = _stamp(ctx)
     env = dict(ctx.attr.env)
     env.update({
-        "RULES_JULIA_DEPOT_CONTENTS": ctx.attr.contents,
-        "RULES_JULIA_DEPOT_IMAGE_PREFIX": _check_absolute("prefix", ctx.attr.prefix),
-        "RULES_JULIA_DEPOT_MIN_ARTIFACTS": str(ctx.attr.min_artifacts),
+        "JULIA_DEPOT_CONTENTS": ctx.attr.contents,
+        "JULIA_DEPOT_IMAGE_PREFIX": _check_absolute("prefix", ctx.attr.prefix),
+        "JULIA_DEPOT_MIN_ARTIFACTS": str(ctx.attr.min_artifacts),
     })
     inputs = list(files)
     if stamp:
@@ -318,10 +318,10 @@ def _julia_depot_layer_impl(ctx):
     if ctx.file.overrides_build:
         if not ctx.file.overrides_image:
             fail("overrides_build without overrides_image would ship this host's paths; set both")
-        env["RULES_JULIA_DEPOT_OVERRIDES_BUILD"] = ctx.file.overrides_build.path
+        env["JULIA_DEPOT_OVERRIDES_BUILD"] = ctx.file.overrides_build.path
         inputs.append(ctx.file.overrides_build)
     if ctx.file.overrides_image:
-        env["RULES_JULIA_DEPOT_OVERRIDES_IMAGE"] = ctx.file.overrides_image.path
+        env["JULIA_DEPOT_OVERRIDES_IMAGE"] = ctx.file.overrides_image.path
         inputs.append(ctx.file.overrides_image)
     _layer_run(
         ctx,
@@ -366,8 +366,8 @@ def _julia_sysimage_layer_impl(ctx):
         fail("packages: name at least one package to bake")
     env = dict(ctx.attr.env)
     env.update({
-        "RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES": " ".join(ctx.attr.packages),
-        "RULES_JULIA_DEPOT_SYSIMAGE_CPU_TARGET": _cpu_target(ctx),
+        "JULIA_DEPOT_SYSIMAGE_PACKAGES": " ".join(ctx.attr.packages),
+        "JULIA_DEPOT_SYSIMAGE_CPU_TARGET": _cpu_target(ctx),
     })
     _layer_run(
         ctx,

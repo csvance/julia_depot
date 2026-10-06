@@ -15,7 +15,13 @@
 # regression there fails the fetch rather than going unnoticed.
 set -euo pipefail
 
-: "${RULES_JULIA_DEPOT_BIN:?julia_depot must run the hook with RULES_JULIA_DEPOT_BIN set}"
+: "${JULIA_DEPOT_BIN:?julia_depot must run the hook with JULIA_DEPOT_BIN set}"
+
+# The pre-0.1.1 name, still given (deprecated) so existing hooks keep working.
+[ "${RULES_JULIA_DEPOT_BIN:-}" = "$JULIA_DEPOT_BIN" ] || {
+    echo "julia_depot must still give the hook RULES_JULIA_DEPOT_BIN, equal to JULIA_DEPOT_BIN" >&2
+    exit 1
+}
 : "${E2E_HOOK_VALUE:?this hook is declared with hook_environ = [\"E2E_HOOK_VALUE\"]}"
 
 # The depot rule always hands the hook JULIA_DEPOT_PATH, the same value env.sh exports and
@@ -27,9 +33,9 @@ depot="${JULIA_DEPOT_PATH%%:*}"
 # The marker is keyed on the Julia version, because every version in the matrix has a
 # hooked depot and they all share this ambient depot: one filename would mean the last
 # fetch overwrote the others, and the ordering check in the test would then be comparing
-# a marker against another version's stamp. Asking RULES_JULIA_DEPOT_BIN for the version also proves
+# a marker against another version's stamp. Asking JULIA_DEPOT_BIN for the version also proves
 # the rule handed over a Julia that runs, not just a variable that is set.
-version="$("$RULES_JULIA_DEPOT_BIN" --startup-file=no -e 'print(VERSION)')"
+version="$("$JULIA_DEPOT_BIN" --startup-file=no -e 'print(VERSION)')"
 
 dir="$depot/julia_depot_e2e"
 mkdir -p "$dir"

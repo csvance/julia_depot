@@ -25,7 +25,7 @@ want_version="$4"
     . "$env_sh"
 ) || fail "env.sh is not sourceable"
 
-if grep -qE 'RULES_JULIA_DEPOT_BIN|/bin/julia' "$env_sh"; then
+if grep -qE 'JULIA_DEPOT_BIN|/bin/julia' "$env_sh"; then
     fail "env.sh names a julia binary; consumers take Julia as a label, not from here:
 $(cat "$env_sh")"
 fi

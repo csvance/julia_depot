@@ -63,12 +63,12 @@ printf '%s = "%s"\n' "$hash" "/opt/julia-depot/local/bzip2" > "$TEST_TMPDIR/over
 # The floor goes to zero deliberately: the project's only artifact is the overridden
 # one, so a correct build produces an EMPTY artifacts directory, and the default floor
 # of one would call that a failure.
-env RULES_JULIA_DEPOT_BIN="$julia_bin" \
+env JULIA_DEPOT_BIN="$julia_bin" \
     JULIA_DEPOT_PATH="$src_depot" \
-    RULES_JULIA_DEPOT_CONTENTS=artifacts \
-    RULES_JULIA_DEPOT_MIN_ARTIFACTS=0 \
-    RULES_JULIA_DEPOT_OVERRIDES_BUILD="$TEST_TMPDIR/overrides-build.toml" \
-    RULES_JULIA_DEPOT_OVERRIDES_IMAGE="$TEST_TMPDIR/overrides-image.toml" \
+    JULIA_DEPOT_CONTENTS=artifacts \
+    JULIA_DEPOT_MIN_ARTIFACTS=0 \
+    JULIA_DEPOT_OVERRIDES_BUILD="$TEST_TMPDIR/overrides-build.toml" \
+    JULIA_DEPOT_OVERRIDES_IMAGE="$TEST_TMPDIR/overrides-image.toml" \
     "$image_depot" "$project" "$TEST_TMPDIR/overridden.tar"
 
 listing="$(tar -tf "$TEST_TMPDIR/overridden.tar")"
@@ -96,12 +96,12 @@ printf '%s = "%s"\n' "$hash" "$TEST_TMPDIR/was-never-built" > "$TEST_TMPDIR/over
 
 rc=0
 output="$(
-    env RULES_JULIA_DEPOT_BIN="$julia_bin" \
+    env JULIA_DEPOT_BIN="$julia_bin" \
         JULIA_DEPOT_PATH="$src_depot" \
-        RULES_JULIA_DEPOT_CONTENTS=artifacts \
-        RULES_JULIA_DEPOT_MIN_ARTIFACTS=0 \
-        RULES_JULIA_DEPOT_OVERRIDES_BUILD="$TEST_TMPDIR/overrides-bad.toml" \
-        RULES_JULIA_DEPOT_OVERRIDES_IMAGE="$TEST_TMPDIR/overrides-image.toml" \
+        JULIA_DEPOT_CONTENTS=artifacts \
+        JULIA_DEPOT_MIN_ARTIFACTS=0 \
+        JULIA_DEPOT_OVERRIDES_BUILD="$TEST_TMPDIR/overrides-bad.toml" \
+        JULIA_DEPOT_OVERRIDES_IMAGE="$TEST_TMPDIR/overrides-image.toml" \
         "$image_depot" "$project" "$TEST_TMPDIR/broken.tar" 2>&1
 )" || rc=$?
 
@@ -121,12 +121,12 @@ printf '"%s" = "%s"\n' "$hash" "$TEST_TMPDIR/was-never-built" > "$TEST_TMPDIR/ov
 
 rc=0
 output="$(
-    env RULES_JULIA_DEPOT_BIN="$julia_bin" \
+    env JULIA_DEPOT_BIN="$julia_bin" \
         JULIA_DEPOT_PATH="$src_depot" \
-        RULES_JULIA_DEPOT_CONTENTS=artifacts \
-        RULES_JULIA_DEPOT_MIN_ARTIFACTS=0 \
-        RULES_JULIA_DEPOT_OVERRIDES_BUILD="$TEST_TMPDIR/overrides-quoted.toml" \
-        RULES_JULIA_DEPOT_OVERRIDES_IMAGE="$TEST_TMPDIR/overrides-image.toml" \
+        JULIA_DEPOT_CONTENTS=artifacts \
+        JULIA_DEPOT_MIN_ARTIFACTS=0 \
+        JULIA_DEPOT_OVERRIDES_BUILD="$TEST_TMPDIR/overrides-quoted.toml" \
+        JULIA_DEPOT_OVERRIDES_IMAGE="$TEST_TMPDIR/overrides-image.toml" \
         "$image_depot" "$project" "$TEST_TMPDIR/quoted.tar" 2>&1
 )" || rc=$?
 
@@ -142,16 +142,16 @@ esac
 # --- an unpaired override is refused up front -------------------------------------
 rc=0
 output="$(
-    env RULES_JULIA_DEPOT_BIN="$julia_bin" \
+    env JULIA_DEPOT_BIN="$julia_bin" \
         JULIA_DEPOT_PATH="$src_depot" \
-        RULES_JULIA_DEPOT_OVERRIDES_BUILD="$TEST_TMPDIR/overrides-build.toml" \
+        JULIA_DEPOT_OVERRIDES_BUILD="$TEST_TMPDIR/overrides-build.toml" \
         "$image_depot" "$project" "$TEST_TMPDIR/unpaired.tar" 2>&1
 )" || rc=$?
 
 [ "$rc" -ne 0 ] ||
     fail "a build-time override with no image-time one produced a layer holding this host's paths"
 case "$output" in
-    *"RULES_JULIA_DEPOT_OVERRIDES_IMAGE"*) ;;
+    *"JULIA_DEPOT_OVERRIDES_IMAGE"*) ;;
     *) fail "the unpaired override failed, but not on the pairing guard:
 $output" ;;
 esac

@@ -26,7 +26,7 @@ depot="$(overlay_depot "$(first_depot "$(stamp_value "$stamp" depot)")" "$julia_
 
 rc=0
 output="$(
-    RULES_JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$depot" \
+    JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$depot" \
         "$instantiate" "$project" "$project/Manifest.toml" "$stamp_out" 2>&1
 )" || rc=$?
 

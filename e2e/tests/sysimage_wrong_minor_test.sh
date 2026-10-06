@@ -22,9 +22,9 @@ build_project="$(dirname "$wrong_manifest")"
 
 rc=0
 output="$(
-    env RULES_JULIA_DEPOT_BIN="$julia_bin" \
+    env JULIA_DEPOT_BIN="$julia_bin" \
         JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
-        RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
+        JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
         "$sysimage_sh" "$project" "$build_project" "$TEST_TMPDIR/sysimage.so" 2>&1
 )" || rc=$?
 
@@ -45,14 +45,35 @@ esac
 # the slow work rather than after PackageCompiler has started.
 rc=0
 output="$(
-    env RULES_JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
+    env JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
         "$sysimage_sh" "$project" auto "$TEST_TMPDIR/sysimage.so" 2>&1
 )" || rc=$?
-[ "$rc" -ne 0 ] || fail "sysimage.sh ran with no RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES set"
+[ "$rc" -ne 0 ] || fail "sysimage.sh ran with no JULIA_DEPOT_SYSIMAGE_PACKAGES set"
 case "$output" in
-    *RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES*) ;;
+    *JULIA_DEPOT_SYSIMAGE_PACKAGES*) ;;
     *) fail "the missing-packages failure does not name the variable:
 $output" ;;
 esac
 
-echo "PASS: a v$build_minor environment under julia $running_minor was refused, exit 2"
+# The same run with only the pre-0.1.1 spellings, RULES_JULIA_DEPOT_*: still honoured, each
+# with a deprecation warning, and refused for the same reason.
+rc=0
+output="$(
+    env -u JULIA_DEPOT_BIN -u JULIA_DEPOT_SYSIMAGE_PACKAGES \
+        RULES_JULIA_DEPOT_BIN="$julia_bin" \
+        JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
+        RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
+        "$sysimage_sh" "$project" "$build_project" "$TEST_TMPDIR/sysimage.so" 2>&1
+)" || rc=$?
+[ "$rc" -eq 2 ] ||
+    fail "with the deprecated spellings, expected the pin check to exit 2, got $rc:
+$output"
+for name in BIN SYSIMAGE_PACKAGES; do
+    case "$output" in
+        *"RULES_JULIA_DEPOT_$name is deprecated; set JULIA_DEPOT_$name instead"*) ;;
+        *) fail "no deprecation warning for RULES_JULIA_DEPOT_$name:
+$output" ;;
+    esac
+done
+
+echo "PASS: a v$build_minor environment under julia $running_minor was refused, exit 2", also under the deprecated spellings

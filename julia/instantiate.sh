@@ -13,7 +13,7 @@
 # an image must carry exactly the closure and nothing else.
 set -euo pipefail
 
-JULIA="${RULES_JULIA_DEPOT_BIN:-julia}"   # the depot rule passes the pinned one; PATH keeps this runnable by hand
+JULIA="${JULIA_DEPOT_BIN:-julia}"   # the depot rule passes the pinned one; PATH keeps this runnable by hand
 
 PROJECT_DIR="$1"   # directory holding Project.toml
 MANIFEST="$2"      # the manifest the rule pins and watches

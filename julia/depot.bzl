@@ -27,9 +27,10 @@ JULIA_DEPOT_PATH.
 
 THE HOOK. Environments that resolve through a private registry or package server need
 that registry in the depot BEFORE Pkg.instantiate, and fetch time is the only place
-that can guarantee it. `hook` is an executable run first, with RULES_JULIA_DEPOT_BIN and
-JULIA_DEPOT_PATH set, the latter to the same value env.sh exports; `hook_environ` names the variables it reads, so a change to any
-of them refetches. The hook is the consumer's: this module knows nothing about any
+that can guarantee it. `hook` is an executable run first, with JULIA_DEPOT_BIN and
+JULIA_DEPOT_PATH set, the latter to the same value env.sh exports, and with
+RULES_JULIA_DEPOT_BIN, the deprecated pre-0.1.1 name for JULIA_DEPOT_BIN. `hook_environ`
+names the variables it reads, so a change to any of them refetches. The hook is the consumer's: this module knows nothing about any
 particular registry.
 """
 
@@ -106,7 +107,7 @@ def _julia_depot_impl(rctx):
             res.stderr,
         ))
 
-    env = {"RULES_JULIA_DEPOT_BIN": str(julia)}
+    env = {"JULIA_DEPOT_BIN": str(julia)}
 
     # JULIA_DEPOT_PATH only when no `dir` is declared: a declared depot replaces it, so reading
     # it would refetch on every change to a variable that cannot change the result.
@@ -152,7 +153,11 @@ def _julia_depot_impl(rctx):
     if rctx.attr.hook != None:
         hook = rctx.path(rctx.attr.hook)
         _watch(rctx, hook)
-        res = rctx.execute([str(hook)], environment = env, timeout = 600, quiet = False)
+
+        # RULES_JULIA_DEPOT_BIN is the name before 0.1.1, still given so an existing hook keeps
+        # working; it will be removed in a release that raises the compatibility_level.
+        hook_env = env | {"RULES_JULIA_DEPOT_BIN": env["JULIA_DEPOT_BIN"]}
+        res = rctx.execute([str(hook)], environment = hook_env, timeout = 600, quiet = False)
         if res.return_code != 0:
             fail("julia_depot: hook {} failed:\n{}\n{}".format(rctx.attr.hook, res.stdout, res.stderr))
 
@@ -219,7 +224,7 @@ julia_depot = repository_rule(
         ),
         "hook": attr.label(
             allow_single_file = True,
-            doc = "Optional executable run before instantiate, with RULES_JULIA_DEPOT_BIN and JULIA_DEPOT_PATH set.",
+            doc = "Optional executable run before instantiate, with JULIA_DEPOT_BIN and JULIA_DEPOT_PATH set.",
         ),
         "hook_environ": attr.string_list(
             doc = "Environment variables the hook reads. Each is passed through and a change refetches.",
