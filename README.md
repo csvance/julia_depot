@@ -3,7 +3,7 @@
 [![ci](https://github.com/csvance/julia_depot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/ci.yml)
 [![julia 1.12](https://github.com/csvance/julia_depot/actions/workflows/julia-1.12.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/julia-1.12.yml)
 [![julia 1.13](https://github.com/csvance/julia_depot/actions/workflows/julia-1.13.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/julia-1.13.yml)
-[![docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://csvance.github.io/julia_depot/dev/)
+[![docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://csvance.github.io/julia_depot/stable/)
 
 Reproducible Julia environments, sysimages and container images with Bazel, pinned to
 the `Manifest.toml` you already commit.
@@ -46,20 +46,22 @@ use_repo(julia, "julia_dist", "my_depot")
 ```
 
    In a module that others depend on, prefix these names with your module name, since every
-   module's names share one namespace; see [the contract](docs/src/contract.md#repository-names).
+   module's names share one namespace; see [repository names](https://csvance.github.io/julia_depot/stable/contract/#Repository-names).
 
 3. Build on it. Fetching `@my_depot` instantiates and precompiles the manifest, checks
    that it was resolved under the Julia you pinned, and produces an `env.sh` to source.
    From there, a genrule or `sh_binary` sources `env.sh`, takes Julia by label, and runs
    whatever you need: your code, `sysimage.sh` for a sysimage, or `image_depot.sh` for a
-   clean depot layer to stack into an OCI image.
+   clean depot layer to stack into an OCI image; see the [recipes](https://csvance.github.io/julia_depot/stable/recipes/).
 4. For an image, the rules in `julia/image.bzl` do the Julia-specific part: the distribution,
    depot, sysimage and precompile-cache layers as deterministic tars, the image's environment,
    and a test that the image starts without compiling anything. You assemble the image with
-   rules_oci (or anything else that takes tars); this module does not depend on it.
+   rules_oci (or anything else that takes tars); this module does not depend on it. See
+   [images](https://csvance.github.io/julia_depot/stable/images/).
 
 Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing
-else. Private registries plug in through the depot's `hook`.
+else; see [Julia versions](https://csvance.github.io/julia_depot/stable/julia-versions/). Private registries plug in through the
+depot's `hook`; see [a private registry](https://csvance.github.io/julia_depot/stable/recipes/#A-private-registry).
 
 ## What is in the box
 
@@ -81,18 +83,11 @@ In `BUILD` files, from `@julia_depot//julia:image.bzl`:
 
 The depot and sysimage layers are `image_depot.sh` and `sysimage.sh` as rules. Both scripts
 are public too, for a genrule that needs them outside an image, such as a sysimage for
-local development; see [Recipes](docs/src/recipes.md).
+local development; see [a sysimage](https://csvance.github.io/julia_depot/stable/recipes/#A-sysimage).
 
 ## Documentation
 
-The pages below are published as a site at
-[csvance.github.io/julia_depot](https://csvance.github.io/julia_depot/dev/).
-
-- [Images](docs/src/images.md): the image layers, the environment, the precompile test, and the recipe.
-- [Recipes](docs/src/recipes.md): the depot layer, the sysimage, a REPL target, the hook.
-- [The contract](docs/src/contract.md): what the manifest guarantees, what it does not, and how the depot rule and the image script differ.
-- [Julia versions](docs/src/julia-versions.md): what is version-specific, and adding a version.
-- [Testing](docs/src/testing.md): the end-to-end suite and its version matrix.
+The documentation is at [csvance.github.io/julia_depot](https://csvance.github.io/julia_depot/stable/).
 
 ## License
 
