@@ -5,3 +5,4 @@ MODULE.bazel.lock
 # The docs environment is resolved fresh in CI, and its build output is published, not tracked.
 /docs/Manifest.toml
 /docs/build/
+traces.jsonl

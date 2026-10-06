@@ -3,7 +3,8 @@
 [![ci](https://github.com/csvance/julia_depot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/ci.yml)
 [![julia 1.12](https://github.com/csvance/julia_depot/actions/workflows/julia-1.12.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/julia-1.12.yml)
 [![julia 1.13](https://github.com/csvance/julia_depot/actions/workflows/julia-1.13.yml/badge.svg?branch=main)](https://github.com/csvance/julia_depot/actions/workflows/julia-1.13.yml)
-[![docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://csvance.github.io/julia_depot/stable/)
+[![docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://csvance.github.io/julia_depot/stable/)
+[![docs dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://csvance.github.io/julia_depot/dev/)
 
 Reproducible Julia environments, sysimages and container images with Bazel, pinned to
 the `Manifest.toml` you already commit.
@@ -63,32 +64,4 @@ Moving to a new Julia is the distribution version plus a re-resolved manifest, n
 else; see [Julia versions](https://csvance.github.io/julia_depot/stable/julia-versions/). Private registries plug in through the
 depot's `hook`; see [a private registry](https://csvance.github.io/julia_depot/stable/recipes/#A-private-registry).
 
-## What is in the box
 
-In `MODULE.bazel`, from the `julia` extension:
-
-| | |
-| --- | --- |
-| `julia.dist` | an official Julia distribution, fetched and pinned by sha256 |
-| `julia.depot` | the Manifest-pinned depot, with an optional pre-instantiate hook |
-
-In `BUILD` files, from `@julia_depot//julia:image.bzl`:
-
-| | |
-| --- | --- |
-| `julia_dist_layer`, `julia_depot_layer`, `julia_sysimage_layer` | the distribution, a clean depot and a sysimage, each as one deterministic image layer |
-| `julia_compiled_layer` | precompile caches for the image's entry projects, built for its layout and a portable CPU target list |
-| `julia_image_env` | the image's layout declared once, written as the environment file `oci_image` takes |
-| `julia_precompile_test` | a test, run on the layers without a container, that the image starts without precompiling |
-
-The depot and sysimage layers are `image_depot.sh` and `sysimage.sh` as rules. Both scripts
-are public too, for a genrule that needs them outside an image, such as a sysimage for
-local development; see [a sysimage](https://csvance.github.io/julia_depot/stable/recipes/#A-sysimage).
-
-## Documentation
-
-The documentation is at [csvance.github.io/julia_depot](https://csvance.github.io/julia_depot/stable/).
-
-## License
-
-MIT.
