@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recipes — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=5d14f04e">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=7fe4f25f">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Recipes — julia_depot">
   <meta property="og:title" content="Recipes — julia_depot">
@@ -147,6 +147,19 @@ $(location @julia_depot//julia:sysimage.sh) &quot;$$proj&quot; auto &quot;$@&quo
 )</code></pre>
 </div>
 <p><code class="md-code-inline">{HOME}</code> and <code class="md-code-inline">{USER}</code> expand from the fetch environment and are registered as inputs, so another user refetches rather than reusing a depot conformed for someone else. The directory is created before the hook runs, and <code class="md-code-inline">env.sh</code> exports it with a trailing separator so Julia&#39;s bundled depots stay on the path. Consumers that want a writable depot in front of it (a per-sandbox scratch depot, say) prepend to <code class="md-code-inline">JULIA_DEPOT_PATH</code> after sourcing <code class="md-code-inline">env.sh</code>; Julia writes to the first entry and reads packages, artifacts and compiled caches from all of them. Note that Pkg reads package-server credentials (<code class="md-code-inline">servers/&lt;host&gt;/auth.toml</code>) from the first depot only, so a front depot needs its own copy when the environment resolves through a private server.</p>
+<h2 id="A-shared-depot-behind-a-declared-one" class="md-heading">A shared depot behind a declared one<a href="#A-shared-depot-behind-a-declared-one" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>When the host already has a depot that holds most of what the manifest needs, a host-wide one maintained by someone else, say, stack it behind <code class="md-code-inline">dir</code> rather than downloading and precompiling it all again for every user:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-python">julia.depot(
+    name = &quot;app_depot&quot;,
+    manifest = &quot;//app:Manifest.toml&quot;,
+    julia = &quot;@julia_dist&quot;,
+    dir = &quot;/cache/{USER}/myproject/julia&quot;,
+    read_only_depots = [&quot;/opt/julia-depot-shared&quot;],
+)</code></pre>
+</div>
+<p><code class="md-code-inline">env.sh</code> then exports <code class="md-code-inline">/cache/&lt;user&gt;/myproject/julia:/opt/julia-depot-shared:</code>. Entries expand like <code class="md-code-inline">dir</code> and need it. Julia reads from every entry and writes only to the first, and Pkg installs nothing a later entry already has, so the per-user depot holds only what the shared one lacks. A host without the shared depot fetches into <code class="md-code-inline">dir</code> alone. Whether each read-only depot exists is an input, but not what is in it: if the shared depot is pruned of something the environment used, refetch with <code class="md-code-inline">bazel fetch --force @app_depot</code>.</p>
 <h2 id="Loading-an-image-with-podman-on-a-host-that-also-has-docker" class="md-heading">Loading an image with podman on a host that also has docker<a href="#Loading-an-image-with-podman-on-a-host-that-also-has-docker" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>Not Julia-specific, but it costs an afternoon the first time. rules<em>oci&#39;s `oci</em>load<code class="md-code-inline">probes</code>command -v docker<code class="md-code-inline">first and falls back to podman only when that fails, so on a host where a docker CLI is installed but its socket is not reachable the probe wins and the load dies with &quot;permission denied while trying to connect to the docker API&quot;. Name the loader instead of depending on which CLIs happen to be on PATH: a one-line script, exported as a file, because</code>loader<code class="md-code-inline">must be a single file and an</code>sh_binary` brings runfiles with it.</p>
 <div class="md-code-block">
@@ -179,6 +192,7 @@ oci_load(
           <a class="md-toc-link md-toc-h2" href="#A-REPL-or-a-server-on-the-pinned-environment">A REPL or a server on the pinned environment</a>
           <a class="md-toc-link md-toc-h2" href="#A-private-registry">A private registry</a>
           <a class="md-toc-link md-toc-h2" href="#A-declared-depot-instead-of-the-ambient-one">A declared depot instead of the ambient one</a>
+          <a class="md-toc-link md-toc-h2" href="#A-shared-depot-behind-a-declared-one">A shared depot behind a declared one</a>
           <a class="md-toc-link md-toc-h2" href="#Loading-an-image-with-podman-on-a-host-that-also-has-docker">Loading an image with podman on a host that also has docker</a>
       </div>
     </aside>
@@ -189,6 +203,6 @@ oci_load(
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=5d14f04e"></script>
+  <script src="../assets/materialdocs.js?v=7fe4f25f"></script>
 </body>
 </html>

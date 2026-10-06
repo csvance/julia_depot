@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Images — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=1943a11b">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=cca0eff5">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Images — julia_depot">
   <meta property="og:title" content="Images — julia_depot">
@@ -155,7 +155,7 @@ julia_precompile_test(
 </div>
 <p><code class="md-code-inline">julia_image_env</code> writes <code class="md-code-inline">&lt;name&gt;.env</code> and provides <code class="md-code-inline">JuliaImageEnvInfo</code>. Its attributes are <code class="md-code-inline">julia_prefix</code>, <code class="md-code-inline">depot_prefix</code>, <code class="md-code-inline">extra_depots</code>, <code class="md-code-inline">project</code>, <code class="md-code-inline">load_path</code>, <code class="md-code-inline">cpu_target</code>, <code class="md-code-inline">offline</code> (default true), <code class="md-code-inline">path</code> (default true) and <code class="md-code-inline">env</code>. <code class="md-code-inline">julia_image_env_vars(...)</code> returns the same variables as a dict, for a BUILD file that merges them with its own.</p>
 <p><code class="md-code-inline">julia_precompile_test</code> is a test, with the compiled layer&#39;s attributes plus <code class="md-code-inline">modules</code>.</p>
-<p><code class="md-code-inline">project</code> and <code class="md-code-inline">manifest</code> are labels to the two files; the manifest is staged beside the project wherever it lives, so a production lock kept apart from the development one works. <code class="md-code-inline">srcs</code> are further project files (a <code class="md-code-inline">LocalPreferences.toml</code>, workspace members) staged at their paths relative to the <code class="md-code-inline">Project.toml</code>. <code class="md-code-inline">depot</code> is a julia.depot repository, e.g. <code class="md-code-inline">@my_depot</code>: the depot layer copies its registries and package-server credentials for the instantiate and ships neither, and without it fetches the registry fresh; the sysimage layer reads the packages that depot already holds. <code class="md-code-inline">env</code> passes variables to the build, such as what a package&#39;s platform augmentation reads to select an artifact.</p>
+<p><code class="md-code-inline">project</code> and <code class="md-code-inline">manifest</code> are labels to the two files; the manifest is staged beside the project wherever it lives, so a production lock kept apart from the development one works. <code class="md-code-inline">srcs</code> are further project files (a <code class="md-code-inline">LocalPreferences.toml</code>, workspace members) staged at their paths relative to the <code class="md-code-inline">Project.toml</code>. <code class="md-code-inline">depot</code> is a julia.depot repository, e.g. <code class="md-code-inline">@my_depot</code>: the depot layer copies its registries and package-server credentials for the instantiate and ships neither, and without it fetches the registry fresh; the sysimage layer reads the packages that depot already holds. Both take the whole depot path the stamp records, so a depot with <code class="md-code-inline">read_only_depots</code> works unchanged: registries come from every entry, credentials from the first. <code class="md-code-inline">env</code> passes variables to the build, such as what a package&#39;s platform augmentation reads to select an artifact.</p>
 <p>The depot and sysimage layers need the network (tagged <code class="md-code-inline">requires-network</code>); set <code class="md-code-inline">JULIA_PKG_SERVER</code> with <code class="md-code-inline">--action_env</code> to go through a mirror. Every layer action is <code class="md-code-inline">no-remote-exec</code>, since they read the distribution through its real directory and, for the depot and sysimage layers, the depot a fetch filled on this host.</p>
 <h2 id="The-environment" class="md-heading">The environment<a href="#The-environment" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p><code class="md-code-inline">julia_image_env</code> with the defaults and <code class="md-code-inline">project = &quot;/opt/app&quot;</code> writes, on x86_64:</p>
@@ -219,6 +219,6 @@ PATH=/opt/julia/bin:$PATH</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=1943a11b"></script>
+  <script src="../assets/materialdocs.js?v=cca0eff5"></script>
 </body>
 </html>

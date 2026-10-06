@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Index — julia_depot</title>
-  <link rel="stylesheet" href="./assets/materialdocs.css?v=2463e601">
+  <link rel="stylesheet" href="./assets/materialdocs.css?v=4b3b89b5">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Index — julia_depot">
   <meta property="og:title" content="Index — julia_depot">
@@ -132,7 +132,7 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 <li><p>For an image, the rules in <code class="md-code-inline">julia/image.bzl</code> do the Julia-specific part: the distribution, depot, sysimage and precompile-cache layers as deterministic tars, the image&#39;s environment, and a test that the image starts without compiling anything. You assemble the image with rules_oci (or anything else that takes tars); this module does not depend on it.</p>
 </li>
 </ol>
-<p>Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing else. Private registries plug in through the depot&#39;s <code class="md-code-inline">hook</code>.</p>
+<p>Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing else. Private registries plug in through the depot&#39;s <code class="md-code-inline">hook</code>. A host-wide shared depot can sit read-only behind a per-user one; see <a href="./recipes/#A-shared-depot-behind-a-declared-one">a shared depot</a>.</p>
 <h2 id="What-is-in-the-box" class="md-heading">What is in the box<a href="#What-is-in-the-box" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>In <code class="md-code-inline">MODULE.bazel</code>, from the <code class="md-code-inline">julia</code> extension:</p>
 <div class="md-table-wrap">
@@ -219,6 +219,6 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="./siteinfo.js"></script>
   <script src="./../versions.js"></script>
-  <script src="./assets/materialdocs.js?v=2463e601"></script>
+  <script src="./assets/materialdocs.js?v=4b3b89b5"></script>
 </body>
 </html>
