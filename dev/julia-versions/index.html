@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Julia versions — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=eb1d9d1c">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=8709338d">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Julia versions — julia_depot">
   <meta property="og:title" content="Julia versions — julia_depot">
@@ -78,15 +78,17 @@
 <p>Linux x86<em>64 is the supported platform. <code class="md-code-inline">julia.dist</code> downloads the official build for the host, detected when the distribution is fetched. Linux aarch64 is mapped to its official build too, with its own CPU target list below, but it is untested and not supported: it may work, and your mileage may vary. macOS, Windows and other architectures fail with a message saying they are not supported yet, because the scripts need GNU tar, coreutils and a Linux Julia; the check runs only when a Julia repository is actually fetched, so a host that never builds a Julia target is unaffected. <code class="md-code-inline">url</code> and `strip</em>prefix<code class="md-code-inline">are templates, so one declaration serves both architectures, and a mirror too:</code>{version}<code class="md-code-inline">(1.12.7),</code>{minor}<code class="md-code-inline">(1.12),</code>{platform}<code class="md-code-inline">(</code>linux-x86<em>64<code class="md-code-inline">) and</code>{arch</em>dir}<code class="md-code-inline">(</code>x64`, the directory julialang-s3 files the build under) expand.</p>
 <p>The CPU targets follow the architecture: the image rules and <code class="md-code-inline">sysimage.sh</code> default to the official build&#39;s list for it, <code class="md-code-inline">PORTABLE_X86_64_CPU_TARGET</code> or <code class="md-code-inline">PORTABLE_AARCH64_CPU_TARGET</code>; see <a href="../images/#CPU-targets">Images</a>. The end-to-end suite runs on Linux x86_64 only.</p>
 <h2 id="Adding-a-Julia-version" class="md-heading">Adding a Julia version<a href="#Adding-a-Julia-version" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
-<p>Four steps, with 1.14 as the example. The first two need that Julia installed locally (juliaup is the easy way); nothing after them does.</p>
-<p><strong>One.</strong> The PackageCompiler environment for the new minor:</p>
+<p>The steps below use 1.14 as the example. The first two need that Julia installed locally (juliaup is the easy way); the rest do not.</p>
+<h3 id="1.-The-PackageCompiler-environment" class="md-heading">1. The PackageCompiler environment<a href="#1.-The-PackageCompiler-environment" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>Resolve one for the new minor, so <code class="md-code-inline">sysimage.sh auto</code> has an environment to select:</p>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
 <pre><code class="language-bash">mkdir -p julia/sysimage/v1.14
 cp julia/sysimage/v1.12/Project.toml julia/sysimage/v1.14/
 julia +1.14 --project=julia/sysimage/v1.14 -e &#39;using Pkg; Pkg.instantiate()&#39;</code></pre>
 </div>
-<p><strong>Two.</strong> A test project resolved under that exact Julia, against the PUBLIC server. <code class="md-code-inline">env -u JULIA_PKG_SERVER</code> matters: a manifest resolved through a private mirror is not one this repository can publish.</p>
+<h3 id="2.-The-test-project" class="md-heading">2. The test project<a href="#2.-The-test-project" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>Resolve it under that exact Julia, against the public package server. <code class="md-code-inline">env -u JULIA_PKG_SERVER</code> matters: a manifest resolved through a private mirror is not one this repository can publish. Then update the version named in the copied <code class="md-code-inline">Project.toml</code>&#39;s comment.</p>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
 <pre><code class="language-bash">mkdir -p e2e/projects/v1.14
@@ -94,9 +96,26 @@ cp e2e/projects/v1.13/Project.toml e2e/projects/v1.13/BUILD.bazel e2e/projects/v
 env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
     -e &#39;using Pkg; Pkg.add([PackageSpec(name = &quot;Bzip2_jll&quot;), PackageSpec(name = &quot;Crayons&quot;)])&#39;</code></pre>
 </div>
-<p><strong>Three.</strong> The sha256 for each platform in <code class="md-code-inline">_KNOWN_SHA256</code> in <code class="md-code-inline">julia/dist.bzl</code>.</p>
-<p><strong>Four.</strong> The declarations: four repositories in <code class="md-code-inline">e2e/MODULE.bazel</code> (distribution, depot, sysimage depot, hook depot), a <code class="md-code-inline">julia_version_tests()</code> call in <code class="md-code-inline">e2e/tests/BUILD.bazel</code>, a <code class="md-code-inline">julia_image_tests()</code> call in <code class="md-code-inline">e2e/image/BUILD.bazel</code>, a <code class="md-code-inline">version_mismatch_test()</code> call for each pair worth covering, a copy of <code class="md-code-inline">.github/workflows/julia-1.13.yml</code> as <code class="md-code-inline">julia-1.14.yml</code> with the version and tag changed, and its badge beside the others at the top of <code class="md-code-inline">README.md</code>.</p>
-<p>A version run with the reduced set, as the LTS is, skips step One and needs only two repositories in step Four, the distribution and the depot, a <code class="md-code-inline">julia_version_tests()</code> call without <code class="md-code-inline">sysimage_depot_repo</code> and <code class="md-code-inline">hook_depot_repo</code>, and no <code class="md-code-inline">julia_image_tests()</code> call.</p>
+<h3 id="3.-The-checksums" class="md-heading">3. The checksums<a href="#3.-The-checksums" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>Add the sha256 for each platform to <code class="md-code-inline">_KNOWN_SHA256</code> in <code class="md-code-inline">julia/dist.bzl</code>, from <code class="md-code-inline">https://julialang-s3.julialang.org/bin/checksums/julia-&lt;version&gt;.sha256</code>.</p>
+<h3 id="4.-The-declarations" class="md-heading">4. The declarations<a href="#4.-The-declarations" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<ul class="md-list-tight">
+<li><p>In <code class="md-code-inline">e2e/MODULE.bazel</code>, four repositories: the distribution, the depot, the sysimage depot and the hook depot.</p>
+</li>
+<li><p>A <code class="md-code-inline">julia_version_tests()</code> call in <code class="md-code-inline">e2e/tests/BUILD.bazel</code>.</p>
+</li>
+<li><p>A <code class="md-code-inline">julia_image_tests()</code> call in <code class="md-code-inline">e2e/image/BUILD.bazel</code>.</p>
+</li>
+<li><p>A <code class="md-code-inline">version_mismatch_test()</code> call for each pair of versions worth covering.</p>
+</li>
+<li><p><code class="md-code-inline">.github/workflows/julia-1.14.yml</code>, a copy of <code class="md-code-inline">julia-1.13.yml</code> with the version and tag changed.</p>
+</li>
+<li><p>Its badge beside the others at the top of <code class="md-code-inline">README.md</code>.</p>
+</li>
+</ul>
+<h3 id="The-reduced-set" class="md-heading">The reduced set<a href="#The-reduced-set" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>A version run with the reduced set, as the LTS is, skips step 1. In step 4 it needs only two repositories, the distribution and the depot, a <code class="md-code-inline">julia_version_tests()</code> call without <code class="md-code-inline">sysimage_depot_repo</code> and <code class="md-code-inline">hook_depot_repo</code>, and no <code class="md-code-inline">julia_image_tests()</code> call.</p>
+<h3 id="Retiring-a-version" class="md-heading">Retiring a version<a href="#Retiring-a-version" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
 <p>When a version leaves support, remove the same pieces: its workflow, badge, test calls, repositories, test project and, if nothing else uses it, its PackageCompiler environment.</p>
       </article>
       <footer class="md-footer">
@@ -110,6 +129,12 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
           <a class="md-toc-link md-toc-h2" href="#Fetching-any-version">Fetching any version</a>
           <a class="md-toc-link md-toc-h2" href="#Platforms">Platforms</a>
           <a class="md-toc-link md-toc-h2" href="#Adding-a-Julia-version">Adding a Julia version</a>
+            <a class="md-toc-link md-toc-h3" href="#1.-The-PackageCompiler-environment">1. The PackageCompiler environment</a>
+            <a class="md-toc-link md-toc-h3" href="#2.-The-test-project">2. The test project</a>
+            <a class="md-toc-link md-toc-h3" href="#3.-The-checksums">3. The checksums</a>
+            <a class="md-toc-link md-toc-h3" href="#4.-The-declarations">4. The declarations</a>
+            <a class="md-toc-link md-toc-h3" href="#The-reduced-set">The reduced set</a>
+            <a class="md-toc-link md-toc-h3" href="#Retiring-a-version">Retiring a version</a>
       </div>
     </aside>
   </div>
@@ -119,6 +144,6 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=eb1d9d1c"></script>
+  <script src="../assets/materialdocs.js?v=8709338d"></script>
 </body>
 </html>
