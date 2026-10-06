@@ -1,8 +1,9 @@
 # Julia versions
 
 Nothing here requires one Julia version. `julia.dist` fetches any: the sha256 is
-looked up for versions the module knows (1.11.9, 1.12.7, 1.13.0) and passed explicitly
-otherwise, per platform, from
+looked up for the versions the module knows, listed in `_KNOWN_SHA256` in
+[`julia/dist.bzl`](https://github.com/csvance/julia_depot/blob/main/julia/dist.bzl), and passed
+explicitly otherwise, per platform, from
 `https://julialang-s3.julialang.org/bin/checksums/julia-<version>.sha256`:
 
 ```python
@@ -24,7 +25,11 @@ The one version-specific thing the module ships is the PackageCompiler environme
 sysimage is built with, because PackageCompiler's compat and precompile cache are keyed
 on the Julia minor. There is one per minor under `julia/sysimage/v<major>.<minor>/`, and
 `sysimage.sh auto` picks the one matching the running Julia, failing with the list of
-available ones when yours is missing.
+available ones when yours is missing. The minors the module ships one for are the
+directories under
+[`julia/sysimage/`](https://github.com/csvance/julia_depot/tree/main/julia/sysimage); on any
+other minor the distribution, depots and image layers work, and a sysimage needs an
+environment added as described below.
 
 ## Platforms
 

@@ -22,6 +22,11 @@ a mirror included: {version} (1.12.7), {minor} (1.12), {platform} (linux-x86_64)
 # https://julialang-s3.julialang.org/bin/checksums/julia-<version>.sha256. Add a version
 # here, or pass `sha256 = {"<platform>": ...}` on the tag for any version or mirror.
 _KNOWN_SHA256 = {
+    # The long-term support release.
+    "1.10.12": {
+        "linux-aarch64": "cc257b21967049642bfe17de1aff7dae17477eba4f423f98cb400c002080e5a2",
+        "linux-x86_64": "b0c50dfe349d76ffc8580d24e0c0be623988a6d91ed57ad8b73c0137fd27bc0d",
+    },
     "1.11.9": {
         "linux-aarch64": "a2071f0654d1d6af4381cba650b9f790f5f8bb7a570e51e378de8bcf67ff623e",
         "linux-x86_64": "b36363356d7a05eaf8b7b9e7a91c710f6bd3d2940be4d4e6d14b9a9f2927de35",
@@ -33,6 +38,10 @@ _KNOWN_SHA256 = {
     "1.13.0": {
         "linux-aarch64": "6cd4a3e4baa2dc5f55638c28e9835fc294f41c78ada4a740dc408436778ab8b4",
         "linux-x86_64": "8975da61c128a5e5ded3e719e868da8c8781deb7ad7913d37fb99be02a81904b",
+    },
+    "1.13.1": {
+        "linux-aarch64": "78341862e24734ea1c2fa8795183c52627c23a99aba5aa1d0ec840edecec5ce0",
+        "linux-x86_64": "0f2e18c8dea60a2c8711d089cd9612f7a8df394b89e5208096fe5867647e0908",
     },
 }
 
