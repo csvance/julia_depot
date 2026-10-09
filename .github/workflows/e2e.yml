@@ -123,6 +123,13 @@ jobs:
             --test_output=errors \
             --keep_going
 
+      # Bazel refetching a depot between two builds, which no test action can drive around
+      # itself. Version-independent, so the 1.13 job alone runs it. Builds only the inputs file
+      # of a sysimage the test step already built, so it adds seconds.
+      - name: refetch test
+        if: ${{ inputs.julia == '1.13' }}
+        run: e2e/refetch_test.sh
+
       - name: Test logs
         if: failure()
         working-directory: e2e

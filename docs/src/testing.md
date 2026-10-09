@@ -110,6 +110,13 @@ entry alone. Only the twin's and variants' inputs files are built. The test also
 recorded Manifest digest and Julia tarball, and that the layer ships the file beside the
 sysimage.
 
+`e2e/refetch_test.sh` covers what no test action can: Bazel refetching a depot between two
+builds. It appends a comment to the 1.13 project's `Project.toml`, builds only the sysimage's
+inputs file, and checks that the file records the edited `Project.toml`, which happens only
+if the depot refetched and recopied it; then it restores the file and checks that the record
+returns to the original. CI runs it in the 1.13 job after the tests, and it runs by hand from
+anywhere.
+
 The scripts the rules run are internal, but several tests drive them directly, because a
 failure path such as the wrong-minor refusal is cheaper to reach there than through a rule.
 
