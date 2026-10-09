@@ -5,7 +5,14 @@
 #   bazel build //image:image_1_13
 #   bazel test //image:all
 
-load("@julia_depot//julia:image.bzl", "julia_sysimage")
+load(
+    "@julia_depot//julia:image.bzl",
+    "julia_compiled_layer",
+    "julia_depot_layer",
+    "julia_image_env",
+    "julia_precompile_test",
+    "julia_sysimage",
+)
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load(":cc_test.bzl", "file_cc_test", "pinned_cc_test", "system_cc_test")
 load(":defs.bzl", "julia_image_tests")
@@ -191,4 +198,86 @@ sh_test(
         "@julia_1_13//:julia_dist.txt",
     ],
     tags = ["julia1_13"],
+)
+
+# --- a lock kept apart from its project ---------------------------------------------------------
+# An image from @workspace_depot_1_13, whose lock is not beside its Project.toml and whose
+# workspace member is a path package. The depot layer stages the depot's project, member
+# Project.toml included, with no srcs of its own; the application layer brings the project and
+# the member's source to /opt/ws, where the caches are built and the image must start without
+# compiling.
+_WS = "/opt/ws"
+
+# The application's root is also a depot, so the member's caches record its source relative to
+# it and stay valid wherever the tree is unpacked.
+julia_image_env(
+    name = "workspace_image_env",
+    extra_depots = [_WS],
+    project = _WS,
+)
+
+julia_depot_layer(
+    name = "workspace_depot_layer",
+    contents = "full",
+    depot = "@workspace_depot_1_13",
+)
+
+genrule(
+    name = "workspace_app_layer",
+    srcs = [
+        "//projects/workspace:Project.toml",
+        "//projects/workspace:deploy/Manifest.toml",
+        "//projects/workspace:packages/WsMember/Project.toml",
+        "//projects/workspace:member_src",
+    ],
+    outs = ["workspace_app_layer.tar"],
+    cmd = """
+set -euo pipefail
+stage="$$(mktemp -d)"
+trap 'rm -rf "$$stage"' EXIT
+mkdir -p "$$stage{ws}/packages/WsMember/src"
+cp -L $(location //projects/workspace:Project.toml) "$$stage{ws}/Project.toml"
+cp -L $(location //projects/workspace:deploy/Manifest.toml) "$$stage{ws}/Manifest.toml"
+cp -L $(location //projects/workspace:packages/WsMember/Project.toml) "$$stage{ws}/packages/WsMember/"
+cp -L $(location //projects/workspace:member_src) "$$stage{ws}/packages/WsMember/src/"
+LC_ALL=C tar --create --file "$@" --format=gnu --sort=name --mtime=@0 \\
+    --owner=0 --group=0 --numeric-owner --mode='u=rwX,go=rX' --directory "$$stage" opt
+""".format(ws = _WS),
+)
+
+julia_compiled_layer(
+    name = "workspace_compiled_layer",
+    image_env = ":workspace_image_env",
+    julia = "@julia_1_13",
+    layers = [
+        ":dist_layer_1_13",
+        ":workspace_depot_layer",
+        ":workspace_app_layer",
+    ],
+    projects = [_WS],
+)
+
+julia_precompile_test(
+    name = "workspace_precompile_check_test",
+    size = "medium",
+    image_env = ":workspace_image_env",
+    julia = "@julia_1_13",
+    layers = [
+        ":dist_layer_1_13",
+        ":workspace_depot_layer",
+        ":workspace_compiled_layer",
+        ":workspace_app_layer",
+    ],
+    projects = [_WS],
+    tags = ["julia1_13"],
+)
+
+# A sysimage over the same depot that is never built: e2e/refetch_test.sh reads its inputs file,
+# which records the depot's copy of the member's Project.toml.
+julia_sysimage(
+    name = "workspace_sysimage",
+    srcs = ["//projects/workspace:member_src"],
+    depot = "@workspace_depot_1_13",
+    packages = ["WsMember"],
+    tags = ["manual"],
 )

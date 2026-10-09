@@ -229,3 +229,32 @@ sh_test(
     ],
     tags = ["julia1_13"],
 )
+
+# julia.depot's `project`: a missing workspace member and a precompile without sources each fail
+# the fetch clearly. The instantiate step the fetch runs, on trees staged by hand. Version
+# independent, so 1.13 alone.
+sh_test(
+    name = "project_srcs_1_13_test",
+    size = "medium",
+    srcs = ["project_srcs_test.sh"],
+    args = [
+        "$(rootpath @julia_depot//julia:instantiate.sh)",
+        "$(rootpath @julia_1_13//:bin/julia)",
+        "$(rootpath //projects/workspace:Project.toml)",
+        "$(rootpath //projects/workspace:packages/WsMember/Project.toml)",
+        "$(rootpath //projects/workspace:deploy/Manifest.toml)",
+        "$(rootpath @workspace_depot_1_13//:stamp.txt)",
+    ],
+    data = [
+        "common.sh",
+        "//projects/workspace:Project.toml",
+        "//projects/workspace:deploy/Manifest.toml",
+        "//projects/workspace:packages/WsMember/Project.toml",
+        "@julia_1_13//:bin/julia",
+        "@julia_1_13//:dist",
+        "@julia_depot//julia:instantiate.sh",
+        "@workspace_depot_1_13//:stamp.txt",
+    ],
+    env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
+    tags = ["julia1_13"],
+)

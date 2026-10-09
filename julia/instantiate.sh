@@ -22,6 +22,7 @@ JULIA="${JULIA_DEPOT_BIN:-julia}"   # the depot rule passes the pinned one; PATH
 PROJECT_DIR="$1"   # directory holding Project.toml
 MANIFEST="$2"      # the manifest the rule pins and watches
 STAMP_OUT="$3"     # file to write the resolved facts into
+PRECOMPILE="${4:-yes}"   # yes or no: precompile after instantiating
 
 "$JULIA" --startup-file=no --project="$PROJECT_DIR" -e '
 using Pkg, TOML
@@ -56,9 +57,36 @@ if want != have
           "align the distribution or re-resolve the manifest")
 end
 
+# Every workspace member and path package needs its Project.toml in the tree. Pkg instantiates
+# without a missing member and says nothing, so the environment would quietly lack it; when the
+# project is staged from `project_srcs`, that is a member left off the list.
+root = dirname(Base.active_project())
+paths = String[]
+append!(paths, get(get(TOML.parsefile(Base.active_project()), "workspace", Dict()), "projects", String[]))
+for (name, entries) in get(m, "deps", Dict()), entry in entries
+    haskey(entry, "path") && push!(paths, entry["path"])
+end
+missing_projects = sort(unique(filter(p -> !isfile(joinpath(root, p, "Project.toml")), paths)))
+isempty(missing_projects) || error("the project needs " * join(map(p -> joinpath(p, "Project.toml"), missing_projects), ", ") *
+                                   ", which " * (length(missing_projects) == 1 ? "is" : "are") * " not in $root; " *
+                                   "a julia.depot with `project` must list every workspace member and path package in `project_srcs`")
+
 Pkg.instantiate()
-Pkg.precompile()
-' "$MANIFEST"
+
+# Pkg.precompile skips a package whose source is missing and reports success, which would leave
+# a path package uncompiled without a word. A staged project has no sources, so say so instead.
+if ARGS[2] == "yes"
+    nosrc = String[]
+    for (name, entries) in get(m, "deps", Dict()), entry in entries
+        haskey(entry, "path") || continue
+        isfile(joinpath(root, entry["path"], "src", name * ".jl")) || push!(nosrc, name)
+    end
+    isempty(nosrc) || error("precompiling needs the source of the path package" * (length(nosrc) == 1 ? " " : "s ") *
+                            join(sort(nosrc), ", ") * ", which is not in $root; " *
+                            "a julia.depot with `project` stages no sources, so set `precompile = False`")
+    Pkg.precompile()
+end
+' "$MANIFEST" "$PRECOMPILE"
 
 # The stamp records the resolved environment, so a consumer, or someone reading a failed
 # build, can see it without re-deriving it.

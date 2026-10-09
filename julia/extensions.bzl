@@ -85,6 +85,10 @@ def _julia_impl(module_ctx):
             julia_depot(
                 name = depot.name,
                 manifest = depot.manifest,
+                project = depot.project,
+                project_srcs = depot.project_srcs,
+                precompile = depot.precompile,
+                env = depot.env,
                 julia = depot.julia,
                 dir = depot.dir,
                 read_only_depots = depot.read_only_depots,
@@ -120,7 +124,11 @@ julia = module_extension(
             doc = "Instantiate and precompile a Manifest-pinned project into the declared (`dir`) or ambient depot.",
             attrs = {
                 "name": attr.string(mandatory = True),
-                "manifest": attr.label(mandatory = True),
+                "manifest": attr.label(mandatory = True, doc = "The Manifest that pins the environment. Unless `project` is set, the Project.toml beside it is the project."),
+                "project": attr.label(doc = "The Project.toml the Manifest locks, when the two are not in one directory. The project is then staged in the repository and instantiated there."),
+                "project_srcs": attr.label_list(doc = "Further files a resolve reads, at their paths relative to the project's directory: each workspace member's and path package's Project.toml. Required for all of them when `project` is set."),
+                "precompile": attr.bool(default = True, doc = "Precompile after instantiating. False for a depot only images are built from; required when `project` is set and the project has path packages."),
+                "env": attr.string_dict(doc = "Variables for the hook and the instantiate, such as what a package's platform augmentation reads."),
                 "julia": attr.label(mandatory = True, doc = "The Julia distribution, e.g. @julia_dist from julia.dist."),
                 "dir": attr.string(doc = "Depot directory to instantiate into, overriding JULIA_DEPOT_PATH; {HOME} and {USER} expand from the fetch environment."),
                 "read_only_depots": attr.string_list(doc = "Depots searched after `dir` and never written to, such as a host's shared depot, so `dir` holds only what they lack. Templates like `dir`; requires `dir`; a missing one is skipped, and their contents are not watched."),

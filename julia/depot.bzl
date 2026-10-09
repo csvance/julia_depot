@@ -1,11 +1,20 @@
 """A Julia environment pinned to a Manifest, as a repository rule.
 
-Contract: the declared input is Manifest.toml, and the environment follows from it. It pins
+Contract: the declared input is the Manifest, and the environment follows from it. It pins
 every registered package by git tree hash and every JLL artifact by the tree hash in its
 Artifacts.toml. Path entries are the consumer's own source, so they are srcs, not depot
 content. A Manifest with no git-sourced entries therefore determines the closure, which is
 what allows the depot to be treated as a keyed side effect instead of a declared output.
 Check your manifest for `repo-url` entries before relying on that.
+
+The project is the Project.toml beside the Manifest, or `project` when the lock is kept apart.
+`project_srcs` are the further files a resolve reads, each workspace member's and path
+package's Project.toml. All of these are copied into the repository and watched, and the rules
+that build from the depot stage the copies. With `project`, the environment is instantiated from
+the copies, which hold no sources, so precompiling a path package is impossible and the fetch
+says so; `precompile = False` skips precompiling. instantiate.sh also fails, naming it, when a
+workspace member or path package is missing from the tree. `env` adds variables to the hook's and
+the instantiate's environment.
 
 A repository rule, because fetching may use the network and `_watch` below refetches when
 the Manifest changes. A genrule doing this would need no-sandbox and requires-network, and
@@ -114,10 +123,19 @@ def _julia_depot_impl(rctx):
     # The scripts need GNU tar and coreutils and a Linux Julia, whatever distribution is given.
     host_platform(rctx.os.name, rctx.os.arch, "julia_depot")
 
-    # The declared input. Change the Manifest, Bazel refetches: see _watch.
-    manifest = rctx.path(rctx.attr.manifest)
-    _watch(rctx, manifest)
-    project_dir = str(manifest.dirname)
+    # The declared inputs, copied into the repository: the Project.toml, the further files a
+    # resolve reads, and the Manifest. Reading a file watches it, so an edit to any of them
+    # refetches. Without `project` the environment is instantiated in place, where Pkg also
+    # sees the members' sources; with it, in the copy, since the lock has no project beside it.
+    files = _project_files(rctx)
+    for rel, path in files.items():
+        rctx.file("project/" + rel, rctx.read(path), executable = False)
+    if rctx.attr.project:
+        project_dir = str(rctx.path("project"))
+        manifest = rctx.path("project/Manifest.toml")
+    else:
+        manifest = rctx.path(rctx.attr.manifest)
+        project_dir = str(manifest.dirname)
 
     # Julia comes from a pinned distribution (julia.dist, or any repository holding an
     # official Julia tree). Taking it from PATH would make Julia depend on how the machine was
@@ -146,7 +164,7 @@ def _julia_depot_impl(rctx):
             res.stderr,
         ))
 
-    env = {"JULIA_DEPOT_BIN": str(julia)}
+    env = dict(rctx.attr.env) | {"JULIA_DEPOT_BIN": str(julia)}
     bundled = _bundled_depots(rctx, julia, version_h)
 
     # JULIA_DEPOT_PATH only when no `dir` is declared: a declared depot replaces it, so reading
@@ -221,7 +239,7 @@ def _julia_depot_impl(rctx):
     script = rctx.path(rctx.attr._instantiate)
     _watch(rctx, script)
     res = rctx.execute(
-        [str(script), project_dir, str(manifest), "stamp.txt"],
+        [str(script), project_dir, str(manifest), "stamp.txt", "yes" if rctx.attr.precompile else "no"],
         environment = env,
         timeout = rctx.attr.timeout,
         quiet = False,
@@ -236,15 +254,6 @@ def _julia_depot_impl(rctx):
 # Julia itself is NOT here: take it from the distribution, @<dist>//:bin/julia.
 export JULIA_DEPOT_PATH={depot}
 """.format(depot = _shell_quote(env["JULIA_DEPOT_PATH"])), executable = False)
-
-    # The project the depot was fetched for, copied in, so a rule given the depot builds from
-    # exactly these files. The Manifest is watched, so a change refetches and the copy follows.
-    project = rctx.path(str(manifest.dirname) + "/Project.toml")
-    if not project.exists:
-        fail("julia_depot: no Project.toml beside {}".format(rctx.attr.manifest))
-    _watch(rctx, project)
-    rctx.file("project/Project.toml", rctx.read(project), executable = False)
-    rctx.file("project/" + manifest.basename, rctx.read(manifest), executable = False)
 
     # The default target, named after the repository, so `@<name>` alone means it: env.sh and
     # stamp.txt as files, and JuliaDepotInfo for the rules that build from the depot.
@@ -265,9 +274,10 @@ julia_depot_info(
     name = "{name}",
     env = "env.sh",
     julia = "{julia}",
-    manifest = "project/{manifest}",
+    manifest = "project/Manifest.toml",
     project = "project/Project.toml",
     project_dir = "{project_dir}",
+    project_srcs = {project_srcs},
     stamp = "stamp.txt",
     visibility = ["//visibility:public"],
 )
@@ -275,9 +285,43 @@ julia_depot_info(
         info_bzl = str(Label("//julia:depot_info.bzl")),
         name = name,
         julia = str(rctx.attr.julia),
-        manifest = manifest.basename,
-        project_dir = _short_dir(rctx.attr.manifest),
+        project_dir = _short_dir(rctx.attr.project or rctx.attr.manifest),
+        project_srcs = repr(["project/" + rel for rel in sorted(files) if rel not in ("Project.toml", "Manifest.toml")]),
     ))
+
+def _project_files(rctx):
+    """{relative path: source path} of the project tree the depot is fetched for.
+
+    The Project.toml is `project`, or the one beside the Manifest. `project_srcs` are placed at
+    their paths relative to its directory, and the Manifest is placed as Manifest.toml beside it.
+    """
+    manifest = rctx.attr.manifest
+    project = rctx.attr.project
+    if project == None:
+        project = manifest.same_package_label(_join(manifest.name.rpartition("/")[0], "Project.toml"))
+    project_path = rctx.path(project)
+    if not project_path.exists:
+        if rctx.attr.project:
+            fail("julia_depot: project {} does not exist".format(project))
+        fail("julia_depot: no Project.toml beside {}; if the project lives elsewhere, name it with `project`".format(manifest))
+    base = _short_dir(project)
+    files = {"Project.toml": project_path, "Manifest.toml": rctx.path(manifest)}
+    for src in rctx.attr.project_srcs:
+        short = _short_path(src)
+        if base and not short.startswith(base + "/"):
+            fail("julia_depot: project_srcs: {} is not under the project's directory {}".format(src, base or "(the repository root)"))
+        rel = short[len(base) + 1:] if base else short
+        if rel in files:
+            fail("julia_depot: project_srcs: {} is the project's own {}".format(src, rel))
+        files[rel] = rctx.path(src)
+    return files
+
+def _join(*parts):
+    return "/".join([p for p in parts if p])
+
+def _short_path(label):
+    """A file label's path as File.short_path spells it."""
+    return _join(_short_dir(label), label.name.rpartition("/")[2])
 
 def _short_dir(label):
     """The short path of the directory a file label is in, as File.short_path spells it."""
@@ -295,7 +339,31 @@ julia_depot = repository_rule(
         "manifest": attr.label(
             allow_single_file = True,
             mandatory = True,
-            doc = "The Manifest.toml that pins the environment. Its directory is the project.",
+            doc = "The Manifest.toml that pins the environment. Unless `project` is set, the " +
+                  "Project.toml beside it is the project.",
+        ),
+        "project": attr.label(
+            allow_single_file = True,
+            doc = "The Project.toml the Manifest locks, when the two are not in one directory, such as " +
+                  "a production lock kept apart from a development tree. The project is then staged " +
+                  "inside the repository, with the Manifest beside it as Manifest.toml, and instantiated " +
+                  "there; path packages have no source there, so set `precompile = False` if it has any.",
+        ),
+        "project_srcs": attr.label_list(
+            allow_files = True,
+            doc = "Further files a resolve reads, at their paths relative to the project's directory: " +
+                  "the Project.toml of each workspace member and path package. Watched, so an edit " +
+                  "refetches; and staged by the rules that build from the depot. Required for every " +
+                  "member and path package when `project` is set.",
+        ),
+        "precompile": attr.bool(
+            default = True,
+            doc = "Precompile the environment after instantiating it. False for a depot only images " +
+                  "are built from, whose caches come from julia_compiled_layer.",
+        ),
+        "env": attr.string_dict(
+            doc = "Variables for the hook and the instantiate, such as what a package's platform " +
+                  "augmentation reads to select an artifact. The rule's own JULIA_DEPOT_* win.",
         ),
         "julia": attr.label(
             mandatory = True,

@@ -108,11 +108,17 @@ their inputs files are built. The test also checks the
 recorded Manifest digest and Julia tarball, and that the layer ships the file beside the
 sysimage.
 
+`e2e/projects/workspace` is a workspace with one path-package member and its lock in `deploy/`,
+fetched with `project`, `project_srcs`, `precompile = False` and an `env` that a hook checks.
+An image built from it must start without compiling, and the instantiate step must fail, naming
+the fix, for a staged tree missing the member and for a precompile without sources.
+
 `e2e/refetch_test.sh` covers what no test action can: Bazel refetching a depot between two
-builds. It appends a comment to the 1.13 project's `Project.toml`, builds only the sysimage's
-inputs file, and checks that the file records the edited `Project.toml`, which happens only
-if the depot refetched and recopied it; then it restores the file and checks that the record
-returns to the original. CI runs it in the 1.13 job after the tests, and it runs by hand from
+builds. It appends a comment to a watched file, builds only a sysimage's inputs file, and checks
+that the file records the edit, which happens only if the depot refetched and recopied it; then
+it restores the file and checks that the record returns to the original. It does this for the
+1.13 project's `Project.toml` and for the workspace member's, a `project_srcs` file outside the
+Manifest's directory. CI runs it in the 1.13 job after the tests, and it runs by hand from
 anywhere.
 
 The scripts the rules run are internal, but several tests drive them directly, because a

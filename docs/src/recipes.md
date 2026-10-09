@@ -83,6 +83,36 @@ copy is neither fetched nor shipped, and the build fails if it was downloaded an
 image file is required whenever the build file is set. UUID-keyed overrides are honoured
 at load time but do not stop the download, so key by hash.
 
+## A lock kept apart from its project
+
+A project may keep the lock its image is built from apart from its `Project.toml`: a workspace
+whose development tree resolves fresh, say, with a production `deploy/Manifest.toml` committed
+beside it. Name the `Project.toml` with `project`, and list every workspace member's and path
+package's `Project.toml` in `project_srcs`, at their paths relative to it:
+
+```python
+julia.depot(
+    name = "app_depot",
+    julia = "@julia_dist",
+    manifest = "//deploy:Manifest.toml",
+    project = "//:Project.toml",
+    project_srcs = ["//:packages/AppCore/Project.toml"],
+    precompile = False,
+    env = {"MY_GPU_BACKEND": "cuda"},
+)
+```
+
+The fetch stages the project, the members and the lock (as `Manifest.toml`) inside the
+repository and instantiates there; every one of those files is watched, so an edit refetches.
+A member left off `project_srcs` fails the fetch by name, since Pkg would otherwise instantiate
+without it and say nothing. The staged tree has no sources, so a project with path packages
+needs `precompile = False`, which an image wants anyway: its caches come from
+`julia_compiled_layer`. `env` reaches the hook and the instantiate, such as what a package's
+platform augmentation reads to pick an artifact, so the fetch downloads the one the image uses.
+
+The rules that build from the depot stage the members themselves, so a depot layer needs no
+`srcs`: `julia_depot_layer(name = "depot_layer", depot = "@app_depot", contents = "full")`.
+
 ## A REPL or a server on the pinned environment
 
 An `sh_binary` with `@my_depot//:env.sh` and `@julia_dist//:bin/julia` in `data`, whose

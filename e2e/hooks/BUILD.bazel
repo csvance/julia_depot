@@ -1,6 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
 exports_files([
+    "env_hook.sh",
     "marker_hook.sh",
     "seed_shared_depot.sh",
 ])

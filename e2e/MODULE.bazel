@@ -169,6 +169,24 @@ julia.depot(
     manifest = "//projects/v1.13:Manifest.toml",
 )
 
+# --- a lock kept apart from its project -------------------------------------------
+# projects/workspace: a workspace with one member, whose lock is deploy/Manifest.toml rather than
+# a Manifest beside the Project.toml. `project` names the Project.toml, `project_srcs` the member,
+# and the depot is instantiated from a copy staged in the repository. That copy has no sources,
+# and the member is a path package, so `precompile = False`. `env` reaches the fetch: the hook
+# fails it otherwise. image/ builds an image from this depot.
+julia.depot(
+    name = "workspace_depot_1_13",
+    dir = "{HOME}/.julia-depot-e2e/v1.13",
+    env = {"E2E_DEPOT_ENV": "julia-depot-e2e-env"},
+    hook = "//hooks:env_hook.sh",
+    julia = "@julia_1_13",
+    manifest = "//projects/workspace:deploy/Manifest.toml",
+    precompile = False,
+    project = "//projects/workspace:Project.toml",
+    project_srcs = ["//projects/workspace:packages/WsMember/Project.toml"],
+)
+
 # --- the ambient depot ------------------------------------------------------------
 # Every other depot above declares a `dir` of the suite's own, one per Julia version, so no test
 # reads or writes a depot it does not own, whatever the developer's JULIA_DEPOT_PATH holds. This
@@ -207,4 +225,5 @@ use_repo(
     "read_only_depots_1_12",
     "sysimage_depot_1_12",
     "sysimage_depot_1_13",
+    "workspace_depot_1_13",
 )

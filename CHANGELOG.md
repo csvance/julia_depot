@@ -62,6 +62,15 @@ for 0.1.x through the transition.
 
 ### New
 
+- `julia.depot` takes `project`, for a lock kept apart from its `Project.toml`, and
+  `project_srcs`, the workspace members' and path packages' `Project.toml`. With `project`, the
+  fetch stages the project, the members and the lock in the repository and instantiates there.
+  The depot carries `project_srcs` to the rules that build from it, so they need no `srcs` for
+  them, and every file is watched. A workspace member or path package missing from the tree
+  fails the fetch by name, where Pkg would instantiate without it.
+- `julia.depot` takes `precompile` (default `True`), to skip precompiling at fetch time, and
+  `env`, variables for the hook and the instantiate, such as what a package's platform
+  augmentation reads to pick an artifact.
 - `julia_sysimage`: a sysimage as a file, `<name>.so`, to start Julia with.
 - `julia.cc` declares another pinned compiler, for a different zig version or glibc target:
   `julia.cc(name = "my_cc", glibc = "2.28")`, then `cc = "@my_cc"` on a sysimage rule.
