@@ -13,21 +13,19 @@ load("@julia_depot//julia:image.bzl", "julia_sysimage")
 
 julia_sysimage(
     name = "app_sysimage",
-    project = "Project.toml",
-    manifest = "Manifest.toml",
-    srcs = glob(["src/**"]),
     depot = "@my_depot",
-    julia = "@julia_dist",
+    srcs = glob(["src/**"]),
     packages = ["MyApp"],
 )
 ```
 
 `bazel build //:app_sysimage` writes `app_sysimage.so`; start Julia with
-`julia --sysimage <file>`. The packages come from the depot the fetch already instantiated,
-which the build only reads, so it runs sandboxed and is cached like any other action.
-`srcs` are the project's own files, staged at their paths relative to `Project.toml`; list
-everything the baked packages load, since a file left out is invisible to the build and a
-change to it does not rebuild the sysimage.
+`julia --sysimage <file>`. The depot brings the rest: the Julia it was fetched with, and the
+`Project.toml` and Manifest it was instantiated for, so the sysimage cannot be built against a
+Manifest the depot does not hold. The build only reads the depot, so it runs sandboxed and is
+cached like any other action. `srcs` are the project's own files, staged at their paths relative
+to the directory the Manifest is in; list everything the baked packages load, since a file left
+out is invisible to the build and a change to it does not rebuild the sysimage.
 
 A build may need a file outside the project, such as a configuration file a package reads
 while it is compiled. Put it in `data` and pass its path through `env`: `$(execpath ...)`
@@ -57,18 +55,15 @@ load("@julia_depot//julia:image.bzl", "julia_depot_layer")
 
 julia_depot_layer(
     name = "depot_layer",
-    project = "Project.toml",
-    manifest = "Manifest.toml",
     depot = "@my_depot",
-    julia = "@julia_dist",
 )
 ```
 
 The tar unpacks at `/opt/julia-depot` (`prefix` to change it) and holds `artifacts/` only,
 which suffices when a sysimage carries the code. For an image that loads packages from
-source, set `contents = "full"` to ship `packages/` too. With `depot`, the registries and
-package server credentials of that depot are copied into a clean depot for the instantiate
-only; they never reach the layer. Set `JULIA_PKG_SERVER` with `--action_env` if your packages
+source, set `contents = "full"` to ship `packages/` too. The depot's registries and package
+server credentials are copied into the clean depot for the instantiate only, and never reach
+the layer; `fresh_registry = True` fetches the registry instead. Set `JULIA_PKG_SERVER` with `--action_env` if your packages
 come from a private server. See [Images](images.md) for the rest of the image.
 
 ### Substituting a locally built artifact

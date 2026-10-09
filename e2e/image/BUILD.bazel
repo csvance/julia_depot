@@ -31,20 +31,14 @@ julia_sysimage(
     name = "sysimage_cc_glibc_2_28",
     cc = "@cc_glibc_2_28",
     depot = "@depot_1_13",
-    julia = "@julia_1_13",
-    manifest = "//projects/v1.13:Manifest.toml",
     packages = ["Crayons"],
-    project = "//projects/v1.13:Project.toml",
     tags = ["manual"],
 )
 
 julia_sysimage(
     name = "sysimage_system_cc",
     depot = "@depot_1_13",
-    julia = "@julia_1_13",
-    manifest = "//projects/v1.13:Manifest.toml",
     packages = ["Crayons"],
-    project = "//projects/v1.13:Project.toml",
     system_cc = True,
     tags = ["manual"],
 )
@@ -89,10 +83,7 @@ julia_sysimage(
         "E2E_CC_NEXT": "{execroot}/$(execpath @julia_depot_cc//:bin/cc)",
         "E2E_DATA": "{execroot}/$(execpath sysimage_data.txt)",
     },
-    julia = "@julia_1_13",
-    manifest = "//projects/v1.13:Manifest.toml",
     packages = ["Crayons"],
-    project = "//projects/v1.13:Project.toml",
 )
 
 sh_test(
@@ -133,13 +124,10 @@ file_cc_test(
 julia_sysimage(
     name = "sysimage_twin",
     depot = "@depot_1_13",
-    julia = "@julia_1_13",
-    manifest = "//projects/v1.13:Manifest.toml",
     packages = [
         "Bzip2_jll",
         "Crayons",
     ],
-    project = "//projects/v1.13:Project.toml",
     tags = ["manual"],
 )
 
@@ -147,13 +135,10 @@ julia_sysimage(
     name = "sysimage_other_cc",
     cc = "@cc_glibc_2_28",
     depot = "@depot_1_13",
-    julia = "@julia_1_13",
-    manifest = "//projects/v1.13:Manifest.toml",
     packages = [
         "Bzip2_jll",
         "Crayons",
     ],
-    project = "//projects/v1.13:Project.toml",
     tags = ["manual"],
 )
 
@@ -161,13 +146,10 @@ julia_sysimage(
     name = "sysimage_other_env",
     depot = "@depot_1_13",
     env = {"E2E_VALUE": "changed"},
-    julia = "@julia_1_13",
-    manifest = "//projects/v1.13:Manifest.toml",
     packages = [
         "Bzip2_jll",
         "Crayons",
     ],
-    project = "//projects/v1.13:Project.toml",
     tags = ["manual"],
 )
 

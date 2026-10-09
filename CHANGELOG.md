@@ -39,8 +39,13 @@ for 0.1.x through the transition.
     `overrides_image` in place of the script's `JULIA_DEPOT_*` variables.
 - `julia_sysimage_layer` no longer builds: it takes `sysimage`, a `julia_sysimage`, and ships
   it at `path`, so a build that needs the file and the layer compiles the sysimage once. Move
-  its build attributes (`project`, `manifest`, `srcs`, `depot`, `julia`, `packages`,
-  `cpu_target`, `env`) to a `julia_sysimage` and pass that as `sysimage`.
+  its build attributes (`srcs`, `depot`, `packages`, `cpu_target`, `env`) to a
+  `julia_sysimage` and pass that as `sysimage`.
+- `julia_sysimage` and `julia_depot_layer` take Julia, the `Project.toml` and the Manifest
+  from `depot`, which was fetched for exactly those, so they cannot disagree. Drop `julia`,
+  `project` and `manifest` from both. `depot` is now required on `julia_depot_layer`; for the
+  old behaviour without one, set `fresh_registry = True`. A julia.depot repository keeps its
+  own copies of the two files, and cannot be named `env` or `project`.
 - Sysimages are linked by the pinned compiler `@julia_depot_cc` unless the rule is given `cc`
   (another compiler) or `system_cc = True` (the host's, which prints a warning and tags the
   action `no-remote-cache`). Nothing to change for a build that wants the pinned compiler.

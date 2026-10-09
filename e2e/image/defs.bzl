@@ -79,9 +79,6 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         name = n("depot_layer"),
         contents = "full",
         depot = depot_repo,
-        julia = julia,
-        manifest = project + ":Manifest.toml",
-        project = project + ":Project.toml",
     )
 
     native.genrule(
@@ -181,9 +178,6 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         name = n("depot_layer_again"),
         contents = "full",
         depot = depot_repo,
-        julia = julia,
-        manifest = project + ":Manifest.toml",
-        project = project + ":Project.toml",
     )
 
     julia_compiled_layer(
@@ -289,22 +283,18 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
     # against a registry fetched fresh into the clean depot.
     julia_depot_layer(
         name = n("artifacts_layer"),
-        julia = julia,
-        manifest = project + ":Manifest.toml",
-        project = project + ":Project.toml",
+        depot = depot_repo,
+        fresh_registry = True,
     )
 
     # One build, two shapes: the file, and the layer that ships it.
     julia_sysimage(
         name = n("sysimage"),
         depot = depot_repo,
-        julia = julia,
-        manifest = project + ":Manifest.toml",
         packages = [
             "Bzip2_jll",
             "Crayons",
         ],
-        project = project + ":Project.toml",
     )
 
     julia_sysimage_layer(

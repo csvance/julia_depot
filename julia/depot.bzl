@@ -237,22 +237,54 @@ def _julia_depot_impl(rctx):
 export JULIA_DEPOT_PATH={depot}
 """.format(depot = _shell_quote(env["JULIA_DEPOT_PATH"])), executable = False)
 
-    # The default target, named after the repository, so `@<name>` alone means it.
+    # The project the depot was fetched for, copied in, so a rule given the depot builds from
+    # exactly these files. The Manifest is watched, so a change refetches and the copy follows.
+    project = rctx.path(str(manifest.dirname) + "/Project.toml")
+    if not project.exists:
+        fail("julia_depot: no Project.toml beside {}".format(rctx.attr.manifest))
+    _watch(rctx, project)
+    rctx.file("project/Project.toml", rctx.read(project), executable = False)
+    rctx.file("project/" + manifest.basename, rctx.read(manifest), executable = False)
+
+    # The default target, named after the repository, so `@<name>` alone means it: env.sh and
+    # stamp.txt as files, and JuliaDepotInfo for the rules that build from the depot.
     name = rctx.original_name
-    rctx.file("BUILD.bazel", """exports_files(["env.sh", "stamp.txt"])
+    if name in ("env", "project"):
+        fail("julia_depot: a depot cannot be named {}, which its own targets use".format(name))
+    rctx.file("BUILD.bazel", """load("{info_bzl}", "julia_depot_info")
+
+exports_files(["env.sh", "stamp.txt"])
 
 filegroup(
     name = "env",
     srcs = ["env.sh", "stamp.txt"],
     visibility = ["//visibility:public"],
 )
-""" + ("" if name == "env" else """
-alias(
+
+julia_depot_info(
     name = "{name}",
-    actual = ":env",
+    env = "env.sh",
+    julia = "{julia}",
+    manifest = "project/{manifest}",
+    project = "project/Project.toml",
+    project_dir = "{project_dir}",
+    stamp = "stamp.txt",
     visibility = ["//visibility:public"],
 )
-""".format(name = name)))
+""".format(
+        info_bzl = str(Label("//julia:depot_info.bzl")),
+        name = name,
+        julia = str(rctx.attr.julia),
+        manifest = manifest.basename,
+        project_dir = _short_dir(rctx.attr.manifest),
+    ))
+
+def _short_dir(label):
+    """The short path of the directory a file label is in, as File.short_path spells it."""
+    parts = [p for p in [label.package, label.name.rpartition("/")[0]] if p]
+    if label.repo_name:
+        parts = ["..", label.repo_name] + parts
+    return "/".join(parts)
 
 def _shell_quote(s):
     return "'" + s.replace("'", "'\\''") + "'"
