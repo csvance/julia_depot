@@ -27,7 +27,7 @@
 # Bazel 9 is the only version this is built and tested with.
 module(
     name = "julia_depot",
-    version = "0.1.0",
+    version = "0.1.1",
     bazel_compatibility = [">=9.0.0"],
     compatibility_level = 1,
 )
