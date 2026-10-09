@@ -5,8 +5,9 @@
 #   bazel build //image:image_1_13
 #   bazel test //image:all
 
-load("@julia_depot//julia:image.bzl", "julia_sysimage_layer")
-load(":cc_test.bzl", "pinned_cc_test", "system_cc_test")
+load("@julia_depot//julia:image.bzl", "julia_sysimage", "julia_sysimage_layer")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":cc_test.bzl", "file_cc_test", "pinned_cc_test", "system_cc_test")
 load(":defs.bzl", "julia_image_tests")
 
 julia_image_tests(
@@ -69,4 +70,59 @@ system_cc_test(
     size = "small",
     tags = ["julia1_13"],
     target_under_test = ":sysimage_layer_system_cc",
+)
+
+# --- julia_sysimage: the sysimage as a plain file -----------------------------------------------
+# Its compiler is env_check_cc.sh, a plain file, which fails the link unless `data` and `env`
+# reached the build with {execroot} expanded, then hands the call to the pinned compiler.
+julia_sysimage(
+    name = "sysimage_1_13",
+    cc = "env_check_cc.sh",
+    cpu_target = "generic",
+    data = [
+        "sysimage_data.txt",
+        "@julia_depot_cc//:bin/cc",
+        "@julia_depot_cc//:cc",
+    ],
+    depot = "@depot_1_13",
+    env = {
+        "E2E_CC_NEXT": "{execroot}/$(execpath @julia_depot_cc//:bin/cc)",
+        "E2E_DATA": "{execroot}/$(execpath sysimage_data.txt)",
+    },
+    julia = "@julia_1_13",
+    manifest = "//projects/v1.13:Manifest.toml",
+    packages = ["Crayons"],
+    project = "//projects/v1.13:Project.toml",
+)
+
+sh_test(
+    name = "sysimage_file_1_13_test",
+    size = "small",
+    srcs = ["sysimage_file_test.sh"],
+    args = [
+        "$(rootpath :sysimage_1_13)",
+        "$(rootpath @julia_1_13//:bin/julia)",
+        "$(rootpath //projects/v1.13:Manifest.toml)",
+        "$(rootpath @depot_1_13//:stamp.txt)",
+    ],
+    data = [
+        ":sysimage_1_13",
+        "//projects/v1.13:Manifest.toml",
+        "//projects/v1.13:Project.toml",
+        "//tests:common.sh",
+        "@depot_1_13//:stamp.txt",
+        "@julia_1_13//:bin/julia",
+        "@julia_1_13//:dist",
+    ],
+    tags = ["julia1_13"],
+)
+
+file_cc_test(
+    name = "sysimage_file_cc_test",
+    size = "small",
+    cc_file = "image/env_check_cc.sh",
+    env_key = "E2E_DATA",
+    env_path = "image/sysimage_data.txt",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_1_13",
 )

@@ -100,8 +100,15 @@ called and that the sysimage was linked by zig's LLD, carries no GCC crt files, 
 glibc symbol newer than 2.17. The image example's sysimage layer, which names no compiler, must
 pass the same link checks. The script must refuse to run with no compiler or with a path that is
 not executable. Analysis tests in `e2e/image/cc_test.bzl` check what the rule hands the script
-for the default compiler, a consumer's own `julia.cc` and `system_cc`, and that a pinned
-compiler is among the action's inputs.
+for the default compiler, a consumer's own `julia.cc`, a plain-file compiler and `system_cc`,
+and that the compiler is among the action's inputs.
+
+`julia_sysimage` is built on 1.13 with a compiler that checks, inside the build, that `data`
+and `env` reached it with `$(execpath ...)` and `{execroot}` expanded, and then hands the link to
+the pinned compiler. The test starts Julia on the file it wrote and applies the link checks.
+
+The scripts the rules run are internal, but several tests drive them directly, because a
+failure path such as the wrong-minor refusal is cheaper to reach there than through a rule.
 
 ## Before pushing
 

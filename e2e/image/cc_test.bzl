@@ -45,3 +45,27 @@ def _system_test_impl(ctx):
     return analysistest.end(env)
 
 system_cc_test = analysistest.make(_system_test_impl)
+
+def _file_cc_test_impl(ctx):
+    env = analysistest.begin(ctx)
+    actions = [a for a in analysistest.target_actions(env) if a.mnemonic == "JuliaSysimage"]
+    asserts.equals(env, 1, len(actions), "JuliaSysimage actions")
+    if actions:
+        action = actions[0]
+        cc = action.env.get("JULIA_DEPOT_SYSIMAGE_CC", "")
+        asserts.equals(env, ctx.attr.cc_file, cc, "JULIA_DEPOT_SYSIMAGE_CC")
+        asserts.true(env, cc in _input_paths(action), "the compiler {} is not among the action's inputs".format(cc))
+        want = "{}={{execroot}}/{}".format(ctx.attr.env_key, ctx.attr.env_path)
+        asserts.true(env, want in action.argv, "no `--env {}` in the action's arguments: {}".format(want, action.argv))
+    return analysistest.end(env)
+
+# A compiler given as a plain file is the one the build runs, and `env` reaches the build with
+# $(execpath ...) expanded and {execroot} left for the action to expand.
+file_cc_test = analysistest.make(
+    _file_cc_test_impl,
+    attrs = {
+        "cc_file": attr.string(doc = "The compiler's path relative to the execution root."),
+        "env_key": attr.string(doc = "A variable the target sets in `env`."),
+        "env_path": attr.string(doc = "The execution-root path that variable names after {execroot}/."),
+    },
+)

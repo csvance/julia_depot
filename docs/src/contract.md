@@ -123,9 +123,9 @@ A clash fails even when one side is the root module. If the root's declaration w
 other module would build against a Julia or a manifest it never declared, and a module with
 no depot, one that only builds image layers, would ship the root's Julia with no sign of it.
 
-## The image script
+## The depot layer
 
-`image_depot.sh` makes the opposite choice: it instantiates into a clean depot, because an
+`julia_depot_layer` makes the opposite choice: it instantiates into a clean depot, because an
 image must carry exactly the closure. It does not enumerate artifacts from `Artifacts.toml`
 files, because a static walk under-counts: packages may augment the platform with their own
 code (`HDF5_jll` tags its entries `mpi`), and a plain `HostPlatform()` then matches nothing
@@ -137,21 +137,22 @@ Two details are easy to miss:
 - The distribution's bundled depots stay on the depot path. Setting `JULIA_DEPOT_PATH` to
   the fresh directory alone drops `<julia>/share/julia`, where the stdlib precompile
   caches live, and `using Pkg` then recompiles Pkg serially before anything else. The
-  script appends the two bundled depots by name. A trailing colon would expand to the
+  build appends the two bundled depots by name. A trailing colon would expand to the
   same two (since Julia 1.10 it leaves `~/.julia` out), but naming them keeps the path
   explicit.
-- Nothing is precompiled into the layer. A cache built in the script's temporary depot,
+- Nothing is precompiled into the layer. A cache built in the build's temporary depot,
   laid out differently from the image, would not be valid there. `julia_compiled_layer`
   precompiles in a tree with the image's own layout instead, so its caches load unchanged
   from the image's paths; see [Images](images.md).
 
-In `full` mode the script also runs `download_source`, because `Pkg.instantiate` skips
+In `full` mode the build also runs `download_source`, because `Pkg.instantiate` skips
 weak dependencies' sources and a source-loaded image then fails precompiling extensions
 with "failed to find source of parent package".
 
-## The sysimage script
+## The sysimage
 
-A sysimage bakes compiled code, not native libraries, so it does not replace the depot
+`julia_sysimage` writes the sysimage as a file and `julia_sysimage_layer` as an image layer;
+both run the same build. A sysimage bakes compiled code, not native libraries, so it does not replace the depot
 layer: JLLs resolve their artifact directories in `__init__`, at startup. The build
 environment PackageCompiler runs in is pinned per Julia minor and checked against the
 running Julia before any work starts.
@@ -172,15 +173,13 @@ input, chosen explicitly:
   a sysimage linked for it loads on any glibc from 2.17 up. Declare your own with `julia.cc`
   for another zig or glibc. The generated `bin/cc` records the zig version, its sha256 and the
   target, so changing any of them changes its digest and with it the action key.
-- **Your own**: any compiler, as a label for the rule's `cc` or a path for the script. It is
-  then yours to keep pinned and among the action's inputs.
-- **The host's**, by opt-in only: `system_cc = True` on the rule, or
-  `JULIA_DEPOT_SYSIMAGE_CC=system` for the script, which prints a warning. The rule also tags
-  the action `no-remote-cache`; a genrule calling the script has to keep the result out of a
-  shared cache itself.
+- **Your own**: any executable target or file, as `cc`. It is an input of the action, so
+  changing it rebuilds, and it is then yours to keep pinned.
+- **The host's**, by opt-in only: `system_cc = True`. The build prints a warning that the
+  result depends on the host, and the action is tagged `no-remote-cache` so the result never
+  reaches a shared cache.
 
-`sysimage.sh` with no compiler configured fails, naming the three choices. Nothing falls back
-to the host's compiler silently.
+Nothing falls back to the host's compiler silently.
 
 The pinned compiler only links: PackageCompiler compiles the code with Julia's own LLVM, so the
 compiler's part is the link and the C library the sysimage is linked against. That is what it

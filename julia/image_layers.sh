@@ -4,12 +4,15 @@
 #
 #   image_layers.sh dist      <julia> <prefix> <out.tar>
 #   image_layers.sh depot     <julia> <out.tar> <source stamp|-> [<rel> <file>]...
-#   image_layers.sh sysimage  <julia> <out.tar> <source stamp> <path in image> [<rel> <file>]...
+#   image_layers.sh sysimage  <julia> <out.tar> <source stamp> <path in image> <sysimage args>...
+#   image_layers.sh sysimage_so <julia> <out.so> <source stamp> <sysimage args>...
 #   image_layers.sh compiled  <julia> <out.tar> <image flags>...
 #   image_layers.sh check     <julia> <image flags>... [--modules "A B"]
 #
 # <julia> is the toolchain's bin/julia. <rel> <file> pairs stage a project: each file is copied to
-# <rel> under a fresh directory, which becomes the project Pkg sees. <image flags> describe the image
+# <rel> under a fresh directory, which becomes the project Pkg sees. <sysimage args> are any number
+# of `--env <KEY=VALUE>`, a variable for the build with {execroot} expanded to the absolute
+# execution root, followed by the <rel> <file> pairs. <image flags> describe the image
 # the caches are for, and are written by image.bzl from a julia_image_env:
 #
 #   --layer <tar>          a layer, unpacked in the order given (repeatable)
@@ -30,10 +33,12 @@
 # give the same bytes, so a layer's digest changes only when its content does.
 set -euo pipefail
 
-cmd="${1:?usage: image_layers.sh dist|depot|sysimage|compiled|check ...}"
+cmd="${1:?usage: image_layers.sh dist|depot|sysimage|sysimage_so|compiled|check ...}"
 shift
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Bazel starts every action in the execution root; {execroot} in a sysimage's env expands to it.
+execroot="$PWD"
 
 # Julia and PackageCompiler both call homedir(), which throws when HOME is unset, and a Bazel action
 # is not given one. A private HOME also keeps a build from writing into the developer's.
@@ -254,17 +259,39 @@ cmd_depot() {
 # instantiated. That path is only read. A scratch depot in front takes anything PackageCompiler
 # writes (its own environment, when the depot lacks it, and the build's caches), and the
 # distribution's bundled depots behind supply the stdlib.
+#
+# build_sysimage <julia> <out.so> <stamp> <sysimage args>...: the build both subcommands share.
+build_sysimage() {
+    local julia="$1" out="$2" stamp="$3" e v
+    shift 3
+    while [ "${1:-}" = "--env" ]; do
+        e="$2" v="${2#*=}"
+        # The replacement is quoted so bash 5.2 does not read an & in the path as the match.
+        export "${e%%=*}=${v//\{execroot\}/"$execroot"}"
+        shift 2
+    done
+    local project="$scratch/project" root
+    stage_project "$project" "$@"
+    root="$(julia_root "$julia")"
+    mkdir -p "$scratch/depot" "$(dirname "$out")"
+    JULIA_DEPOT_PATH="$scratch/depot:$(stamp_depot "$stamp"):$root/local/share/julia:$root/share/julia" \
+        JULIA_DEPOT_BIN="$(abspath "$julia")" \
+        "$here/sysimage.sh" "$project" auto "$out"
+}
+
 cmd_sysimage() {
     local julia="$1" out="$2" stamp="$3" path="${4#/}"
     shift 4
-    local project="$scratch/project" stage="$scratch/stage" root
-    stage_project "$project" "$@"
-    root="$(julia_root "$julia")"
-    mkdir -p "$scratch/depot" "$stage/$(dirname "$path")"
-    JULIA_DEPOT_PATH="$scratch/depot:$(stamp_depot "$stamp"):$root/local/share/julia:$root/share/julia" \
-        JULIA_DEPOT_BIN="$(abspath "$julia")" \
-        "$here/sysimage.sh" "$project" auto "$stage/$path"
+    local stage="$scratch/stage"
+    build_sysimage "$julia" "$stage/$path" "$stamp" "$@"
     write_layer "$out" "$stage"
+}
+
+# --- sysimage_so: the same sysimage as a file, for a build that starts Julia with it directly ---
+cmd_sysimage_so() {
+    local julia="$1" out="$2" stamp="$3"
+    shift 3
+    build_sysimage "$julia" "$(abspath "$out")" "$stamp" "$@"
 }
 
 # --- compiled: the precompile caches for the entry projects --------------------------------
@@ -364,6 +391,7 @@ case "$cmd" in
     dist) cmd_dist "$@" ;;
     depot) cmd_depot "$@" ;;
     sysimage) cmd_sysimage "$@" ;;
+    sysimage_so) cmd_sysimage_so "$@" ;;
     compiled) cmd_compiled "$@" ;;
     check) cmd_check "$@" ;;
     *)

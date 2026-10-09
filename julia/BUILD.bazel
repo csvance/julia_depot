@@ -1,8 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
-# image_depot.sh and sysimage.sh are public: their arguments and variables are part of the
-# module's interface (see MODULE.bazel). instantiate.sh and image_layers.sh are internal,
-# exported for this module's own rules and its tests, and may change in any release.
+# Every script here is internal: the rules in image.bzl are the interface (see MODULE.bazel). They
+# are exported for this module's own rules and its tests, and may change in any release.
 exports_files([
     "image_depot.sh",
     "image_layers.sh",
@@ -25,9 +24,7 @@ filegroup(
 
 # The PackageCompiler environments, one per Julia minor version (sysimage/v1.12,
 # sysimage/v1.13, ...). sysimage.sh picks the one matching the running Julia when told
-# `auto`, so a consumer depends on this filegroup and never names a version. The
-# individual files are exported too, for a consumer that wants to pin one explicitly and
-# take dirname($(location ...)) as the project directory.
+# `auto`. The individual files are exported for the tests of its explicit-project branch.
 filegroup(
     name = "sysimage_envs",
     srcs = glob([

@@ -16,12 +16,13 @@
 #   - what a dist repository provides: its default target, :dist and bin/julia
 #   - what a cc repository provides: its default target, :cc and bin/cc, and the module's own
 #     @julia_depot_cc, the compiler julia_sysimage_layer uses by default
-#   - the arguments and JULIA_DEPOT_* variables of image_depot.sh and sysimage.sh, and
-#     what a hook is given
+#   - what a hook is given: JULIA_DEPOT_BIN, JULIA_DEPOT_PATH and its hook_environ variables
 #
 # Internal and free to change in any release: julia/dist.bzl, julia/depot.bzl and julia/cc.bzl
 # (use the extension, which also checks repository names across the graph, and do not load their
-# rules with use_repo_rule), and the scripts instantiate.sh and image_layers.sh.
+# rules with use_repo_rule), and every script under julia/ with its arguments and variables
+# (image_depot.sh, sysimage.sh, image_layers.sh, instantiate.sh): the rules in julia/image.bzl
+# are the interface to them. The scripts stay visible for this module's own tests.
 #
 # Built and tested with Bazel 9 only.
 module(

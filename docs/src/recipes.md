@@ -1,110 +1,86 @@
 # Recipes
 
-Every recipe has the same shape: source the depot's `env.sh`, take Julia by label so no
-machine path enters an action key, and run a script. Actions that need the depot at its
-real path are tagged `no-sandbox`. `local` would also let them see it, but it disables
-remote caching too.
-
-The scripts' own variables are spelled `JULIA_DEPOT_*`, beside Julia's `JULIA_DEPOT_PATH`.
-The `RULES_JULIA_DEPOT_*` spelling from before 0.1.1 was removed in 0.2.0.
-
-## A depot layer for an image
-
-`julia_depot_layer` in `julia/image.bzl` is this recipe as a rule, alongside the other image
-layers; see [Images](images.md). The genrule form below is the script underneath, for a build
-that wants to drive it directly.
-
-```python
-genrule(
-    name = "depot_layer",
-    srcs = [
-        "Project.toml",
-        "Manifest.toml",
-        "@my_depot//:env.sh",
-        "@julia_dist//:dist",
-        "@julia_dist//:bin/julia",
-    ],
-    outs = ["depot.tar"],
-    tools = ["@julia_depot//julia:image_depot.sh"],
-    cmd = """
-set -euo pipefail
-. $(location @my_depot//:env.sh)
-export JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
-$(location @julia_depot//julia:image_depot.sh) "$$(dirname $(location Manifest.toml))" "$@"
-""",
-    tags = ["no-sandbox", "requires-network"],
-)
-```
-
-The tar unpacks at `opt/julia-depot` (`JULIA_DEPOT_IMAGE_PREFIX` to change it) and holds
-`artifacts/` only, which suffices when a sysimage carries the code. For an image that loads
-packages from source, set `JULIA_DEPOT_CONTENTS=full` to ship `packages/` too. Set
-`JULIA_PKG_SERVER` in the command if your packages come from a private server. The script
-copies the source depot's registries and server credentials into the clean depot for the
-instantiate only; they never reach the layer.
-
-Stack it with `rules_oci`: a base image, this layer, the Julia distribution as a layer,
-and your application, with the depot first in the image's `JULIA_DEPOT_PATH` and the
-distribution's bundled depots after it. `julia_image_env` writes that environment for you.
-
-### Substituting a locally built artifact
-
-When a JLL's registry artifact must be replaced, for instance by a library built from a
-patched source, ship the replacement in its own layer at a fixed path and pass two
-override files:
-
-```
-JULIA_DEPOT_OVERRIDES_BUILD=build.toml    # names the directory on the build host
-JULIA_DEPOT_OVERRIDES_IMAGE=image.toml    # names the path inside the image; this one ships
-```
-
-Both are `artifacts/Overrides.toml` files keyed by the artifact's git tree hash. Pkg skips
-downloading an artifact whose hash is overridden to an existing directory, so the registry
-copy is neither fetched nor shipped, and the script fails if it was downloaded anyway. The
-image file is required whenever the build file is set. UUID-keyed overrides are honoured
-at load time but do not stop the download, so key by hash.
+The interface is the `julia` extension and the rules in `julia/image.bzl`. The rules run the
+module's scripts for you, and those scripts are internal: their arguments and variables may
+change in any release, so a build that calls one directly can break on an upgrade. Where a
+recipe below needs something no rule does, it uses only what a depot repository provides,
+`env.sh` and `stamp.txt`, and Julia taken by label so that no machine path enters an action key.
 
 ## A sysimage
 
 ```python
-genrule(
-    name = "sysimage",
-    srcs = glob(["src/**"]) + [
-        "Project.toml",
-        "Manifest.toml",
-        "@my_depot//:env.sh",
-        "@julia_dist//:dist",
-        "@julia_dist//:bin/julia",
-        "@julia_depot//julia:sysimage_envs",
-        "@julia_depot_cc//:cc",
-        "@julia_depot_cc//:bin/cc",
-    ],
-    outs = ["app.so"],
-    tools = ["@julia_depot//julia:sysimage.sh"],
-    cmd = """
-set -euo pipefail
-. $(location @my_depot//:env.sh)
-export JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
-export JULIA_DEPOT_SYSIMAGE_PACKAGES="MyApp"
-export JULIA_DEPOT_SYSIMAGE_CC="$(location @julia_depot_cc//:bin/cc)"
-proj="$$(mktemp -d)"; trap 'rm -rf "$$proj"' EXIT
-cp -rL "$$(dirname $(location Manifest.toml))"/. "$$proj"/
-$(location @julia_depot//julia:sysimage.sh) "$$proj" auto "$@"
-""",
-    tags = ["no-sandbox", "requires-network"],
+load("@julia_depot//julia:image.bzl", "julia_sysimage")
+
+julia_sysimage(
+    name = "app_sysimage",
+    project = "Project.toml",
+    manifest = "Manifest.toml",
+    srcs = glob(["src/**"]),
+    depot = "@my_depot",
+    julia = "@julia_dist",
+    packages = ["MyApp"],
 )
 ```
 
-`auto` selects the PackageCompiler environment shipped for the running Julia's minor
-version. The project is copied first because Bazel stages `srcs` as symlinks to the real
-files, and PackageCompiler writes into the project it is given.
+`bazel build //:app_sysimage` writes `app_sysimage.so`; start Julia with
+`julia --sysimage <file>`. The packages come from the depot the fetch already instantiated,
+which the build only reads, so it runs sandboxed and is cached like any other action.
+`srcs` are the project's own files, staged at their paths relative to `Project.toml`; list
+everything the baked packages load, since a file left out is invisible to the build and a
+change to it does not rebuild the sysimage.
 
-`@julia_depot_cc` is the module's pinned compiler; import it with
-`use_repo(julia, "julia_depot_cc")`, or declare your own with `julia.cc(name = "my_cc", ...)`.
-Both its labels go in `srcs`: `bin/cc` is the path the script takes, and `:cc` brings the zig
-distribution it runs. `JULIA_DEPOT_SYSIMAGE_CC` is required. Set it to `system` to link with
-the host's compiler instead, which prints a warning and makes the result host-dependent, so
-keep it out of a shared cache. See [the compiler that links it](contract.md#The-compiler-that-links-it).
+A build may need a file outside the project, such as a configuration file a package reads
+while it is compiled. Put it in `data` and pass its path through `env`: `$(execpath ...)`
+expands for `data`, and `{execroot}` to the absolute execution root.
+
+```python
+    data = ["//:config.toml"],
+    env = {"MY_APP_CONFIG": "{execroot}/$(execpath //:config.toml)"},
+```
+
+The default CPU target is the portable list for the target platform, which runs on any CPU of
+that architecture and makes the build slower; `cpu_target = "generic"` builds once, for a
+baseline CPU. The sysimage is linked by the module's pinned C compiler; see
+[the compiler that links it](contract.md#The-compiler-that-links-it) for `cc` and `system_cc`.
+For an image, `julia_sysimage_layer` is the same build as a layer; see [Images](images.md).
+
+## A depot layer for an image
+
+```python
+load("@julia_depot//julia:image.bzl", "julia_depot_layer")
+
+julia_depot_layer(
+    name = "depot_layer",
+    project = "Project.toml",
+    manifest = "Manifest.toml",
+    depot = "@my_depot",
+    julia = "@julia_dist",
+)
+```
+
+The tar unpacks at `/opt/julia-depot` (`prefix` to change it) and holds `artifacts/` only,
+which suffices when a sysimage carries the code. For an image that loads packages from
+source, set `contents = "full"` to ship `packages/` too. With `depot`, the registries and
+package server credentials of that depot are copied into a clean depot for the instantiate
+only; they never reach the layer. Set `JULIA_PKG_SERVER` with `--action_env` if your packages
+come from a private server. See [Images](images.md) for the rest of the image.
+
+### Substituting a locally built artifact
+
+When a JLL's registry artifact must be replaced, for instance by a library built from a
+patched source, ship the replacement in its own layer at a fixed path and give the depot layer
+two override files:
+
+```python
+    overrides_build = "build.toml",  # names the directory on the build host
+    overrides_image = "image.toml",  # names the path inside the image; this one ships
+```
+
+Both are `artifacts/Overrides.toml` files keyed by the artifact's git tree hash. Pkg skips
+downloading an artifact whose hash is overridden to an existing directory, so the registry
+copy is neither fetched nor shipped, and the build fails if it was downloaded anyway. The
+image file is required whenever the build file is set. UUID-keyed overrides are honoured
+at load time but do not stop the download, so key by hash.
 
 ## A REPL or a server on the pinned environment
 

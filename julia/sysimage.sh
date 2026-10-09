@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Build a sysimage for a Manifest-pinned project with PackageCompiler.
 #
+# Run by julia_sysimage and julia_sysimage_layer. Internal: its arguments and variables are not
+# part of the module's interface and may change in any release.
+#
 # Usage: JULIA_DEPOT_SYSIMAGE_PACKAGES="Pkg1 Pkg2" JULIA_DEPOT_SYSIMAGE_CC=<cc> \
 #            sysimage.sh <project dir> <build project> <out.so>
 #

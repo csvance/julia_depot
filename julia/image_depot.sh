@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Build the depot layer for a container image from a Manifest-pinned project.
 #
+# Run by julia_depot_layer. Internal: its arguments and variables are not part of the module's
+# interface and may change in any release.
+#
 # Usage: image_depot.sh <project dir> <output tar>
 #
 # Environment:

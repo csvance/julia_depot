@@ -52,10 +52,10 @@ use_repo(julia, "julia_dist", "my_depot")
 
 3. Build on it. Fetching `@my_depot` instantiates and precompiles the manifest, checks
    that it was resolved under the Julia you pinned, and produces an `env.sh` to source.
-   From there, a genrule or `sh_binary` sources `env.sh`, takes Julia by label, and runs
-   whatever you need: your code, `sysimage.sh` for a sysimage, or `image_depot.sh` for a
-   clean depot layer to stack into an OCI image. A sysimage is linked by a pinned C compiler,
-   `@julia_depot_cc`, so the host's compiler and C library never reach it; see the [recipes](https://csvance.github.io/julia_depot/dev/recipes/).
+   From there, a `sh_binary` or genrule sources `env.sh` and takes Julia by label to run
+   your code, and `julia_sysimage` in `julia/image.bzl` bakes your packages into a sysimage.
+   A sysimage is linked by a pinned C compiler, `@julia_depot_cc`, so the host's compiler and
+   C library never reach it; see the [recipes](https://csvance.github.io/julia_depot/dev/recipes/).
 4. For an image, the rules in `julia/image.bzl` do the Julia-specific part: the distribution,
    depot, sysimage and precompile-cache layers as deterministic tars, the image's environment,
    and a test that the image starts without compiling anything. You assemble the image with

@@ -6,38 +6,48 @@ see `.github/workflows/release_notes.sh` and `bcr_notes.sh`.
 
 ## 0.2.0
 
-`compatibility_level` is now 2. Every module in a graph must agree on it, so a module and
-the modules it depends on move to 0.2.0 together. A root `git_override` or
-`local_path_override` of julia_depot applies to every module in the graph, so it carries a
-dependency that still asks for 0.1.x through the transition.
+This release makes sysimages hermetic in what they link, and makes the Starlark rules the
+module's whole interface.
+
+- **Hermetic sysimage builds.** A sysimage used to be linked by whatever C compiler the host
+  had, an input no cache key covered, so hosts sharing a remote cache could serve each other
+  sysimages linked against a different compiler and glibc. It is now linked by a pinned
+  compiler that is an input of the action: zig 0.16.0, fetched by sha256, linking against
+  glibc 2.17, so a sysimage loads on any host with glibc 2.17 or later. The sysimage rules also
+  run sandboxed: the depot is only read, and anything the build writes goes to a scratch depot.
+- **A Starlark interface.** Everything a build needs is a rule or a tag: `julia_sysimage`
+  writes a sysimage as a file, so no build calls `sysimage.sh` or `image_depot.sh` any more.
+  Both scripts are now internal, free to change in any release like the module's other
+  scripts.
+
+`compatibility_level` is now 2. Every module in a graph must agree on it, so a module and the
+modules it depends on move to 0.2.0 together. A root `git_override` or `local_path_override` of
+julia_depot applies to every module in the graph, so it carries a dependency that still asks
+for 0.1.x through the transition.
 
 ### Breaking
 
-- **A sysimage is linked by a declared compiler.** PackageCompiler used to link with whatever
-  g++, clang++, gcc or clang was on the host's `PATH`, which was not an input of the action,
-  so two hosts could produce different sysimages under the same cache key. The module now
-  ships a pinned one, `@julia_depot_cc`: zig 0.16.0 fetched by sha256, linking against glibc
-  2.17, so a sysimage loads on any host with glibc 2.17 or later. The host's compiler is
-  available by opt-in only.
-  - `julia_sysimage_layer`: nothing to change. It links with `@julia_depot_cc` unless given
-    `cc` (another compiler) or `system_cc = True` (the host's, with the action tagged
-    `no-remote-cache`).
-  - A genrule calling `sysimage.sh`: `JULIA_DEPOT_SYSIMAGE_CC` is now required. Add
-    `use_repo(julia, "julia_depot_cc")` to `MODULE.bazel`, add `@julia_depot_cc//:cc` and
-    `@julia_depot_cc//:bin/cc` to the genrule's `srcs`, and
-    `export JULIA_DEPOT_SYSIMAGE_CC="$(location @julia_depot_cc//:bin/cc)"` before calling the
-    script. See the sysimage recipe. `JULIA_DEPOT_SYSIMAGE_CC=system` restores the old
-    behaviour, with a warning.
-  - A module using only the depot, the dist or the other layers: bump the `bazel_dep`.
-- The `RULES_JULIA_DEPOT_*` spellings are removed, as 0.1.1 announced: `image_depot.sh` and
-  `sysimage.sh` read only `JULIA_DEPOT_*`, and a hook is given only `JULIA_DEPOT_BIN`.
+- `sysimage.sh` and `image_depot.sh` are internal. Replace a genrule that calls one with the
+  rule that runs it:
+  - `sysimage.sh` → `julia_sysimage`, or `julia_sysimage_layer` for an image. `srcs` are the
+    project's files; a file outside the project goes in `data`, and `env` can name it as
+    `"{execroot}/$(execpath <label>)"`. Drop the genrule's `no-sandbox` tag along with it.
+  - `image_depot.sh` → `julia_depot_layer`, with `depot` for the registries and server
+    credentials, and `contents`, `prefix`, `min_artifacts` and `overrides_build` /
+    `overrides_image` in place of the script's `JULIA_DEPOT_*` variables.
+- Sysimages are linked by the pinned compiler `@julia_depot_cc` unless the rule is given `cc`
+  (another compiler) or `system_cc = True` (the host's, which prints a warning and tags the
+  action `no-remote-cache`). Nothing to change for a build that wants the pinned compiler.
+- The `RULES_JULIA_DEPOT_*` spellings are removed, as 0.1.1 announced: a hook is given only
+  `JULIA_DEPOT_BIN`.
 
 ### New
 
-- `julia.cc` declares a pinned C compiler for sysimages, for another zig version or glibc
-  target: `julia.cc(name = "my_cc", glibc = "2.28")`, then `cc = "@my_cc"` on
-  `julia_sysimage_layer`. It provides `:cc` and `bin/cc` like `julia.dist` provides `:dist`
-  and `bin/julia`.
+- `julia_sysimage`: a sysimage as a file, `<name>.so`, to start Julia with.
+- `julia.cc` declares another pinned compiler, for a different zig version or glibc target:
+  `julia.cc(name = "my_cc", glibc = "2.28")`, then `cc = "@my_cc"` on a sysimage rule.
+- `data` on `julia_sysimage` and `julia_sysimage_layer`, for build inputs outside the project,
+  and `$(execpath ...)` and `{execroot}` expansion in their `env`.
 
 ## 0.1.1
 

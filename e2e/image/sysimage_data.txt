@@ -1,0 +1,1 @@
+# julia-depot-e2e data: a file julia_sysimage passes to its build through `data` and `env`.

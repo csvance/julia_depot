@@ -30,7 +30,7 @@ features:
     link: /julia-versions/
   - icon: ⚡
     title: Sysimages
-    details: A PackageCompiler sysimage from `sysimage.sh`, with a pinned build environment per Julia minor. See the [recipes](/recipes/).
+    details: A PackageCompiler sysimage from `julia_sysimage`, linked by a pinned compiler, with a pinned build environment per Julia minor. See the [recipes](/recipes/).
   - icon: 📦
     title: Container images
     details: The distribution, depot, sysimage and precompile caches as deterministic layers for `oci_image`, plus a test that the image starts without compiling.
@@ -84,10 +84,10 @@ use_repo(julia, "julia_dist", "my_depot")
 
 3. Build on it. Fetching `@my_depot` instantiates and precompiles the manifest, checks
    that it was resolved under the Julia you pinned, and produces an `env.sh` to source.
-   From there, a genrule or `sh_binary` sources `env.sh`, takes Julia by label, and runs
-   whatever you need: your code, `sysimage.sh` for a sysimage, or `image_depot.sh` for a
-   clean depot layer to stack into an OCI image. A sysimage is linked by a pinned C compiler,
-   `@julia_depot_cc`, so the host's compiler and C library never reach it.
+   From there, a `sh_binary` or genrule sources `env.sh` and takes Julia by label to run
+   your code, and `julia_sysimage` in `julia/image.bzl` bakes your packages into a sysimage.
+   A sysimage is linked by a pinned C compiler, `@julia_depot_cc`, so the host's compiler and
+   C library never reach it.
 4. For an image, the rules in `julia/image.bzl` do the Julia-specific part: the distribution,
    depot, sysimage and precompile-cache layers as deterministic tars, the image's environment,
    and a test that the image starts without compiling anything. You assemble the image with
@@ -106,24 +106,25 @@ In `MODULE.bazel`, from the `julia` extension:
 | --- | --- |
 | `julia.dist` | an official Julia distribution, fetched and pinned by sha256 |
 | `julia.depot` | the Manifest-pinned depot, with an optional pre-instantiate hook |
+| `julia.cc` | a C compiler for linking sysimages, pinned by sha256 with the glibc it targets; the module declares `@julia_depot_cc` |
 
 In `BUILD` files, from `@julia_depot//julia:image.bzl`:
 
 | | |
 | --- | --- |
+| `julia_sysimage` | a sysimage as a file, to start Julia with |
 | `julia_dist_layer`, `julia_depot_layer`, `julia_sysimage_layer` | the distribution, a clean depot and a sysimage, each as one deterministic image layer |
 | `julia_compiled_layer` | precompile caches for the image's entry projects, built for its layout and a portable CPU target list |
 | `julia_image_env` | the image's layout declared once, written as the environment file `oci_image` takes |
 | `julia_precompile_test` | a test, run on the layers without a container, that the image starts without precompiling |
 
-The depot and sysimage layers are `image_depot.sh` and `sysimage.sh` as rules. Both scripts
-are public too, for a genrule that needs them outside an image, such as a sysimage for
-local development; see [Recipes](recipes.md).
+These are the interface. The rules run the module's scripts, which are internal and may
+change in any release; see [Recipes](recipes.md).
 
 ## Where to go next
 
 - [Images](images.md): the image layers, the environment, the precompile test, and the recipe.
 - [Recipes](recipes.md): the depot layer, the sysimage, a REPL target, the hook.
-- [The contract](contract.md): what the manifest guarantees, what it does not, and how the depot rule and the image script differ.
+- [The contract](contract.md): what the manifest guarantees, what it does not, and how the depot rule and the depot layer differ.
 - [Julia versions](julia-versions.md): what is version-specific, and adding a version.
 - [Testing](testing.md): the end-to-end suite and its version matrix.
