@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipes — julia_depot</title>
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=db1bb01c">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <meta name="title" content="Recipes — julia_depot">
+  <meta property="og:title" content="Recipes — julia_depot">
+  <meta property="twitter:title" content="Recipes — julia_depot">
+  <meta name="description" content="Documentation for julia_depot.">
+  <meta property="og:description" content="Documentation for julia_depot.">
+  <meta property="twitter:description" content="Documentation for julia_depot.">
+  <meta property="og:url" content="https://csvance.github.io/julia_depot/recipes/">
+  <meta property="twitter:url" content="https://csvance.github.io/julia_depot/recipes/">
+  <link rel="canonical" href="https://csvance.github.io/julia_depot/recipes/">
+  <link rel="stylesheet" href="../assets/documenterlandingpage/landing.css">
+  <link rel="stylesheet" href="../assets/documenterlandingpage/landing-material.css">
+  <script>
+    (function(){
+      document.documentElement.classList.add('no-transition');
+      window.addEventListener('load',function(){setTimeout(function(){document.documentElement.classList.remove('no-transition');},50);});
+    })()
+  </script>
+</head>
+<body data-warn-outdated>
+  <header class="md-navbar">
+    <button id="md-hamburger" class="md-icon-btn md-hamburger" aria-label="Toggle navigation" aria-expanded="false"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+    <span class="md-navbar-title">julia_depot</span>
+    <span class="md-navbar-spacer"></span>
+    <button id="md-search-btn" class="md-search-bar" aria-label="Search documentation" aria-expanded="false">
+      <svg class="md-icon md-search-bar-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="md-search-bar-label">Search docs</span>
+      <kbd class="md-search-bar-kbd">Ctrl K</kbd>
+    </button>
+    <div id="md-version" class="md-version" hidden>
+      <button id="md-version-btn" class="md-version-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select documentation version">
+        <span id="md-version-current" class="md-version-current"></span>
+        <svg class="md-icon md-version-caret" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <ul id="md-version-menu" class="md-version-menu" role="listbox" hidden></ul>
+    </div>
+    <a class="md-icon-btn md-repo-link" href="https://github.com/csvance/julia_depot" title="View the repository on GitHub" aria-label="View the repository on GitHub" rel="noopener" target="_blank"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 .3a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0012 .3z"/></svg><span class="md-repo-label">GitHub</span></a>
+  </header>
+  <div class="md-layout">
+    <nav class="md-sidebar">
+      <a href="../">Home</a>
+      <a href="../images/">Images</a>
+      <a href="../recipes/" class="md-nav-active">Recipes</a>
+      <a href="../contract/">The contract</a>
+      <a href="../julia-versions/">Julia versions</a>
+      <a href="../testing/">Testing</a>
+      <a href="../used-by/">Used by</a>
+    </nav>
+    <main class="md-content">
+      <article class="md-article">
+      <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="https://github.com/csvance/julia_depot/blob/main/docs/src/recipes.md" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
+<h1 id="Recipes" class="md-heading">Recipes<a href="#Recipes" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
+<p>Every recipe has the same shape: source the depot&#39;s <code class="md-code-inline">env.sh</code>, take Julia by label so no machine path enters an action key, and run a script. <code class="md-code-inline">no-sandbox</code> rather than <code class="md-code-inline">local</code> on the actions that need the depot at its real path: both let the action see it, but <code class="md-code-inline">local</code> also disables remote caching.</p>
+<p>The scripts&#39; own variables are spelled <code class="md-code-inline">JULIA_DEPOT_*</code>, beside Julia&#39;s <code class="md-code-inline">JULIA_DEPOT_PATH</code>. Before 0.1.1 they were <code class="md-code-inline">RULES_JULIA_DEPOT_*</code>; that spelling still works, with a deprecation warning, and a hook is still given <code class="md-code-inline">RULES_JULIA_DEPOT_BIN</code> too, until a future release raises the module&#39;s compatibility level.</p>
+<h2 id="A-depot-layer-for-an-image" class="md-heading">A depot layer for an image<a href="#A-depot-layer-for-an-image" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p><code class="md-code-inline">julia_depot_layer</code> in <code class="md-code-inline">julia/image.bzl</code> is this recipe as a rule, alongside the other image layers; see <a href="../images/">Images</a>. The genrule form below is the script underneath, for a build that wants to drive it directly.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-python">genrule(
+    name = &quot;depot_layer&quot;,
+    srcs = [
+        &quot;Project.toml&quot;,
+        &quot;Manifest.toml&quot;,
+        &quot;@my_depot//:env.sh&quot;,
+        &quot;@julia_dist//:dist&quot;,
+        &quot;@julia_dist//:bin/julia&quot;,
+    ],
+    outs = [&quot;depot.tar&quot;],
+    tools = [&quot;@julia_depot//julia:image_depot.sh&quot;],
+    cmd = &quot;&quot;&quot;
+set -euo pipefail
+. $(location @my_depot//:env.sh)
+export JULIA_DEPOT_BIN=&quot;$$(cd &quot;$$(dirname $(location @julia_dist//:bin/julia))&quot; &amp;&amp; pwd)/julia&quot;
+$(location @julia_depot//julia:image_depot.sh) &quot;$$(dirname $(location Manifest.toml))&quot; &quot;$@&quot;
+&quot;&quot;&quot;,
+    tags = [&quot;no-sandbox&quot;, &quot;requires-network&quot;],
+)</code></pre>
+</div>
+<p>The tar unpacks at <code class="md-code-inline">opt/julia-depot</code> (<code class="md-code-inline">JULIA_DEPOT_IMAGE_PREFIX</code> to change it) and holds <code class="md-code-inline">artifacts/</code> only. That is right when a sysimage carries the code. For an image that loads packages from source, set <code class="md-code-inline">JULIA_DEPOT_CONTENTS=full</code> to ship <code class="md-code-inline">packages/</code> too. Set <code class="md-code-inline">JULIA_PKG_SERVER</code> in the command if your packages come from a private server; the script copies the source depot&#39;s registries and server credentials into the clean depot for the duration of the instantiate and never into the layer.</p>
+<p>Stack it with <code class="md-code-inline">rules_oci</code>: a base image, this layer, the Julia distribution as a layer, and your application, with the depot first in the image&#39;s <code class="md-code-inline">JULIA_DEPOT_PATH</code> and the distribution&#39;s bundled depots after it. <code class="md-code-inline">julia_image_env</code> writes that environment for you.</p>
+<h3 id="Substituting-a-locally-built-artifact" class="md-heading">Substituting a locally built artifact<a href="#Substituting-a-locally-built-artifact" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>When a JLL&#39;s registry artifact must be replaced, for instance by a library built from a patched source, ship the replacement in its own layer at a fixed path and pass two override files:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code>JULIA_DEPOT_OVERRIDES_BUILD=build.toml    # names the directory on the build host
+JULIA_DEPOT_OVERRIDES_IMAGE=image.toml    # names the path inside the image; this one ships</code></pre>
+</div>
+<p>Both are <code class="md-code-inline">artifacts/Overrides.toml</code> files keyed by the artifact&#39;s git tree hash. Pkg skips downloading an artifact whose hash is overridden to an existing directory, so the registry copy is neither fetched nor shipped, and the script fails if it was downloaded anyway. The image file is required whenever the build file is set. UUID-keyed overrides are honoured at load time but do not stop the download, so key by hash.</p>
+<h2 id="A-sysimage" class="md-heading">A sysimage<a href="#A-sysimage" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-python">genrule(
+    name = &quot;sysimage&quot;,
+    srcs = glob([&quot;src/**&quot;]) + [
+        &quot;Project.toml&quot;,
+        &quot;Manifest.toml&quot;,
+        &quot;@my_depot//:env.sh&quot;,
+        &quot;@julia_dist//:dist&quot;,
+        &quot;@julia_dist//:bin/julia&quot;,
+        &quot;@julia_depot//julia:sysimage_envs&quot;,
+    ],
+    outs = [&quot;app.so&quot;],
+    tools = [&quot;@julia_depot//julia:sysimage.sh&quot;],
+    cmd = &quot;&quot;&quot;
+set -euo pipefail
+. $(location @my_depot//:env.sh)
+export JULIA_DEPOT_BIN=&quot;$$(cd &quot;$$(dirname $(location @julia_dist//:bin/julia))&quot; &amp;&amp; pwd)/julia&quot;
+export JULIA_DEPOT_SYSIMAGE_PACKAGES=&quot;MyApp&quot;
+proj=&quot;$$(mktemp -d)&quot;; trap &#39;rm -rf &quot;$$proj&quot;&#39; EXIT
+cp -rL &quot;$$(dirname $(location Manifest.toml))&quot;/. &quot;$$proj&quot;/
+$(location @julia_depot//julia:sysimage.sh) &quot;$$proj&quot; auto &quot;$@&quot;
+&quot;&quot;&quot;,
+    tags = [&quot;no-sandbox&quot;, &quot;requires-network&quot;],
+)</code></pre>
+</div>
+<p><code class="md-code-inline">auto</code> selects the PackageCompiler environment shipped for the running Julia&#39;s minor version. The project is copied first because Bazel stages <code class="md-code-inline">srcs</code> as symlinks to the real files, and PackageCompiler writes into the project it is given.</p>
+<h2 id="A-REPL-or-a-server-on-the-pinned-environment" class="md-heading">A REPL or a server on the pinned environment<a href="#A-REPL-or-a-server-on-the-pinned-environment" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>An <code class="md-code-inline">sh_binary</code> with <code class="md-code-inline">@my_depot//:env.sh</code> and <code class="md-code-inline">@julia_dist//:bin/julia</code> in <code class="md-code-inline">data</code>, whose script sources the one and execs the other with <code class="md-code-inline">--project</code> pointing at the real tree (<code class="md-code-inline">BUILD_WORKSPACE_DIRECTORY</code> under <code class="md-code-inline">bazel run</code>). The depot fetch has already guaranteed the environment matches the manifest by the time the script runs.</p>
+<h2 id="A-private-registry" class="md-heading">A private registry<a href="#A-private-registry" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>Give the depot a <code class="md-code-inline">hook</code>: an executable run before instantiate with <code class="md-code-inline">JULIA_DEPOT_BIN</code> and <code class="md-code-inline">JULIA_DEPOT_PATH</code> set, plus any variables named in <code class="md-code-inline">hook_environ</code>, which also become inputs so a change refetches. The hook adds the registry and writes the package server credential into the depot; it is yours, and the module knows nothing about it.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-python">julia.depot(
+    name = &quot;my_depot&quot;,
+    manifest = &quot;//:Manifest.toml&quot;,
+    julia = &quot;@julia_dist&quot;,
+    hook = &quot;//tools:enable_registry.sh&quot;,
+    hook_environ = [&quot;MY_REGISTRY_TOKEN&quot;],
+)</code></pre>
+</div>
+<h2 id="A-declared-depot-instead-of-the-ambient-one" class="md-heading">A declared depot instead of the ambient one<a href="#A-declared-depot-instead-of-the-ambient-one" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>By default the depot rule instantiates into whatever <code class="md-code-inline">JULIA_DEPOT_PATH</code> names at fetch time, or Julia&#39;s default. When the environment should live somewhere specific, say per user on a local disk rather than in an NFS home, declare it:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-python">julia.depot(
+    name = &quot;app_depot&quot;,
+    manifest = &quot;//app:Manifest.toml&quot;,
+    julia = &quot;@julia_dist&quot;,
+    dir = &quot;/cache/{USER}/myproject/julia&quot;,
+)</code></pre>
+</div>
+<p><code class="md-code-inline">{HOME}</code> and <code class="md-code-inline">{USER}</code> expand from the fetch environment and are registered as inputs, so another user refetches rather than reusing a depot conformed for someone else. The directory is created before the hook runs, and <code class="md-code-inline">env.sh</code> exports it with a trailing separator so Julia&#39;s bundled depots stay on the path. Consumers that want a writable depot in front of it (a per-sandbox scratch depot, say) prepend to <code class="md-code-inline">JULIA_DEPOT_PATH</code> after sourcing <code class="md-code-inline">env.sh</code>; Julia writes to the first entry and reads packages, artifacts and compiled caches from all of them. Note that Pkg reads package-server credentials (<code class="md-code-inline">servers/&lt;host&gt;/auth.toml</code>) from the first depot only, so a front depot needs its own copy when the environment resolves through a private server.</p>
+<h2 id="A-shared-depot-behind-a-declared-one" class="md-heading">A shared depot behind a declared one<a href="#A-shared-depot-behind-a-declared-one" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>When the host already has a depot that holds most of what the manifest needs, a host-wide one maintained by someone else, say, stack it behind <code class="md-code-inline">dir</code> rather than downloading and precompiling it all again for every user:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-python">julia.depot(
+    name = &quot;app_depot&quot;,
+    manifest = &quot;//app:Manifest.toml&quot;,
+    julia = &quot;@julia_dist&quot;,
+    dir = &quot;/cache/{USER}/myproject/julia&quot;,
+    read_only_depots = [&quot;/opt/julia-depot-shared&quot;],
+)</code></pre>
+</div>
+<p><code class="md-code-inline">env.sh</code> then exports <code class="md-code-inline">/cache/&lt;user&gt;/myproject/julia:/opt/julia-depot-shared:</code>. Entries expand like <code class="md-code-inline">dir</code> and need it. Julia reads from every entry and writes only to the first, and Pkg installs nothing a later entry already has, so the per-user depot holds only what the shared one lacks. A host without the shared depot fetches into <code class="md-code-inline">dir</code> alone. Whether each read-only depot exists is an input, but not what is in it: if the shared depot is pruned of something the environment used, refetch with <code class="md-code-inline">bazel fetch --force @app_depot</code>.</p>
+<h2 id="Loading-an-image-with-podman-on-a-host-that-also-has-docker" class="md-heading">Loading an image with podman on a host that also has docker<a href="#Loading-an-image-with-podman-on-a-host-that-also-has-docker" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>Not Julia-specific, but it costs an afternoon the first time. <code class="md-code-inline">rules_oci</code>&#39;s <code class="md-code-inline">oci_load</code> probes <code class="md-code-inline">command -v docker</code> first and falls back to podman only when that fails, so on a host where a docker CLI is installed but its socket is not reachable the probe wins and the load dies with &quot;permission denied while trying to connect to the docker API&quot;. Name the loader instead of depending on which CLIs happen to be on PATH: a one-line script, exported as a file, because <code class="md-code-inline">loader</code> must be a single file and an <code class="md-code-inline">sh_binary</code> brings runfiles with it.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-bash">#!/usr/bin/env bash
+exec podman &quot;$@&quot;</code></pre>
+</div>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-python">exports_files([&quot;podman.sh&quot;])
+
+oci_load(
+    name = &quot;image_load&quot;,
+    image = &quot;:image&quot;,
+    loader = &quot;:podman.sh&quot;,
+    repo_tags = [&quot;my-app:bazel&quot;],
+)</code></pre>
+</div>
+      </article>
+      <footer class="md-footer">
+<p>Built with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and <a href="https://github.com/mthelm85/MaterialDocs.jl">MaterialDocs.jl</a>.</p>
+      </footer>
+    </main>
+    <aside class="md-toc">
+      <div class="md-toc-inner">
+        <p class="md-toc-title">On this page</p>
+          <a class="md-toc-link md-toc-h2" href="#A-depot-layer-for-an-image">A depot layer for an image</a>
+            <a class="md-toc-link md-toc-h3" href="#Substituting-a-locally-built-artifact">Substituting a locally built artifact</a>
+          <a class="md-toc-link md-toc-h2" href="#A-sysimage">A sysimage</a>
+          <a class="md-toc-link md-toc-h2" href="#A-REPL-or-a-server-on-the-pinned-environment">A REPL or a server on the pinned environment</a>
+          <a class="md-toc-link md-toc-h2" href="#A-private-registry">A private registry</a>
+          <a class="md-toc-link md-toc-h2" href="#A-declared-depot-instead-of-the-ambient-one">A declared depot instead of the ambient one</a>
+          <a class="md-toc-link md-toc-h2" href="#A-shared-depot-behind-a-declared-one">A shared depot behind a declared one</a>
+          <a class="md-toc-link md-toc-h2" href="#Loading-an-image-with-podman-on-a-host-that-also-has-docker">Loading an image with podman on a host that also has docker</a>
+      </div>
+    </aside>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia-repl.min.js"></script>
+  <script>hljs.highlightAll();</script>
+  <script src="../siteinfo.js"></script>
+  <script src="../../versions.js"></script>
+  <script src="../assets/materialdocs.js?v=db1bb01c"></script>
+</body>
+</html>
