@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Editing a depot's Project.toml, or a file in its project_srcs, reaches the sysimage built from it.
+# Editing a depot's Project.toml, or a file in its project_srcs, reaches the sysimage built from it;
+# running Julia does not refetch its distribution.
 #
 # Usage: e2e/refetch_test.sh   (from anywhere; runs Bazel in e2e/)
 #
@@ -68,4 +69,25 @@ check projects/v1.13/Project.toml //image:sysimage_1_13 project/Project.toml
 # outside the Manifest's directory.
 check projects/workspace/packages/WsMember/Project.toml //image:workspace_sysimage project/packages/WsMember/Project.toml
 
-echo "PASS: editing a depot's Project.toml or a project_srcs file refetched it and changed the sysimage's inputs, and restoring it changed them back"
+# The reverse: running Julia must not refetch its distribution. Julia updates the timestamp of
+# each cache it loads, in whichever depot, the distribution's bundled one included, so a
+# distribution whose caches Bazel tracked would be fetched again, a gigabyte re-extracted, after
+# every Julia run.
+dist_build() {
+    (cd "$e2e" && bazel build @julia_1_13//:dist 2>&1) || fail "bazel build @julia_1_13//:dist failed"
+}
+dist_build >/dev/null
+julia_bin="$(cd "$e2e" && bazel info output_base 2>/dev/null)/$(cd "$e2e" && bazel cquery --output=files @julia_1_13//:bin/julia 2>/dev/null)"
+scratch_depot="$(mktemp -d)"
+# The trailing separator keeps the bundled depots on the path, as env.sh does.
+JULIA_DEPOT_PATH="$scratch_depot:" "$julia_bin" --startup-file=no -e 'using Pkg' ||
+    fail "$julia_bin could not load Pkg"
+rm -rf "$scratch_depot"
+output="$(dist_build)"
+if grep -q "will be fetched again" <<<"$output"; then
+    fail "running Julia made Bazel fetch its distribution again:
+$(grep "will be fetched again" <<<"$output")"
+fi
+echo "ok: running Julia, which touches its bundled caches, did not refetch the distribution"
+
+echo "PASS: editing a depot's Project.toml or a project_srcs file refetched it and changed the sysimage's inputs, and restoring it changed them back; running Julia did not refetch its distribution"

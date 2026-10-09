@@ -44,10 +44,15 @@ oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 
 # The base of the example image: debian:bookworm-slim, pinned by digest. It is small and has the
 # glibc the official Julia build needs. Any comparable base would work.
+#
+# Pulled through mirror.gcr.io, Google's public mirror of Docker Hub, which serves the same
+# manifests under the same digests. Docker Hub rate-limits anonymous pulls per address, and CI
+# runners share addresses, so pulling from it failed whole e2e jobs. The digest pins the image
+# whichever registry serves it.
 oci.pull(
     name = "debian_base",
     digest = "sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251",
-    image = "index.docker.io/library/debian",
+    image = "mirror.gcr.io/library/debian",
     platforms = ["linux/amd64"],
 )
 use_repo(oci, "debian_base", "debian_base_linux_amd64")

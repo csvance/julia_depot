@@ -81,6 +81,13 @@ def host_platform(os_name, arch, what = "julia.dist"):
 # the stdlib JLLs live) relative to Sys.BINDIR, so a consumer that took only bin/julia would
 # start without a stdlib.
 #
+# Except the bundled precompile caches, share/julia/compiled. Julia updates the timestamp of
+# every cache it loads, in whichever depot, and the bundled depot is on every path this module
+# sets, so any Julia run would leave Bazel seeing its repository modified and fetching the whole
+# distribution again. Julia still finds them through the distribution's real directory, as it
+# finds the rest of its bundled depot, and julia_dist_layer copies that directory. They come
+# from the tarball pinned by sha256, so leaving them out of the action key loses nothing.
+#
 # The version header is exported for julia_depot, which reads it so that a version change
 # refetches the depot. bin/julia is a small launcher that need not change between releases,
 # so it cannot be that key.
@@ -91,7 +98,7 @@ def host_platform(os_name, arch, what = "julia.dist"):
 _BUILD = """
 filegroup(
     name = "dist",
-    srcs = glob(["**"], exclude = ["BUILD.bazel", "WORKSPACE", "REPO.bazel"]),
+    srcs = glob(["**"], exclude = ["BUILD.bazel", "WORKSPACE", "REPO.bazel", "share/julia/compiled/**"]),
     visibility = ["//visibility:public"],
 )
 
