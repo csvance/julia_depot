@@ -36,7 +36,7 @@ writes, and packages them into images. The two answer different questions.
 2. Declare a Julia and a depot in `MODULE.bazel`:
 
 ```python
-bazel_dep(name = "julia_depot", version = "0.1.0")
+bazel_dep(name = "julia_depot", version = "0.1.1")
 julia = use_extension("@julia_depot//julia:extensions.bzl", "julia")
 julia.dist(name = "julia_dist", version = "1.12.7")
 julia.depot(
