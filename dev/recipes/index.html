@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recipes — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=d4b8747f">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=cee9c465">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Recipes — julia_depot">
   <meta property="og:title" content="Recipes — julia_depot">
@@ -98,6 +98,22 @@ julia_depot_layer(
     overrides_image = &quot;image.toml&quot;,  # names the path inside the image; this one ships</code></pre>
 </div>
 <p>Both are <code class="md-code-inline">artifacts/Overrides.toml</code> files keyed by the artifact&#39;s git tree hash. Pkg skips downloading an artifact whose hash is overridden to an existing directory, so the registry copy is neither fetched nor shipped, and the build fails if it was downloaded anyway. The image file is required whenever the build file is set. UUID-keyed overrides are honoured at load time but do not stop the download, so key by hash.</p>
+<h2 id="A-lock-kept-apart-from-its-project" class="md-heading">A lock kept apart from its project<a href="#A-lock-kept-apart-from-its-project" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>A project may keep the lock its image is built from apart from its <code class="md-code-inline">Project.toml</code>: a workspace whose development tree resolves fresh, say, with a production <code class="md-code-inline">deploy/Manifest.toml</code> committed beside it. Name the <code class="md-code-inline">Project.toml</code> with <code class="md-code-inline">project</code>, and list every workspace member&#39;s and path package&#39;s <code class="md-code-inline">Project.toml</code> in <code class="md-code-inline">project_srcs</code>, at their paths relative to it:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-python">julia.depot(
+    name = &quot;app_depot&quot;,
+    julia = &quot;@julia_dist&quot;,
+    manifest = &quot;//deploy:Manifest.toml&quot;,
+    project = &quot;//:Project.toml&quot;,
+    project_srcs = [&quot;//:packages/AppCore/Project.toml&quot;],
+    precompile = False,
+    env = {&quot;MY_GPU_BACKEND&quot;: &quot;cuda&quot;},
+)</code></pre>
+</div>
+<p>The fetch stages the project, the members and the lock (as <code class="md-code-inline">Manifest.toml</code>) inside the repository and instantiates there; every one of those files is watched, so an edit refetches. A member left off <code class="md-code-inline">project_srcs</code> fails the fetch by name, since Pkg would otherwise instantiate without it and say nothing. The staged tree has no sources, so a project with path packages needs <code class="md-code-inline">precompile = False</code>, which an image wants anyway: its caches come from <code class="md-code-inline">julia_compiled_layer</code>. <code class="md-code-inline">env</code> reaches the hook and the instantiate, such as what a package&#39;s platform augmentation reads to pick an artifact, so the fetch downloads the one the image uses.</p>
+<p>The rules that build from the depot stage the members themselves, so a depot layer needs no <code class="md-code-inline">srcs</code>: <code class="md-code-inline">julia_depot_layer(name = &quot;depot_layer&quot;, depot = &quot;@app_depot&quot;, contents = &quot;full&quot;)</code>.</p>
 <h2 id="A-REPL-or-a-server-on-the-pinned-environment" class="md-heading">A REPL or a server on the pinned environment<a href="#A-REPL-or-a-server-on-the-pinned-environment" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>An <code class="md-code-inline">sh_binary</code> with <code class="md-code-inline">@my_depot//:env.sh</code> and <code class="md-code-inline">@julia_dist//:bin/julia</code> in <code class="md-code-inline">data</code>, whose script sources the one and execs the other with <code class="md-code-inline">--project</code> pointing at the real tree (<code class="md-code-inline">BUILD_WORKSPACE_DIRECTORY</code> under <code class="md-code-inline">bazel run</code>). The depot fetch has already guaranteed the environment matches the manifest by the time the script runs.</p>
 <h2 id="A-private-registry" class="md-heading">A private registry<a href="#A-private-registry" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
@@ -167,6 +183,7 @@ oci_load(
           <a class="md-toc-link md-toc-h2" href="#A-sysimage">A sysimage</a>
           <a class="md-toc-link md-toc-h2" href="#A-depot-layer-for-an-image">A depot layer for an image</a>
             <a class="md-toc-link md-toc-h3" href="#Substituting-a-locally-built-artifact">Substituting a locally built artifact</a>
+          <a class="md-toc-link md-toc-h2" href="#A-lock-kept-apart-from-its-project">A lock kept apart from its project</a>
           <a class="md-toc-link md-toc-h2" href="#A-REPL-or-a-server-on-the-pinned-environment">A REPL or a server on the pinned environment</a>
           <a class="md-toc-link md-toc-h2" href="#A-private-registry">A private registry</a>
           <a class="md-toc-link md-toc-h2" href="#A-declared-depot-instead-of-the-ambient-one">A declared depot instead of the ambient one</a>
@@ -181,6 +198,6 @@ oci_load(
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=d4b8747f"></script>
+  <script src="../assets/materialdocs.js?v=cee9c465"></script>
 </body>
 </html>
