@@ -29,6 +29,17 @@ jobs:
       - uses: actions/checkout@v4
       - run: tools/check_no_private_refs.sh
 
+  # The release refuses a version with no CHANGELOG.md section; this says so on the pull
+  # request that bumps the version, rather than after the tag is pushed.
+  release_notes:
+    name: release notes for the declared version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          version="$(sed -n 's/^ *version = "\([^"]*\)".*/\1/p' MODULE.bazel | head -n 1)"
+          .github/workflows/release_notes.sh "${version}"
+
   buildifier:
     name: buildifier
     runs-on: ubuntu-latest

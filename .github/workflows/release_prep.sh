@@ -24,10 +24,19 @@ if [[ "${declared}" != "${VERSION}" ]]; then
   exit 1
 fi
 
+# The notes come first and must exist: a release is not cut without them. Taken from the tag,
+# like the version above, and checked before the archive is built.
+changelog="$(mktemp)"
+git show "${TAG}:CHANGELOG.md" > "${changelog}"
+notes="$("$(dirname "$0")/release_notes.sh" "${VERSION}" "${changelog}")"
+rm "${changelog}"
+
 # Excludes come from .gitattributes.
 git archive --format=tar --prefix="${PREFIX}/" "${TAG}" | gzip -n > "${ARCHIVE}"
 
 cat <<NOTES
+${notes}
+
 ## Bzlmod
 
 Add to your \`MODULE.bazel\` file:
