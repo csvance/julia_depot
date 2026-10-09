@@ -69,8 +69,8 @@ case "$exported" in
     *) fail "env.sh exports JULIA_DEPOT_PATH=$exported, which does not end in $want_suffix" ;;
 esac
 
-# A depot with a declared `dir` (every one but the ambient depot, which passes a suffix) must not
-# reach the user depot: on Julia 1.10 a trailing separator would put ~/.julia behind `dir`.
+# Without a suffix, the depot has a declared `dir` and must not reach the user depot: on Julia
+# 1.10 a trailing separator would put ~/.julia behind `dir`. A suffix already pins the path's end.
 if [ -z "$want_suffix" ]; then
     IFS=: read -r -a entries <<<"$exported"
     for e in "${entries[@]}"; do

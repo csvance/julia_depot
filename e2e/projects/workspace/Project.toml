@@ -1,0 +1,15 @@
+# A workspace whose lock is kept apart from it, for julia.depot's `project` and `project_srcs`.
+# The root depends on its one member by path, as a workspace often does, and on Crayons and
+# Bzip2_jll from the registry; the JLL gives the image's depot layer an artifact to ship. Its Manifest lives in deploy/, as a production lock beside a development tree that
+# resolves fresh, so there is deliberately no Manifest.toml here. To regenerate the lock, resolve
+# here under Julia 1.13.0 and move the Manifest.toml that writes to deploy/.
+[deps]
+Bzip2_jll = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
+Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+WsMember = "ecd3c1e9-d092-4545-96c3-aaf6af3cbc83"
+
+[sources]
+WsMember = {path = "packages/WsMember"}
+
+[workspace]
+projects = ["packages/WsMember"]

@@ -41,7 +41,7 @@ def julia_version_tests(
       project: the project package, e.g. "//projects/v1.12".
       other_minor: a different minor, for the sysimage pin check.
       sysimage_depot_repo: the depot over the module's PackageCompiler environment. None for
-        a minor the module ships no environment for, which skips the sysimage build.
+        a minor the module ships no environment for, which skips its check.
       hook_depot_repo: the depot whose fetch runs hooks/marker_hook.sh. None skips the hook
         test; it is version-independent, so a version run with the reduced set omits it.
     """
@@ -148,40 +148,28 @@ def julia_version_tests(
         tags = tags + ["requires-network"],
     )
 
-    # Takes minutes: PackageCompiler rebuilds the whole system image. Declared only where the
-    # module ships a PackageCompiler environment for this minor.
+    # The module's PackageCompiler environment for this minor instantiates under this Julia, into
+    # the version's own depot beside the project, where the sysimage rules find it already
+    # installed. Declared only where the module ships an environment for this minor.
     if sysimage_depot_repo:
         sh_test(
-            name = "sysimage_auto_{}_test".format(tag),
-            size = "large",
-            srcs = ["sysimage_auto_test.sh"],
+            name = "sysimage_depot_stamp_{}_test".format(tag),
+            size = "small",
+            srcs = ["depot_stamp_test.sh"],
             args = [
-                "$(rootpath @julia_depot//julia:sysimage.sh)",
-                "$(rootpath {}//:bin/julia)".format(julia_repo),
-                "$(rootpath {}:Manifest.toml)".format(project),
-                "$(rootpath {}//:stamp.txt)".format(depot_repo),
+                "$(rootpath {}//:env.sh)".format(sysimage_depot_repo),
                 "$(rootpath {}//:stamp.txt)".format(sysimage_depot_repo),
-                minor,
-                "$(rootpath :recording_cc.sh)",
-                "$(rootpath @julia_depot_cc//:bin/cc)",
+                "$(rootpath @julia_depot//julia:sysimage/v{}/Manifest.toml)".format(minor),
+                patch,
+                "/.julia-depot-e2e/v{}:".format(minor),
             ],
             data = _HELPERS + [
-                ":recording_cc.sh",
-                "@julia_depot//julia:sysimage.sh",
-                "@julia_depot//julia:sysimage_envs",
-                "@julia_depot_cc//:bin/cc",
-                "@julia_depot_cc//:cc",
-                depot_repo + "//:stamp.txt",
-                julia_repo + "//:bin/julia",
-                julia_repo + "//:dist",
-                project + ":Manifest.toml",
-                project + ":Project.toml",
+                "@julia_depot//julia:sysimage/v{}/Manifest.toml".format(minor),
+                sysimage_depot_repo + "//:env.sh",
                 sysimage_depot_repo + "//:stamp.txt",
             ],
             env = _TEST_ENV,
-            # Exclusive: it builds a sysimage outside any rule action, so the sysimage rule's
-            # declared memory cannot keep it from running beside others.
-            tags = tags + ["exclusive"],
+            tags = tags,
         )
 
     sh_test(

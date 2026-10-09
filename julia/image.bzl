@@ -234,17 +234,20 @@ def _depot(ctx):
 def _stage_pairs(ctx):
     """(rel, file) pairs that rebuild the project tree around Project.toml.
 
-    The Project.toml and Manifest are the depot's own copies, the ones it was fetched for; `srcs`
-    are the consumer's files, under the directory the project lives in.
+    The Project.toml, Manifest and project_srcs are the depot's own copies, the ones it was
+    fetched for; `srcs` are the consumer's files, under the directory the project lives in.
     """
     depot = _depot(ctx)
     base = depot.project_dir
     pairs = [("Project.toml", depot.project), ("Manifest.toml", depot.manifest)]
+    pairs += [(s.rel, s.file) for s in depot.project_srcs]
+    staged = {rel: True for rel, _ in pairs}
     for f in ctx.files.srcs:
         if base and not f.short_path.startswith(base + "/"):
             fail("srcs: {} is not under the project directory {}".format(f.short_path, base))
         rel = f.short_path[len(base) + 1:] if base else f.short_path
-        if rel in ("Project.toml", "Manifest.toml"):
+        if rel in staged:
+            # The depot's copy, the file it was fetched for, already stands there.
             continue
         pairs.append((rel, f))
     return pairs

@@ -95,9 +95,11 @@ variables as a dict, for a BUILD file that merges them with its own.
 `depot` is a `julia.depot` repository, e.g. `@my_depot`. It brings the Julia it was fetched
 with and the `Project.toml` and Manifest it was instantiated for, so a rule cannot be given a
 Julia or a Manifest its depot does not match. A project with a second lock, a production one
-say, declares a second `julia.depot` over it. `srcs` are further project files (the package's
-source, a `LocalPreferences.toml`, workspace members), staged at their paths relative to the
-directory the Manifest is in. The depot layer copies the depot's registries and package-server
+say, declares a second `julia.depot` over it, with `project` when the lock is not beside the
+`Project.toml`; see [a lock kept apart from its project](recipes.md#A-lock-kept-apart-from-its-project).
+The depot's `project_srcs` (workspace members' `Project.toml`) are staged with it. A rule's own
+`srcs` are further project files the depot does not need (the package's source, a
+`LocalPreferences.toml`), staged at their paths relative to the project's directory. The depot layer copies the depot's registries and package-server
 credentials for the instantiate and ships neither; `fresh_registry = True` fetches the registry
 instead. The sysimage
 layer reads the packages that depot already holds. Both take the whole depot path the stamp

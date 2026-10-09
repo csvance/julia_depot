@@ -1,0 +1,15 @@
+# A workspace whose lock, deploy/Manifest.toml, is kept apart from its Project.toml; see the
+# comment in Project.toml. Resolved under Julia 1.13.0.
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "Project.toml",
+    "deploy/Manifest.toml",
+    "packages/WsMember/Project.toml",
+])
+
+# The member's source, which the depot never sees: an image ships it in its own layer.
+filegroup(
+    name = "member_src",
+    srcs = ["packages/WsMember/src/WsMember.jl"],
+)

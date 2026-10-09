@@ -151,10 +151,9 @@ if [ -n "${JULIA_PKG_SERVER:-}" ]; then
 fi
 env "${env_args[@]}" "$JULIA_DEPOT_BIN" --startup-file=no --project="$proj" -e "$instantiate"
 
-if [ ! -d "$fresh/artifacts" ]; then
-    echo "FAILED: instantiate produced no artifacts/ in the clean depot" >&2
-    exit 1
-fi
+# A project with no JLLs has no artifacts/ at all. The floor below decides whether that is an
+# error, and an empty directory keeps the layer's layout the same either way.
+mkdir -p "$fresh/artifacts"
 
 n="$(find "$fresh/artifacts" -mindepth 1 -maxdepth 1 -type d | wc -l)"
 kb="$(du -sk "$fresh/artifacts" | cut -f1)"

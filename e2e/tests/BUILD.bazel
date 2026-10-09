@@ -12,9 +12,6 @@ package(default_testonly = True)
 # Sourced by the image tests in //image as well.
 exports_files(["common.sh"])
 
-# A user-supplied compiler for the sysimage tests; see the script.
-exports_files(["recording_cc.sh"])
-
 # 1.10, the long-term support release, with the reduced set: no sysimage build (the module
 # ships no PackageCompiler environment for 1.10) and no hook test (version-independent).
 julia_version_tests(
@@ -201,7 +198,8 @@ sh_test(
         "@julia_depot//julia:sysimage_envs",
     ],
     env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
-    # Exclusive, like sysimage_auto: a sysimage built outside any rule action.
+    # Exclusive: a sysimage built outside any rule action, which the sysimage rule's declared
+    # memory cannot keep from running beside others.
     tags = [
         "exclusive",
         "julia1_13",
@@ -230,4 +228,38 @@ sh_test(
         "@ambient_depot_1_13//:stamp.txt",
     ],
     tags = ["julia1_13"],
+)
+
+# julia.depot's `project`: a missing workspace member and a precompile without sources each fail
+# the fetch clearly. The instantiate step the fetch runs, on trees staged by hand. Version
+# independent, so 1.13 alone.
+sh_test(
+    name = "project_srcs_1_13_test",
+    size = "medium",
+    srcs = ["project_srcs_test.sh"],
+    args = [
+        "$(rootpath @julia_depot//julia:instantiate.sh)",
+        "$(rootpath @julia_1_13//:bin/julia)",
+        "$(rootpath //projects/workspace:Project.toml)",
+        "$(rootpath //projects/workspace:packages/WsMember/Project.toml)",
+        "$(rootpath //projects/workspace:member_src)",
+        "$(rootpath //projects/workspace:deploy/Manifest.toml)",
+        "$(rootpath @workspace_depot_1_13//:stamp.txt)",
+    ],
+    data = [
+        "common.sh",
+        "//projects/workspace:Project.toml",
+        "//projects/workspace:deploy/Manifest.toml",
+        "//projects/workspace:member_src",
+        "//projects/workspace:packages/WsMember/Project.toml",
+        "@julia_1_13//:bin/julia",
+        "@julia_1_13//:dist",
+        "@julia_depot//julia:instantiate.sh",
+        "@workspace_depot_1_13//:stamp.txt",
+    ],
+    env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
+    tags = [
+        "julia1_13",
+        "requires-network",
+    ],
 )

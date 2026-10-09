@@ -5,7 +5,14 @@
 #   bazel build //image:image_1_13
 #   bazel test //image:all
 
-load("@julia_depot//julia:image.bzl", "julia_sysimage")
+load(
+    "@julia_depot//julia:image.bzl",
+    "julia_compiled_layer",
+    "julia_depot_layer",
+    "julia_image_env",
+    "julia_precompile_test",
+    "julia_sysimage",
+)
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load(":cc_test.bzl", "file_cc_test", "pinned_cc_test", "system_cc_test")
 load(":defs.bzl", "julia_image_tests")
@@ -22,68 +29,20 @@ julia_image_tests(
     julia_repo = "@julia_1_13",
     minor = "1.13",
     project = "//projects/v1.13",
-)
-
-# --- the compiler that links a sysimage --------------------------------------------------------
-# Analysis tests over sysimage_1_13, which names no compiler, and two variants that are
-# never built: one with a consumer's own julia.cc, one with the host's compiler. See cc_test.bzl.
-julia_sysimage(
-    name = "sysimage_cc_glibc_2_28",
-    cc = "@cc_glibc_2_28",
-    depot = "@depot_1_13",
-    packages = ["Crayons"],
-    tags = ["manual"],
-)
-
-julia_sysimage(
-    name = "sysimage_system_cc",
-    depot = "@depot_1_13",
-    packages = ["Crayons"],
-    system_cc = True,
-    tags = ["manual"],
-)
-
-pinned_cc_test(
-    name = "sysimage_default_cc_test",
-    size = "small",
-    repo = "julia_depot_cc",
-    tags = ["julia1_13"],
-    target_under_test = ":sysimage_1_13",
-)
-
-pinned_cc_test(
-    name = "sysimage_own_cc_test",
-    size = "small",
-    repo = "cc_glibc_2_28",
-    tags = ["julia1_13"],
-    target_under_test = ":sysimage_cc_glibc_2_28",
-)
-
-system_cc_test(
-    name = "sysimage_system_cc_test",
-    size = "small",
-    tags = ["julia1_13"],
-    target_under_test = ":sysimage_system_cc",
-)
-
-# --- julia_sysimage: the sysimage as a plain file -----------------------------------------------
-# Its compiler is env_check_cc.sh, a plain file, which fails the link unless `data` and `env`
-# reached the build with {execroot} expanded, then hands the call to the pinned compiler.
-julia_sysimage(
-    name = "sysimage_env_check_1_13",
-    cc = "env_check_cc.sh",
-    cpu_target = "generic",
-    data = [
+    # The 1.13 sysimage also checks `data`, `env` and a compiler given as a plain file, so the job
+    # builds one sysimage for all of it. env_check_cc.sh fails the link unless `data` and `env`
+    # reached the build with {execroot} expanded, then hands the call to the pinned compiler, so
+    # the link checks over this sysimage still hold.
+    sysimage_cc = "env_check_cc.sh",
+    sysimage_data = [
         "sysimage_data.txt",
         "@julia_depot_cc//:bin/cc",
         "@julia_depot_cc//:cc",
     ],
-    depot = "@depot_1_13",
-    env = {
+    sysimage_env = {
         "E2E_CC_NEXT": "{execroot}/$(execpath @julia_depot_cc//:bin/cc)",
         "E2E_DATA": "{execroot}/$(execpath sysimage_data.txt)",
     },
-    packages = ["Crayons"],
 )
 
 sh_test(
@@ -91,13 +50,13 @@ sh_test(
     size = "small",
     srcs = ["sysimage_file_test.sh"],
     args = [
-        "$(rootpath :sysimage_env_check_1_13)",
+        "$(rootpath :sysimage_1_13)",
         "$(rootpath @julia_1_13//:bin/julia)",
         "$(rootpath //projects/v1.13:Manifest.toml)",
         "$(rootpath @depot_1_13//:stamp.txt)",
     ],
     data = [
-        ":sysimage_env_check_1_13",
+        ":sysimage_1_13",
         "//projects/v1.13:Manifest.toml",
         "//projects/v1.13:Project.toml",
         "//tests:common.sh",
@@ -115,12 +74,23 @@ file_cc_test(
     env_key = "E2E_DATA",
     env_path = "image/sysimage_data.txt",
     tags = ["julia1_13"],
-    target_under_test = ":sysimage_env_check_1_13",
+    target_under_test = ":sysimage_1_13",
 )
 
-# --- the inputs file -------------------------------------------------------------------------
-# A twin of sysimage_1_13 and two variants that each change one attribute. Only their
-# inputs output groups are built; see sysimage_inputs_test.sh.
+# --- sysimages that are never built ------------------------------------------------------------
+# A baseline with every default, a twin of it, and variants that each change one attribute.
+# Analysis tests read their actions (cc_test.bzl), and sysimage_inputs_test.sh their inputs files,
+# so none of them costs a build.
+julia_sysimage(
+    name = "sysimage_base",
+    depot = "@depot_1_13",
+    packages = [
+        "Bzip2_jll",
+        "Crayons",
+    ],
+    tags = ["manual"],
+)
+
 julia_sysimage(
     name = "sysimage_twin",
     depot = "@depot_1_13",
@@ -153,6 +123,40 @@ julia_sysimage(
     tags = ["manual"],
 )
 
+julia_sysimage(
+    name = "sysimage_system_cc",
+    depot = "@depot_1_13",
+    packages = [
+        "Bzip2_jll",
+        "Crayons",
+    ],
+    system_cc = True,
+    tags = ["manual"],
+)
+
+pinned_cc_test(
+    name = "sysimage_default_cc_test",
+    size = "small",
+    repo = "julia_depot_cc",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_base",
+)
+
+pinned_cc_test(
+    name = "sysimage_own_cc_test",
+    size = "small",
+    repo = "cc_glibc_2_28",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_other_cc",
+)
+
+system_cc_test(
+    name = "sysimage_system_cc_test",
+    size = "small",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_system_cc",
+)
+
 [
     filegroup(
         name = t + "_inputs",
@@ -161,6 +165,7 @@ julia_sysimage(
     )
     for t in [
         "sysimage_1_13",
+        "sysimage_base",
         "sysimage_twin",
         "sysimage_other_cc",
         "sysimage_other_env",
@@ -174,6 +179,7 @@ sh_test(
     args = [
         "$(rootpath :sysimage_layer_1_13)",
         "$(rootpath :sysimage_1_13_inputs)",
+        "$(rootpath :sysimage_base_inputs)",
         "$(rootpath :sysimage_twin_inputs)",
         "$(rootpath :sysimage_other_cc_inputs)",
         "$(rootpath :sysimage_other_env_inputs)",
@@ -182,6 +188,7 @@ sh_test(
     ],
     data = [
         ":sysimage_1_13_inputs",
+        ":sysimage_base_inputs",
         ":sysimage_layer_1_13",
         ":sysimage_other_cc_inputs",
         ":sysimage_other_env_inputs",
@@ -191,4 +198,86 @@ sh_test(
         "@julia_1_13//:julia_dist.txt",
     ],
     tags = ["julia1_13"],
+)
+
+# --- a lock kept apart from its project ---------------------------------------------------------
+# An image from @workspace_depot_1_13, whose lock is not beside its Project.toml and whose
+# workspace member is a path package. The depot layer stages the depot's project, member
+# Project.toml included, with no srcs of its own; the application layer brings the project and
+# the member's source to /opt/ws, where the caches are built and the image must start without
+# compiling.
+_WS = "/opt/ws"
+
+# The application's root is also a depot, so the member's caches record its source relative to
+# it and stay valid wherever the tree is unpacked.
+julia_image_env(
+    name = "workspace_image_env",
+    extra_depots = [_WS],
+    project = _WS,
+)
+
+julia_depot_layer(
+    name = "workspace_depot_layer",
+    contents = "full",
+    depot = "@workspace_depot_1_13",
+)
+
+genrule(
+    name = "workspace_app_layer",
+    srcs = [
+        "//projects/workspace:Project.toml",
+        "//projects/workspace:deploy/Manifest.toml",
+        "//projects/workspace:packages/WsMember/Project.toml",
+        "//projects/workspace:member_src",
+    ],
+    outs = ["workspace_app_layer.tar"],
+    cmd = """
+set -euo pipefail
+stage="$$(mktemp -d)"
+trap 'rm -rf "$$stage"' EXIT
+mkdir -p "$$stage{ws}/packages/WsMember/src"
+cp -L $(location //projects/workspace:Project.toml) "$$stage{ws}/Project.toml"
+cp -L $(location //projects/workspace:deploy/Manifest.toml) "$$stage{ws}/Manifest.toml"
+cp -L $(location //projects/workspace:packages/WsMember/Project.toml) "$$stage{ws}/packages/WsMember/"
+cp -L $(location //projects/workspace:member_src) "$$stage{ws}/packages/WsMember/src/"
+LC_ALL=C tar --create --file "$@" --format=gnu --sort=name --mtime=@0 \\
+    --owner=0 --group=0 --numeric-owner --mode='u=rwX,go=rX' --directory "$$stage" opt
+""".format(ws = _WS),
+)
+
+julia_compiled_layer(
+    name = "workspace_compiled_layer",
+    image_env = ":workspace_image_env",
+    julia = "@julia_1_13",
+    layers = [
+        ":dist_layer_1_13",
+        ":workspace_depot_layer",
+        ":workspace_app_layer",
+    ],
+    projects = [_WS],
+)
+
+julia_precompile_test(
+    name = "workspace_precompile_check_test",
+    size = "medium",
+    image_env = ":workspace_image_env",
+    julia = "@julia_1_13",
+    layers = [
+        ":dist_layer_1_13",
+        ":workspace_depot_layer",
+        ":workspace_compiled_layer",
+        ":workspace_app_layer",
+    ],
+    projects = [_WS],
+    tags = ["julia1_13"],
+)
+
+# A sysimage over the same depot that is never built: e2e/refetch_test.sh reads its inputs file,
+# which records the depot's copy of the member's Project.toml.
+julia_sysimage(
+    name = "workspace_sysimage",
+    srcs = ["//projects/workspace:member_src"],
+    depot = "@workspace_depot_1_13",
+    packages = ["WsMember"],
+    tags = ["manual"],
 )
