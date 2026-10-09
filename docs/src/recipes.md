@@ -169,6 +169,11 @@ shared one lacks. A host without the shared depot fetches into `dir` alone. Whet
 read-only depot exists is an input, but not what is in it: if the shared depot is pruned of
 something the environment used, refetch with `bazel fetch --force @app_depot`.
 
+This is deliberately not hermetic. Julia loads what the shared depot holds without checking it
+against the Manifest's hashes, so the shared depot is trusted code, and an
+`artifacts/Overrides.toml` in it redirects artifacts for every user; see
+[what is not hermetic](contract.md#What-is-not-hermetic).
+
 ## Loading an image with podman on a host that also has docker
 
 Not Julia-specific, but it costs an afternoon the first time. `rules_oci`'s `oci_load` probes

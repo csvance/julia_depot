@@ -47,6 +47,41 @@ entry and, when no `dir` is declared, `JULIA_DEPOT_PATH`. Not on what a read-onl
 holds: watching a shared depot's whole tree would cost more than the fetch it guards, so a
 shared depot that loses something the environment relied on needs `bazel fetch --force`.
 
+### What is not hermetic
+
+The depot rule is not hermetic, by design. The depot is a directory outside Bazel's output
+base that the fetch conforms in place: Bazel caches `env.sh` and `stamp.txt`, not the depot,
+which `bazel clean --expunge` leaves alone and anything else on the host can change. Two hosts
+with the same `MODULE.bazel` and lockfile can have different depot contents, and
+`read_only_depots` adds trees the rule neither owns nor watches. The hermetic alternative, a
+depot per manifest inside the output base, would download and precompile gigabytes on every
+manifest change and share nothing between workspaces or users.
+
+The Manifest decides where Julia looks, not what it finds there. It names every package by
+tree hash and every artifact by content hash, and Julia looks both up by those names in every
+depot on the path. Pkg checks the hash when it downloads; nothing checks it again when Julia
+loads, so a directory under the right name is used as it is. A compiled cache, `.ji` or
+pkgimage `.so`, is reused when Julia's staleness check passes, which compares its sources,
+dependencies and flags, not its bits. A depot on the path is therefore trusted the way any
+binary you run is: a shared depot's maintainer supplies code you load. What the arrangement
+does guarantee is that a missing package or artifact, because a shared depot was pruned,
+fails to load rather than resolving to some other version.
+
+`artifacts/Overrides.toml` goes further. Julia reads it from every depot on the path, an
+earlier depot winning over a later one, and an override can point an artifact at any
+directory, under any hash. An `Overrides.toml` in a shared depot therefore changes what loads
+for everyone who stacks that depot. Keep shared depots free of one, or treat it as part of
+what every consumer builds against.
+
+The image layers differ in what they take from these depots. The depot layer takes nothing
+but registries and package server credentials: `image_depot.sh` downloads every package and
+artifact again into a clean depot, with only Julia's bundled depots behind it, so Pkg verifies
+everything that goes in, except the artifacts an `overrides_build` file substitutes. That makes it independent of the host's depots, not hermetic: it is
+an action that uses the network. The compiled layer precompiles offline inside the assembled
+image, so no host cache reaches it. The sysimage layer is the exception: it builds from the
+packages on the depot path the stamp records, `dir` and any `read_only_depots`, so whatever a
+shared depot holds, its `Overrides.toml` included, is in scope for the sysimage.
+
 ### Read-only depots
 
 `read_only_depots` stacks depots after `dir`, so the path is `<dir>:<ro1>:<ro2>:...:`, the
