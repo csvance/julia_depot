@@ -46,7 +46,7 @@ LC_ALL=C tar --create --file "$@" --format=gnu --sort=name --mtime=@0 \\
 # Named by `minor`, like the macros in tests/defs.bzl. buildifier asks for `name` because of the
 # genrule.
 # buildifier: disable=unnamed-macro
-def julia_image_tests(minor, julia_repo, depot_repo, project):
+def julia_image_tests(minor, julia_repo, depot_repo, project, sysimage_cc = None, sysimage_data = [], sysimage_env = {}):
     """Declares the image example and its tests for one Julia version.
 
     Args:
@@ -54,6 +54,9 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
       julia_repo: the distribution repository, e.g. "@julia_1_12".
       depot_repo: the depot over `project`, e.g. "@depot_1_12".
       project: the project package, e.g. "//projects/v1.12".
+      sysimage_cc: the sysimage's `cc`, or None for the module's pinned compiler.
+      sysimage_data: the sysimage's `data`.
+      sysimage_env: the sysimage's `env`.
     """
     tag = minor.replace(".", "_")
     tags = ["julia" + tag]
@@ -295,6 +298,9 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
             "Bzip2_jll",
             "Crayons",
         ],
+        data = sysimage_data,
+        env = sysimage_env,
+        **({"cc": sysimage_cc} if sysimage_cc else {})
     )
 
     julia_sysimage_layer(

@@ -22,8 +22,8 @@ so that depot always lands in Julia's default, `~/.julia`, and holds the two sma
 the 1.13 test project. `rm -rf ~/.julia-depot-e2e` resets the suite's depots.
 
 Expect a few minutes cold, most of it downloading the Julia distributions and
-building two sysimages per version (one for the sysimage tests, one portable one for the image
-example); warm, the whole matrix takes a few minutes.
+building the image example's portable sysimage for each version, one at a time, since a sysimage
+build declares 8 GiB to Bazel's scheduler; warm, the whole matrix takes a few minutes.
 
 ## The matrix
 
@@ -43,9 +43,9 @@ and its `env.sh` exports that same depot and names no Julia binary; a hook runs 
 instantiate and sees its `hook_environ`; `image_depot.sh` ships artifacts and no packages in
 `artifacts` mode and both in `full`, honours the image prefix and the artifact floor, and
 never ships depot credentials; artifact overrides are honoured, and a broken one fails the
-build instead of producing an image with two copies of a library; and `sysimage.sh auto`
-selects that version's PackageCompiler environment, builds an image, and that image starts
-and loads what was baked into it. Across versions, a manifest resolved under one Julia is
+build instead of producing an image with two copies of a library; and the module's
+PackageCompiler environment for that version instantiates into the version's depot, where the
+image example's sysimage, built from it, starts Julia and loads what was baked into it. Across versions, a manifest resolved under one Julia is
 refused by the other in both directions, and a PackageCompiler environment pinned to the
 wrong minor is refused before any work starts.
 
@@ -90,23 +90,21 @@ depot of the test's own, and has to install its PackageCompiler environment ther
 building. It downloads the General registry and PackageCompiler each time it runs. It links
 with the host's compiler, `JULIA_DEPOT_SYSIMAGE_CC=system`, and checks for the warning.
 
-The compiler that links a sysimage is checked from both sides. `sysimage.sh` is given a
-recording compiler that hands each call to the pinned one, and the test checks that it was
-called and that the sysimage was linked by zig's LLD, carries no GCC crt files, and requires no
-glibc symbol newer than 2.17. The image example's sysimage layer, which names no compiler, must
-pass the same link checks. The script must refuse to run with no compiler or with a path that is
-not executable. Analysis tests in `e2e/image/cc_test.bzl` check what the rule hands the script
-for the default compiler, a consumer's own `julia.cc`, a plain-file compiler and `system_cc`,
-and that the compiler is among the action's inputs.
+Each version builds one sysimage through the rules, the image example's. Its layer must hold a
+sysimage linked by zig's LLD, with no GCC crt files and no glibc symbol newer than 2.17, and
+byte for byte the `julia_sysimage` it was given. On 1.13 that sysimage's compiler is a plain
+file that checks, inside the build, that `data` and `env` reached it with `$(execpath ...)` and
+`{execroot}` expanded, and then hands the link to the pinned compiler, so the same build also
+covers those attributes and a compiler given by label; Julia is also started on the file
+directly. `sysimage.sh` must refuse to run with no compiler or with a path that is not
+executable. Analysis tests in `e2e/image/cc_test.bzl` check what the rule hands the script for
+the default compiler, a consumer's own `julia.cc`, a plain-file compiler and `system_cc`, and
+that the compiler is among the action's inputs.
 
-`julia_sysimage` is built on 1.13 with a compiler that checks, inside the build, that `data`
-and `env` reached it with `$(execpath ...)` and `{execroot}` expanded, and then hands the link to
-the pinned compiler. The test starts Julia on the file it wrote and applies the link checks.
-
-The inputs file is tested on 1.13 against a twin of the image example's sysimage layer, a
-target with the same attributes under another name, whose file must be byte-identical, and
-two variants that change only the compiler or only `env`, whose files must differ in that
-entry alone. Only the twin's and variants' inputs files are built. The test also checks the
+The inputs file is tested on 1.13 against sysimages that are never built: a baseline with every
+default, a twin of it under another name, whose file must be byte-identical, and two variants
+that change only the compiler or only `env`, whose files must differ in that entry alone. Only
+their inputs files are built. The test also checks the
 recorded Manifest digest and Julia tarball, and that the layer ships the file beside the
 sysimage.
 
