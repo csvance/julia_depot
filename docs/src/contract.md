@@ -90,7 +90,8 @@ holds, its `Overrides.toml` included, is in scope for the sysimage.
 ### Read-only depots
 
 `read_only_depots` stacks depots after `dir`, so the path is `<dir>:<ro1>:<ro2>:...:`, the
-trailing separator keeping Julia's bundled depots last. Julia reads packages, artifacts and
+trailing separator keeping Julia's bundled depots last. On Julia 1.10 a trailing separator would
+also add the user depot `~/.julia`, so there the two bundled depots are named instead. Julia reads packages, artifacts and
 compiled caches from every entry and writes only to the first, and Pkg installs nothing some
 entry already holds, so `dir` ends up holding only what the read-only depots lack. The rule
 writes nothing to them: it neither creates them nor fails when one is missing, since Julia
@@ -123,9 +124,9 @@ A clash fails even when one side is the root module. If the root's declaration w
 other module would build against a Julia or a manifest it never declared, and a module with
 no depot, one that only builds image layers, would ship the root's Julia with no sign of it.
 
-## The image script
+## The depot layer
 
-`image_depot.sh` makes the opposite choice: it instantiates into a clean depot, because an
+`julia_depot_layer` makes the opposite choice: it instantiates into a clean depot, because an
 image must carry exactly the closure. It does not enumerate artifacts from `Artifacts.toml`
 files, because a static walk under-counts: packages may augment the platform with their own
 code (`HDF5_jll` tags its entries `mpi`), and a plain `HostPlatform()` then matches nothing
@@ -137,21 +138,88 @@ Two details are easy to miss:
 - The distribution's bundled depots stay on the depot path. Setting `JULIA_DEPOT_PATH` to
   the fresh directory alone drops `<julia>/share/julia`, where the stdlib precompile
   caches live, and `using Pkg` then recompiles Pkg serially before anything else. The
-  script appends the two bundled depots by name. A trailing colon would expand to the
-  same two (since Julia 1.10 it leaves `~/.julia` out), but naming them keeps the path
+  build appends the two bundled depots by name. A trailing colon would expand to the
+  same two since Julia 1.11 (on 1.10 it adds `~/.julia` as well), but naming them keeps the path
   explicit.
-- Nothing is precompiled into the layer. A cache built in the script's temporary depot,
+- Nothing is precompiled into the layer. A cache built in the build's temporary depot,
   laid out differently from the image, would not be valid there. `julia_compiled_layer`
   precompiles in a tree with the image's own layout instead, so its caches load unchanged
   from the image's paths; see [Images](images.md).
 
-In `full` mode the script also runs `download_source`, because `Pkg.instantiate` skips
+In `full` mode the build also runs `download_source`, because `Pkg.instantiate` skips
 weak dependencies' sources and a source-loaded image then fails precompiling extensions
 with "failed to find source of parent package".
 
-## The sysimage script
+## The sysimage
 
-A sysimage bakes compiled code, not native libraries, so it does not replace the depot
+`julia_sysimage` writes the sysimage as a file and `julia_sysimage_layer` as an image layer;
+both run the same build. A sysimage bakes compiled code, not native libraries, so it does not replace the depot
 layer: JLLs resolve their artifact directories in `__init__`, at startup. The build
 environment PackageCompiler runs in is pinned per Julia minor and checked against the
 running Julia before any work starts.
+
+### The compiler that links it
+
+PackageCompiler links the sysimage with a C compiler. Left to itself it takes the first of g++,
+clang++, gcc and clang on the host's `PATH`, and the sysimage then depends on that compiler and
+on the host's C library, neither of which is an input of the action. Two hosts with different
+compilers would produce different sysimages under the same cache key, and a sysimage linked
+against a newer glibc than another host has would not load there. So the compiler is a declared
+input, chosen explicitly:
+
+- **Pinned**, the default for `julia_sysimage`: a `julia.cc` repository, zig fetched by
+  sha256 and run as `zig cc -target <arch>-linux-gnu.<glibc>`. One tarball holds the compiler,
+  the linker and the glibc stubs, so every host links against the same C library. The module
+  declares one itself, `@julia_depot_cc`, targeting glibc 2.17 like the official Julia builds;
+  a sysimage linked for it loads on any glibc from 2.17 up. Declare your own with `julia.cc`
+  for another zig or glibc. The generated `bin/cc` records the zig version, its sha256 and the
+  target, so changing any of them changes its digest and with it the action key.
+- **Your own**: any executable target or file, as `cc`. It is an input of the action, so
+  changing it rebuilds, and it is then yours to keep pinned.
+- **The host's**, by opt-in only: `system_cc = True`. The build prints a warning that the
+  result depends on the host, and the action is tagged `no-remote-cache` so the result never
+  reaches a shared cache.
+
+Nothing falls back to the host's compiler silently.
+
+The pinned compiler only links: PackageCompiler compiles the code with Julia's own LLVM, so the
+compiler's part is the link and the C library the sysimage is linked against. That is what it
+pins. The precompile caches of `julia_compiled_layer` need no C compiler, since Julia links
+them with the `lld` it bundles.
+
+### The inputs file
+
+A sysimage is not reproducible: Julia stamps the code it compiles with a build id, and the
+build's paths are baked in. Two builds of the same commit therefore give different bytes, and a
+check that compares a rebuilt sysimage with a released one by digest fails. What does reproduce
+is what the sysimage was built from, so each sysimage rule also writes an inputs file,
+`<name>.inputs.json`, and `julia_sysimage_layer` ships it beside the sysimage it packages
+(`/opt/julia-sysimage/sys.inputs.json` for the default `path`).
+
+It records everything the rule declares, and nothing that depends on the host:
+
+- `julia`: the version, platform and sha256 of the tarball the distribution was fetched from
+- `config`: the packages, the CPU target, `env` as written (before `{execroot}` expands),
+  the kind of compiler, and the layer's `path`
+- `files`: the sha256 of each project file (`project/...`), each `data` file
+  (`data/<label>`), the compiler (`cc/bin/cc` for a `julia.cc` repository, which records zig's
+  sha256 and the glibc target), the PackageCompiler environment for the Julia minor, and the
+  module's scripts that run the build
+- `format`: the version of this layout
+
+The depot is not in it. The Manifest is, and the Manifest determines the depot (see
+[what the Manifest guarantees](#What-the-Manifest-guarantees)), which leaves the trust
+described in [what is not hermetic](#What-is-not-hermetic). With `system_cc` it records the
+compiler only as `system`, so it vouches for nothing about the link.
+
+The file is written by its own action, from the same declared inputs as the build, so it is
+cheap to produce without building the sysimage:
+
+```sh
+bazel build --output_groups=inputs //:app_sysimage
+```
+
+Comparing that with the file a released image carries checks a rebuild against a release:
+equal files mean the same declared inputs. Two caveats: a key under `data/` or `cc/` holds the
+file's canonical label, which can change with the module graph or the Bazel version, so compare
+files from the same Bazel; and the files are equal only if the rule's attributes are.

@@ -7,6 +7,8 @@
         "julia_dist_layer",
         "julia_image_env",
         "julia_precompile_test",
+        "julia_sysimage",
+        "julia_sysimage_layer",
     )
 
 Each layer rule writes one deterministic tar for rules_oci's `oci_image(tars = [...])`: entries
@@ -22,9 +24,18 @@ through `JuliaImageEnvInfo`, so the caches are built for, and checked against, t
 the image runs with. `julia_image_env_vars` returns the same variables as a dict, for a BUILD
 file that merges them with its own.
 
-The rules call image_layers.sh, which wraps image_depot.sh and sysimage.sh. What those scripts
-decide is documented there.
+`julia_sysimage` is the one rule here that writes no layer: it builds the sysimage as a plain
+file, for a build or a test that starts Julia with it directly. `julia_sysimage_layer` ships that
+file in an image, so a build that needs both compiles the sysimage once.
+
+The rules call image_layers.sh, which wraps image_depot.sh and sysimage.sh. All three scripts are
+internal: the rules are the interface. What the scripts decide is documented there.
 """
+
+load(":depot_info.bzl", _JuliaDepotInfo = "JuliaDepotInfo")
+
+# Re-exported: the provider a julia.depot repository's default target carries.
+JuliaDepotInfo = _JuliaDepotInfo
 
 # The CPU targets of the official Julia builds, from JuliaCI's julia-buildkite
 # (utilities/build_envs.sh). For x86_64, a generic baseline plus clones for Sandy Bridge, Haswell
@@ -217,12 +228,18 @@ def _tool_attrs():
         "_scripts": attr.label(default = "//julia:image_scripts"),
     }
 
-def _stage_args(ctx):
-    """<rel> <file> pairs that rebuild the project tree around Project.toml."""
-    project = ctx.file.project
-    base = project.short_path.rpartition("/")[0]
-    files = [project, ctx.file.manifest]
-    pairs = [("Project.toml", project), ("Manifest.toml", ctx.file.manifest)]
+def _depot(ctx):
+    return ctx.attr.depot[JuliaDepotInfo]
+
+def _stage_pairs(ctx):
+    """(rel, file) pairs that rebuild the project tree around Project.toml.
+
+    The Project.toml and Manifest are the depot's own copies, the ones it was fetched for; `srcs`
+    are the consumer's files, under the directory the project lives in.
+    """
+    depot = _depot(ctx)
+    base = depot.project_dir
+    pairs = [("Project.toml", depot.project), ("Manifest.toml", depot.manifest)]
     for f in ctx.files.srcs:
         if base and not f.short_path.startswith(base + "/"):
             fail("srcs: {} is not under the project directory {}".format(f.short_path, base))
@@ -230,28 +247,35 @@ def _stage_args(ctx):
         if rel in ("Project.toml", "Manifest.toml"):
             continue
         pairs.append((rel, f))
-        files.append(f)
+    return pairs
+
+def _stage_args(ctx):
+    """<rel> <file> arguments that rebuild the project tree, and the files they name."""
     args = []
-    for rel, f in pairs:
+    files = []
+    for rel, f in _stage_pairs(ctx):
         args += [rel, f.path]
+        files.append(f)
     return args, files
 
-def _stamp(ctx):
-    if not ctx.attr.depot:
-        return None
-    for f in ctx.files.depot:
-        if f.basename == "stamp.txt":
-            return f
-    fail("depot: {} has no stamp.txt; pass the julia.depot repository, e.g. @my_depot".format(ctx.attr.depot.label))
-
-def _project_attrs():
+def _depot_attrs():
+    """What a rule that builds from a depot takes: the depot, which brings Julia and the project."""
     return {
-        "project": attr.label(mandatory = True, allow_single_file = ["Project.toml"], doc = "The project's Project.toml."),
-        "manifest": attr.label(mandatory = True, allow_single_file = [".toml"], doc = "The Manifest.toml that pins it, staged beside the Project.toml wherever it lives."),
-        "srcs": attr.label_list(allow_files = True, doc = "Further project files (LocalPreferences.toml, workspace members), staged at their paths relative to the Project.toml."),
+        "depot": attr.label(
+            mandatory = True,
+            providers = [JuliaDepotInfo],
+            doc = "The julia.depot repository, e.g. `@my_depot`. It brings the Julia and the Project.toml and Manifest it was fetched for.",
+        ),
+        "srcs": attr.label_list(allow_files = True, doc = "Further project files (the package's source, LocalPreferences.toml, workspace members), staged at their paths relative to the depot's Project.toml."),
     }
 
-def _layer_run(ctx, out, arguments, inputs, env = {}, network = False, remote_cache = True, mnemonic = "JuliaLayer", message = None):
+def _sysimage_resources(_os, _inputs_size):
+    # A PackageCompiler build holds several gigabytes at its peak. Declared, so Bazel's local
+    # scheduler runs as many at once as the machine's memory allows instead of as many as it
+    # has cores; a CI runner that started four ran out.
+    return {"memory": 8192, "cpu": 2}
+
+def _layer_run(ctx, out, arguments, inputs, julia, env = {}, network = False, remote_cache = True, mnemonic = "JuliaLayer", message = None, resource_set = None):
     # No remote execution: the depot and sysimage layers read the depot a julia.depot fetch filled
     # on this host, and every layer reads the distribution through its real directory. Actions
     # that need no network are still not tagged block-network, because that sandbox needs a
@@ -264,7 +288,7 @@ def _layer_run(ctx, out, arguments, inputs, env = {}, network = False, remote_ca
     ctx.actions.run(
         executable = ctx.executable._tool,
         arguments = arguments,
-        inputs = depset(inputs, transitive = [ctx.attr.julia[DefaultInfo].files, ctx.attr._scripts[DefaultInfo].files]),
+        inputs = depset(inputs, transitive = [julia, ctx.attr._scripts[DefaultInfo].files]),
         outputs = [out],
         env = env,
         # PATH for tar and coreutils, and anything set with --action_env, such as JULIA_PKG_SERVER.
@@ -272,6 +296,7 @@ def _layer_run(ctx, out, arguments, inputs, env = {}, network = False, remote_ca
         execution_requirements = reqs,
         mnemonic = mnemonic,
         progress_message = message or "Writing Julia layer %{output}",
+        resource_set = resource_set,
     )
 
 # --- julia_dist_layer -----------------------------------------------------------------------
@@ -283,6 +308,7 @@ def _julia_dist_layer_impl(ctx):
         out,
         ["dist", _julia_bin(ctx).path, _check_absolute("prefix", ctx.attr.prefix), out.path],
         [],
+        ctx.attr.julia[DefaultInfo].files,
         # About a gigabyte, which a copy from the local distribution repository rebuilds in
         # seconds, faster than a round trip through a remote or disk cache.
         remote_cache = False,
@@ -304,7 +330,8 @@ julia_dist_layer = rule(
 def _julia_depot_layer_impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name + ".tar")
     stage, files = _stage_args(ctx)
-    stamp = _stamp(ctx)
+    depot = _depot(ctx)
+    stamp = None if ctx.attr.fresh_registry else depot.stamp
     env = dict(ctx.attr.env)
     env.update({
         "JULIA_DEPOT_CONTENTS": ctx.attr.contents,
@@ -325,8 +352,9 @@ def _julia_depot_layer_impl(ctx):
     _layer_run(
         ctx,
         out,
-        ["depot", _julia_bin(ctx).path, out.path, stamp.path if stamp else "-"] + stage,
+        ["depot", depot.julia_bin.path, out.path, stamp.path if stamp else "-"] + stage,
         inputs,
+        depot.julia,
         env = env,
         network = True,
         mnemonic = "JuliaDepotLayer",
@@ -343,60 +371,210 @@ closure. `contents = "artifacts"` ships artifacts/ only, for an image whose code
 julia_compiled_layer needs. Fetches from the package server: set JULIA_PKG_SERVER with
 --action_env to use a mirror.
 """,
-    attrs = _tool_attrs() | _project_attrs() | {
-        "julia": attr.label(mandatory = True, allow_files = True, doc = _JULIA_DOC),
+    attrs = _tool_attrs() | _depot_attrs() | {
         "contents": attr.string(default = "artifacts", values = ["artifacts", "full"], doc = "artifacts: artifacts/ only. full: packages/ as well."),
         "prefix": attr.string(default = "/opt/julia-depot", doc = "Where the image keeps the depot. Match julia_image_env's `depot_prefix`."),
         "min_artifacts": attr.int(default = 1, doc = "Fail below this many artifact directories, to catch a selection that came up empty without an error."),
-        "depot": attr.label(allow_files = True, doc = "Optional julia.depot repository, e.g. `@my_depot`. Its registries and package-server credentials are used for the instantiate (never shipped). Without it the registry is fetched fresh."),
+        "fresh_registry": attr.bool(doc = "Fetch the registry into the clean depot instead of copying the depot's registries and package-server credentials, which are otherwise used for the instantiate (and never shipped)."),
         "overrides_build": attr.label(allow_single_file = True, doc = "artifacts/Overrides.toml naming build-host directories; see docs/src/recipes.md."),
         "overrides_image": attr.label(allow_single_file = True, doc = "The artifacts/Overrides.toml that ships, naming in-image paths. Required with overrides_build."),
         "env": attr.string_dict(doc = "Variables for the instantiate, e.g. what a package's platform augmentation reads to select an artifact."),
     },
 )
 
-# --- julia_sysimage_layer -------------------------------------------------------------------
+# --- julia_sysimage and julia_sysimage_layer ------------------------------------------------
 
-def _julia_sysimage_layer_impl(ctx):
-    out = ctx.actions.declare_file(ctx.label.name + ".tar")
+def _sysimage_cc(ctx):
+    """The compiler: struct(env, files, kind, identity).
+
+    env is JULIA_DEPOT_SYSIMAGE_CC for sysimage.sh, files what the build needs as inputs, kind
+    what the inputs file records, and identity the files whose bytes identify the compiler there.
+    A julia.cc repository is identified by bin/cc alone, which records the zig tarball's sha256.
+    """
+    if ctx.attr.system_cc:
+        return struct(env = "system", files = [], kind = "system", identity = [])
+    files = ctx.files.cc
+    for f in files:
+        if f.owner.name == "bin/cc":
+            return struct(env = f.path, files = files, kind = "julia.cc", identity = [f])
+    info = ctx.attr.cc[DefaultInfo]
+    exe = info.files_to_run.executable
+    if exe:
+        all = files + [exe] + info.default_runfiles.files.to_list()
+        return struct(env = exe.path, files = all, kind = "executable", identity = all)
+    if len(files) == 1:
+        return struct(env = files[0].path, files = files, kind = "file", identity = files)
+    fail("cc: {} is neither a julia.cc repository, an executable target nor a single file".format(ctx.attr.cc.label))
+
+def _sysimage_inputs(ctx, out, cc):
+    """Writes the inputs file: what the sysimage is built from, the same bytes on any host."""
+    config = {
+        "cc": cc.kind,
+        "cpu_target": _cpu_target(ctx),
+        "env": {k: ctx.attr.env[k] for k in sorted(ctx.attr.env)},
+        "packages": ctx.attr.packages,
+    }
+    keyed = [("project/" + rel, f) for rel, f in _stage_pairs(ctx)]
+    keyed += [("data/" + str(f.owner), f) for f in ctx.files.data]
+    if cc.kind == "julia.cc":
+        keyed += [("cc/bin/cc", f) for f in cc.identity]
+    else:
+        keyed += [("cc/" + str(f.owner), f) for f in cc.identity]
+
+    # The module's own files that decide the build: the scripts and the PackageCompiler
+    # environments. image_layers.sh keeps only the environment for the Julia minor.
+    for f in ctx.files._scripts:
+        if f.owner.name in ("sysimage.sh", "image_layers.sh") or f.owner.name.startswith("sysimage/"):
+            keyed.append(("julia_depot/{}/{}".format(f.owner.package, f.owner.name), f))
+    seen = {}
+    lines = []
+    files = []
+    for key, f in sorted(keyed, key = lambda kf: kf[0]):
+        if key in seen:
+            continue
+        seen[key] = True
+        lines.append("{}\t{}".format(key, f.path))
+        files.append(f)
+    listing = ctx.actions.declare_file(out.basename + ".files")
+    ctx.actions.write(listing, "\n".join(lines) + "\n")
+    dist = _depot(ctx).julia_dist
+    ctx.actions.run(
+        executable = ctx.executable._tool,
+        arguments = ["inputs", out.path, dist.path, json.encode(config), listing.path],
+        inputs = files + [dist, listing],
+        outputs = [out],
+        use_default_shell_env = True,
+        mnemonic = "JuliaSysimageInputs",
+        progress_message = "Writing the inputs of %{output}",
+    )
+
+def _sysimage_run(ctx, out, cc):
+    """Runs the sysimage build: image_layers.sh sysimage."""
     stage, files = _stage_args(ctx)
-    stamp = _stamp(ctx)
+    depot = _depot(ctx)
     if not ctx.attr.packages:
         fail("packages: name at least one package to bake")
-    env = dict(ctx.attr.env)
-    env.update({
-        "JULIA_DEPOT_SYSIMAGE_PACKAGES": " ".join(ctx.attr.packages),
-        "JULIA_DEPOT_SYSIMAGE_CPU_TARGET": _cpu_target(ctx),
-    })
+    env_args = []
+    for k, v in ctx.attr.env.items():
+        env_args += ["--env", "{}={}".format(k, ctx.expand_location(v, ctx.attr.data))]
     _layer_run(
         ctx,
         out,
-        ["sysimage", _julia_bin(ctx).path, out.path, stamp.path, _check_absolute("path", ctx.attr.path)] + stage,
-        files + [stamp],
-        env = env,
+        ["sysimage", depot.julia_bin.path, out.path, depot.stamp.path] + env_args + stage,
+        files + [depot.stamp] + cc.files + ctx.files.data,
+        depot.julia,
+        env = {
+            "JULIA_DEPOT_SYSIMAGE_PACKAGES": " ".join(ctx.attr.packages),
+            "JULIA_DEPOT_SYSIMAGE_CPU_TARGET": _cpu_target(ctx),
+            "JULIA_DEPOT_SYSIMAGE_CC": cc.env,
+        },
         # Used only when the depot lacks PackageCompiler and sysimage.sh installs it.
         network = True,
-        mnemonic = "JuliaSysimageLayer",
-        message = "Building Julia sysimage layer %{output}",
+        # The host's compiler is not in the key, so its result must not be shared.
+        remote_cache = not ctx.attr.system_cc,
+        mnemonic = "JuliaSysimage",
+        message = "Building Julia sysimage %{output}",
+        resource_set = _sysimage_resources,
     )
-    return [DefaultInfo(files = depset([out]))]
+
+def _sysimage_attrs():
+    return _tool_attrs() | _depot_attrs() | _cpu_attrs() | {
+        "packages": attr.string_list(mandatory = True, doc = "Packages to bake, with everything they depend on."),
+        "cpu_target": attr.string(doc = "The sysimage's CPU targets. Default: the portable list for the target platform's CPU, which costs build time and runs on any host of that architecture."),
+        "data": attr.label_list(allow_files = True, doc = "Further inputs of the build outside the project, such as a file a package reads while it is compiled. Name them in `env` with $(execpath ...)."),
+        "env": attr.string_dict(doc = "Variables for the build. $(execpath ...) and $(location ...) expand for `data`, and {execroot} to the absolute execution root, so `\"{execroot}/$(execpath //:config.toml)\"` is an absolute path to an input."),
+        "cc": attr.label(
+            default = Label("@julia_depot_cc"),
+            allow_files = True,
+            doc = "The C compiler that links the sysimage: a julia.cc repository such as `@my_cc`, or any executable target. Default: the module's own, zig targeting glibc 2.17.",
+        ),
+        "system_cc": attr.bool(doc = "Link with the host's compiler instead of `cc`. The result depends on the host, so the action is tagged no-remote-cache."),
+    }
+
+_SYSIMAGE_DOC = """
+The packages come from the depot `depot` names, which its julia.depot fetch already instantiated
+for this manifest. That depot is only read: a scratch depot in front takes anything the build
+writes, so the action runs sandboxed. A sysimage does not replace the depot: JLLs resolve their
+artifacts at startup.
+
+The sysimage is linked by `cc`, by default the module's pinned compiler, so the compiler and the
+glibc it links against are inputs of the action. `system_cc = True` uses the host's compiler
+instead; the action is then tagged no-remote-cache.
+
+The `inputs` output group holds `<name>.inputs.json`: the sysimage's declared inputs by sha256,
+the same on every build of the same inputs, since the sysimage itself is not reproducible. It is
+written by its own action, so `--output_groups=inputs` builds it without the sysimage.
+"""
+
+JuliaSysimageInfo = provider(
+    doc = "A sysimage from julia_sysimage, for julia_sysimage_layer to ship without building it again.",
+    fields = {
+        "sysimage": "File: the sysimage.",
+        "inputs": "File: its inputs file.",
+        "host_cc": "bool: linked with the host's compiler (system_cc), so not to be cached remotely.",
+        "cpu_target": "string: the CPU targets it was compiled for, the JULIA_CPU_TARGET an image starting Julia with it should set.",
+    },
+)
+
+def _julia_sysimage_impl(ctx):
+    out = ctx.actions.declare_file(ctx.label.name + ".so")
+    inputs = ctx.actions.declare_file(ctx.label.name + ".inputs.json")
+    cc = _sysimage_cc(ctx)
+    _sysimage_inputs(ctx, inputs, cc)
+    _sysimage_run(ctx, out, cc)
+    return [
+        DefaultInfo(files = depset([out])),
+        OutputGroupInfo(inputs = depset([inputs])),
+        JuliaSysimageInfo(sysimage = out, inputs = inputs, host_cc = ctx.attr.system_cc, cpu_target = _cpu_target(ctx)),
+    ]
+
+julia_sysimage = rule(
+    implementation = _julia_sysimage_impl,
+    doc = """A PackageCompiler sysimage, `<name>.so`, to start Julia with: `julia --sysimage <file>`.
+For an image, pass it to julia_sysimage_layer, which ships this build rather than repeating it.
+""" + _SYSIMAGE_DOC,
+    attrs = _sysimage_attrs(),
+)
+
+def _julia_sysimage_layer_impl(ctx):
+    info = ctx.attr.sysimage[JuliaSysimageInfo]
+    out = ctx.actions.declare_file(ctx.label.name + ".tar")
+
+    # Only packaging, so it may run and be cached anywhere; unless the sysimage inside carries the
+    # host's link, in which case the layer must not be shared either.
+    reqs = {"no-remote-cache": "1"} if info.host_cc else {}
+    ctx.actions.run(
+        executable = ctx.executable._tool,
+        arguments = ["sysimage_layer", out.path, info.sysimage.path, info.inputs.path, _check_absolute("path", ctx.attr.path)],
+        inputs = [info.sysimage, info.inputs],
+        outputs = [out],
+        use_default_shell_env = True,
+        execution_requirements = reqs,
+        mnemonic = "JuliaSysimageLayer",
+        progress_message = "Writing Julia sysimage layer %{output}",
+    )
+    return [
+        DefaultInfo(files = depset([out])),
+        OutputGroupInfo(inputs = depset([info.inputs])),
+    ]
 
 julia_sysimage_layer = rule(
     implementation = _julia_sysimage_layer_impl,
-    doc = """A PackageCompiler sysimage at `path`, as one layer: sysimage.sh as a rule.
+    doc = """A julia_sysimage as one image layer: the sysimage at `path`, its inputs file beside it.
 
-The packages come from the depot `depot` names, which its julia.depot fetch already instantiated
-for this manifest; a scratch depot in front takes anything the build writes. A sysimage does not
-replace the depot layer: artifacts are resolved at startup, so ship a julia_depot_layer beside it,
-and start Julia with `--sysimage <path>`.
+It ships the sysimage `sysimage` built, so a build that needs the file as well as the layer
+compiles it once. Ship a julia_depot_layer beside it for the artifacts, and start Julia with
+`--sysimage <path>`. The `inputs` output group holds the sysimage's inputs file.
 """,
-    attrs = _tool_attrs() | _project_attrs() | _cpu_attrs() | {
-        "julia": attr.label(mandatory = True, allow_files = True, doc = _JULIA_DOC),
-        "depot": attr.label(mandatory = True, allow_files = True, doc = "The julia.depot repository over this manifest, e.g. `@my_depot`."),
-        "packages": attr.string_list(mandatory = True, doc = "Packages to bake, with everything they depend on."),
-        "cpu_target": attr.string(doc = "The sysimage's CPU targets. Default: the portable list for the target platform's CPU, which costs build time and runs on any host of that architecture."),
-        "path": attr.string(default = "/opt/julia-sysimage/sys.so", doc = "Where the image keeps the sysimage."),
-        "env": attr.string_dict(doc = "Variables for the build."),
+    attrs = {
+        "sysimage": attr.label(mandatory = True, providers = [JuliaSysimageInfo], doc = "The julia_sysimage to ship."),
+        "path": attr.string(default = "/opt/julia-sysimage/sys.so", doc = "Where the image keeps the sysimage; the inputs file goes beside it as `<path without .so>.inputs.json`."),
+        "_tool": attr.label(
+            default = "//julia:image_layers.sh",
+            allow_single_file = True,
+            executable = True,
+            cfg = "exec",
+        ),
     },
 )
 
@@ -438,6 +616,7 @@ def _julia_compiled_layer_impl(ctx):
         out,
         ["compiled", _julia_bin(ctx).path, out.path] + [a for layer in ctx.files.layers for a in ("--layer", layer.path)] + args,
         ctx.files.layers,
+        ctx.attr.julia[DefaultInfo].files,
         env = {"JULIA_CPU_TARGET": info.cpu_target},
         mnemonic = "JuliaCompiledLayer",
         message = "Precompiling Julia layer %{output}",

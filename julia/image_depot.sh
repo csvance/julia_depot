@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Build the depot layer for a container image from a Manifest-pinned project.
 #
+# Run by julia_depot_layer. Internal: its arguments and variables are not part of the module's
+# interface and may change in any release.
+#
 # Usage: image_depot.sh <project dir> <output tar>
 #
 # Environment:
@@ -17,8 +20,7 @@
 #   JULIA_DEPOT_OVERRIDES_IMAGE   the artifacts/Overrides.toml to ship in the image,
 #                                 required whenever the build one is set
 #
-# JULIA_DEPOT_PATH is Julia's own; the others are this script's, and before 0.1.1 were spelled
-# RULES_JULIA_DEPOT_*. The old spelling still works, with a deprecation warning.
+# JULIA_DEPOT_PATH is Julia's own; the others are this script's.
 #
 # Why a second depot: depot.bzl conforms the developer's existing depot to the Manifest,
 # which suits a workstation build but not an image. That depot holds every project on the
@@ -53,17 +55,6 @@
 # The build fails if an overridden hash was downloaded anyway, since the image would then
 # carry both and load the registry one. Hash keys are read bare or quoted.
 set -euo pipefail
-
-# Deprecated spellings: before 0.1.1 these variables were named RULES_JULIA_DEPOT_<name>. The
-# old name is read, with a warning, when the new one is unset. It goes in the release that
-# next raises the module's compatibility_level.
-for _name in BIN CONTENTS IMAGE_PREFIX MIN_ARTIFACTS OVERRIDES_BUILD OVERRIDES_IMAGE; do
-    _old="RULES_JULIA_DEPOT_$_name" _new="JULIA_DEPOT_$_name"
-    if [ -z "${!_new+set}" ] && [ -n "${!_old+set}" ]; then
-        echo "warning: $_old is deprecated; set $_new instead" >&2
-        export "$_new=${!_old}"
-    fi
-done
 
 proj="${1:?usage: image_depot.sh <project dir> <output tar>}"
 out="${2:?usage: image_depot.sh <project dir> <output tar>}"

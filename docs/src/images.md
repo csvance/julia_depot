@@ -34,9 +34,6 @@ julia_depot_layer(
     name = "depot_layer",
     contents = "full",
     depot = "@my_depot",
-    julia = "@julia_dist",
-    manifest = "Manifest.toml",
-    project = "Project.toml",
 )
 
 # The caches for every project the image starts Julia in.
@@ -73,12 +70,20 @@ your code. `e2e/image/` builds this for every Julia version in the test matrix.
 
 All layer rules write `<name>.tar` and take `julia`, the distribution from `julia.dist`, e.g. `@julia_dist`.
 
-| rule | what the tar holds | attributes beyond `julia` |
+| rule | what the tar holds | attributes |
 | --- | --- | --- |
-| `julia_dist_layer` | the distribution at `prefix`, its own relative symlinks kept | `prefix` (`/opt/julia`) |
-| `julia_depot_layer` | a clean depot for the project at `prefix`: `image_depot.sh` as a rule | `project`, `manifest`, `srcs`, `contents` (`artifacts` or `full`), `prefix` (`/opt/julia-depot`), `depot`, `min_artifacts`, `overrides_build`, `overrides_image`, `env` |
-| `julia_sysimage_layer` | a PackageCompiler sysimage at `path`: `sysimage.sh` as a rule | `project`, `manifest`, `srcs`, `depot` (required), `packages`, `cpu_target`, `path` (`/opt/julia-sysimage/sys.so`), `env` |
-| `julia_compiled_layer` | the depot's `compiled/`, for the entry projects | `image_env`, `layers`, `projects`, `sysimage`, `env` (`{root}` expands to the unpacked tree) |
+| `julia_dist_layer` | the distribution at `prefix`, its own relative symlinks kept | `julia`, `prefix` (`/opt/julia`) |
+| `julia_depot_layer` | a clean depot for the depot's project at `prefix` | `depot`, `srcs`, `contents` (`artifacts` or `full`), `prefix` (`/opt/julia-depot`), `fresh_registry`, `min_artifacts`, `overrides_build`, `overrides_image`, `env` |
+| `julia_sysimage_layer` | a `julia_sysimage` at `path`, its inputs file beside it; ships that build, so the sysimage is compiled once | `sysimage`, `path` (`/opt/julia-sysimage/sys.so`) |
+| `julia_compiled_layer` | the depot's `compiled/`, for the entry projects | `julia`, `image_env`, `layers`, `projects`, `sysimage`, `env` (`{root}` expands to the unpacked tree) |
+
+`julia_sysimage` builds the sysimage itself: `depot`, `srcs`, `packages`, `cpu_target`, `data`, `env` (`$(execpath)` and `{execroot}` expand), `cc`
+(`@julia_depot_cc`) and `system_cc`; see [Recipes](recipes.md#A-sysimage).
+
+Both sysimage rules also write an inputs file, the sysimage's declared inputs by sha256, in the
+`inputs` output group; the layer ships it beside the sysimage. A sysimage is not reproducible,
+so this file is how a rebuild is checked against a release; see
+[the inputs file](contract.md#The-inputs-file).
 
 `julia_image_env` writes `<name>.env` and provides `JuliaImageEnvInfo`. Its attributes are
 `julia_prefix`, `depot_prefix`, `extra_depots`, `project`, `load_path`, `cpu_target`, `offline`
@@ -87,21 +92,27 @@ variables as a dict, for a BUILD file that merges them with its own.
 
 `julia_precompile_test` is a test, with the compiled layer's attributes plus `modules`.
 
-`project` and `manifest` are labels to the two files. The manifest is staged beside the
-project wherever it lives, so a production lock kept apart from the development one works.
-`srcs` are further project files (a `LocalPreferences.toml`, workspace members), staged at
-their paths relative to the `Project.toml`. `depot` is a `julia.depot` repository, e.g.
-`@my_depot`. The depot layer copies its registries and package-server credentials for the
-instantiate and ships neither; without `depot` it fetches the registry fresh. The sysimage
+`depot` is a `julia.depot` repository, e.g. `@my_depot`. It brings the Julia it was fetched
+with and the `Project.toml` and Manifest it was instantiated for, so a rule cannot be given a
+Julia or a Manifest its depot does not match. A project with a second lock, a production one
+say, declares a second `julia.depot` over it. `srcs` are further project files (the package's
+source, a `LocalPreferences.toml`, workspace members), staged at their paths relative to the
+directory the Manifest is in. The depot layer copies the depot's registries and package-server
+credentials for the instantiate and ships neither; `fresh_registry = True` fetches the registry
+instead. The sysimage
 layer reads the packages that depot already holds. Both take the whole depot path the stamp
 records, so a depot with `read_only_depots` works unchanged: registries come from every entry,
 credentials from the first. `env` passes variables to the build, such as what a package's
 platform augmentation reads to select an artifact.
 
-The depot and sysimage layers need the network (tagged `requires-network`); set
-`JULIA_PKG_SERVER` with `--action_env` to go through a mirror. Every layer action is
-`no-remote-exec`, since they read the distribution through its real directory and, for the depot
-and sysimage layers, the depot a fetch filled on this host.
+The depot layer and the sysimage build need the network (tagged `requires-network`); set
+`JULIA_PKG_SERVER` with `--action_env` to go through a mirror. Every action that runs Julia is
+`no-remote-exec`, since it reads the distribution through its real directory and, for the depot
+layer and the sysimage, the depot a fetch filled on this host. `julia_sysimage_layer` only
+packages a built sysimage, so it may run anywhere. A sysimage build declares 8 GiB of memory and
+2 CPUs to Bazel's local scheduler, which by default budgets two thirds of the machine's memory,
+so a 16 GB machine builds one sysimage at a time and a larger one builds several; adjust the
+budget with `--local_resources=memory=...`.
 
 ## The environment
 

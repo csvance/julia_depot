@@ -4,12 +4,16 @@
 #
 #   image_layers.sh dist      <julia> <prefix> <out.tar>
 #   image_layers.sh depot     <julia> <out.tar> <source stamp|-> [<rel> <file>]...
-#   image_layers.sh sysimage  <julia> <out.tar> <source stamp> <path in image> [<rel> <file>]...
+#   image_layers.sh sysimage  <julia> <out.so> <source stamp> <sysimage args>...
+#   image_layers.sh sysimage_layer <out.tar> <sysimage.so> <inputs.json> <path in image>
+#   image_layers.sh inputs    <out.json> <julia_dist.txt> <config json> <file list>
 #   image_layers.sh compiled  <julia> <out.tar> <image flags>...
 #   image_layers.sh check     <julia> <image flags>... [--modules "A B"]
 #
 # <julia> is the toolchain's bin/julia. <rel> <file> pairs stage a project: each file is copied to
-# <rel> under a fresh directory, which becomes the project Pkg sees. <image flags> describe the image
+# <rel> under a fresh directory, which becomes the project Pkg sees. <sysimage args> are any number
+# of `--env <KEY=VALUE>`, a variable for the build with {execroot} expanded to the absolute
+# execution root, followed by the <rel> <file> pairs. <image flags> describe the image
 # the caches are for, and are written by image.bzl from a julia_image_env:
 #
 #   --layer <tar>          a layer, unpacked in the order given (repeatable)
@@ -30,10 +34,12 @@
 # give the same bytes, so a layer's digest changes only when its content does.
 set -euo pipefail
 
-cmd="${1:?usage: image_layers.sh dist|depot|sysimage|compiled|check ...}"
+cmd="${1:?usage: image_layers.sh dist|depot|sysimage|sysimage_layer|inputs|compiled|check ...}"
 shift
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Bazel starts every action in the execution root; {execroot} in a sysimage's env expands to it.
+execroot="$PWD"
 
 # Julia and PackageCompiler both call homedir(), which throws when HOME is unset, and a Bazel action
 # is not given one. A private HOME also keeps a build from writing into the developer's.
@@ -213,7 +219,8 @@ cmd_dist() {
     cp -a "$src" "$stage/$prefix"
     chmod -R u+w "$stage/$prefix"
     # Drop the files Bazel added to the repository.
-    rm -f "$stage/$prefix/BUILD.bazel" "$stage/$prefix/WORKSPACE" "$stage/$prefix/REPO.bazel"
+    rm -f "$stage/$prefix/BUILD.bazel" "$stage/$prefix/WORKSPACE" "$stage/$prefix/REPO.bazel" \
+        "$stage/$prefix/julia_dist.txt"
     local bad
     bad="$(find "$stage/$prefix" -type l -lname '/*' | head -5)"
     [ -z "$bad" ] || {
@@ -254,17 +261,96 @@ cmd_depot() {
 # instantiated. That path is only read. A scratch depot in front takes anything PackageCompiler
 # writes (its own environment, when the depot lacks it, and the build's caches), and the
 # distribution's bundled depots behind supply the stdlib.
-cmd_sysimage() {
-    local julia="$1" out="$2" stamp="$3" path="${4#/}"
-    shift 4
-    local project="$scratch/project" stage="$scratch/stage" root
+#
+# build_sysimage <julia> <out.so> <stamp> <sysimage args>...: the build both subcommands share.
+build_sysimage() {
+    local julia="$1" out="$2" stamp="$3" e v
+    shift 3
+    while [ "${1:-}" = "--env" ]; do
+        e="$2" v="${2#*=}"
+        # The replacement is quoted so bash 5.2 does not read an & in the path as the match.
+        export "${e%%=*}=${v//\{execroot\}/"$execroot"}"
+        shift 2
+    done
+    local project="$scratch/project" root
     stage_project "$project" "$@"
     root="$(julia_root "$julia")"
-    mkdir -p "$scratch/depot" "$stage/$(dirname "$path")"
+    mkdir -p "$scratch/depot" "$(dirname "$out")"
     JULIA_DEPOT_PATH="$scratch/depot:$(stamp_depot "$stamp"):$root/local/share/julia:$root/share/julia" \
         JULIA_DEPOT_BIN="$(abspath "$julia")" \
-        "$here/sysimage.sh" "$project" auto "$stage/$path"
+        "$here/sysimage.sh" "$project" auto "$out"
+}
+
+cmd_sysimage() {
+    local julia="$1" out="$2" stamp="$3"
+    shift 3
+    build_sysimage "$julia" "$(abspath "$out")" "$stamp" "$@"
+}
+
+# --- sysimage_layer: a built sysimage and its inputs file, at a path in the image -------------
+# The inputs file's name beside the sysimage: sys.so -> sys.inputs.json, as image.bzl names the
+# julia_sysimage outputs.
+cmd_sysimage_layer() {
+    local out="$1" so="$2" inputs="$3" path="${4#/}"
+    local stage="$scratch/stage"
+    mkdir -p "$stage/$(dirname "$path")"
+    cp "$so" "$stage/$path"
+    cp "$inputs" "$stage/${path%.so}.inputs.json"
     write_layer "$out" "$stage"
+}
+
+# --- inputs: what a sysimage was built from ----------------------------------------------
+# The sysimage itself is not reproducible, so a rebuild cannot be checked against a release by
+# its bytes. This file can: the same inputs give the same bytes on any host, because it records
+# only what the rule declares. Julia by the tarball it was fetched from, everything else by the
+# sha256 of each file. The depot is not in it: the Manifest, which is, determines the depot.
+#
+# <config json> is one JSON object from image.bzl, with its keys in order. <file list> has one
+# line per file, `<key><TAB><path>`, sorted by key; each key names a file in the "files" object. A PackageCompiler environment (julia_depot/julia/sysimage/v<minor>/)
+# counts only for the Julia minor in julia_dist.txt, since sysimage.sh uses no other.
+json_string() {
+    local s="${1//\\/\\\\}"
+    printf '"%s"' "${s//\"/\\\"}"
+}
+
+cmd_inputs() {
+    local out="$1" dist="$2" config="$3" list="$4"
+    local version platform sha minor
+    version="$(sed -n 's/^version=//p' "$dist")"
+    platform="$(sed -n 's/^platform=//p' "$dist")"
+    sha="$(sed -n 's/^sha256=//p' "$dist")"
+    [ -n "$version" ] && [ -n "$platform" ] && [ -n "$sha" ] || {
+        echo "FAILED: $dist does not record version=, platform= and sha256=" >&2
+        exit 1
+    }
+    minor="$(cut -d. -f1,2 <<<"$version")"
+    local -a keys paths sums
+    local key path
+    while IFS=$'\t' read -r key path; do
+        case "$key" in
+            julia_depot/julia/sysimage/v"$minor"/*) ;;
+            julia_depot/julia/sysimage/*) continue ;;
+        esac
+        keys+=("$key")
+        paths+=("$path")
+    done < "$list"
+    # One sha256sum per batch of files rather than per file: a declared input can be a whole
+    # toolchain. The digest is the first 64 characters, whatever the path holds.
+    mapfile -t sums < <(printf '%s\n' "${paths[@]}" | xargs -d '\n' sha256sum -- | cut -c1-64)
+    [ "${#sums[@]}" -eq "${#keys[@]}" ] || {
+        echo "FAILED: hashed ${#sums[@]} of ${#keys[@]} inputs" >&2
+        exit 1
+    }
+    local i
+    {
+        printf '{\n  "config": %s,\n  "files": {' "$config"
+        for i in "${!keys[@]}"; do
+            [ "$i" = 0 ] || printf ','
+            printf '\n    %s: "%s"' "$(json_string "${keys[$i]}")" "${sums[$i]}"
+        done
+        printf '\n  },\n  "format": 1,\n  "julia": {"platform": %s, "sha256": %s, "version": %s}\n}\n' \
+            "$(json_string "$platform")" "$(json_string "$sha")" "$(json_string "$version")"
+    } > "$out"
 }
 
 # --- compiled: the precompile caches for the entry projects --------------------------------
@@ -364,6 +450,8 @@ case "$cmd" in
     dist) cmd_dist "$@" ;;
     depot) cmd_depot "$@" ;;
     sysimage) cmd_sysimage "$@" ;;
+    sysimage_layer) cmd_sysimage_layer "$@" ;;
+    inputs) cmd_inputs "$@" ;;
     compiled) cmd_compiled "$@" ;;
     check) cmd_check "$@" ;;
     *)

@@ -18,6 +18,7 @@ load(
     "julia_dist_layer",
     "julia_image_env",
     "julia_precompile_test",
+    "julia_sysimage",
     "julia_sysimage_layer",
 )
 load("@rules_oci//oci:defs.bzl", "oci_image")
@@ -73,14 +74,11 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
     )
 
     # `full`, because the image loads its packages from source with the compiled layer's caches.
-    # `depot` reuses the ambient depot's registry instead of fetching it again.
+    # `depot` reuses the version's depot's registry instead of fetching it again.
     julia_depot_layer(
         name = n("depot_layer"),
         contents = "full",
         depot = depot_repo,
-        julia = julia,
-        manifest = project + ":Manifest.toml",
-        project = project + ":Project.toml",
     )
 
     native.genrule(
@@ -180,9 +178,6 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         name = n("depot_layer_again"),
         contents = "full",
         depot = depot_repo,
-        julia = julia,
-        manifest = project + ":Manifest.toml",
-        project = project + ":Project.toml",
     )
 
     julia_compiled_layer(
@@ -288,21 +283,23 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
     # against a registry fetched fresh into the clean depot.
     julia_depot_layer(
         name = n("artifacts_layer"),
-        julia = julia,
-        manifest = project + ":Manifest.toml",
-        project = project + ":Project.toml",
+        depot = depot_repo,
+        fresh_registry = True,
     )
 
-    julia_sysimage_layer(
-        name = n("sysimage_layer"),
+    # One build, two shapes: the file, and the layer that ships it.
+    julia_sysimage(
+        name = n("sysimage"),
         depot = depot_repo,
-        julia = julia,
-        manifest = project + ":Manifest.toml",
         packages = [
             "Bzip2_jll",
             "Crayons",
         ],
-        project = project + ":Project.toml",
+    )
+
+    julia_sysimage_layer(
+        name = n("sysimage_layer"),
+        sysimage = n("sysimage"),
     )
 
     julia_precompile_test(
@@ -318,5 +315,23 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         ],
         projects = [_APP],
         sysimage = "/opt/julia-sysimage/sys.so",
+        tags = tags,
+    )
+
+    # The sysimage above names no compiler, so the module's pinned one linked it, and the layer
+    # ships those same bytes rather than a second build.
+    sh_test(
+        name = n("sysimage_link") + "_test",
+        size = "small",
+        srcs = ["sysimage_link_test.sh"],
+        args = [
+            "$(rootpath {})".format(n("sysimage_layer")),
+            "/opt/julia-sysimage/sys.so",
+            "$(rootpath {})".format(n("sysimage")),
+        ],
+        data = _HELPERS + [
+            n("sysimage"),
+            n("sysimage_layer"),
+        ],
         tags = tags,
     )

@@ -54,8 +54,8 @@ grep -qE '^-rwxr-xr-x .* opt/julia/bin/julia$' <(listing "$dist") ||
 # The distribution's relative symlinks are preserved as symlinks.
 grep -qE '^lrwxr-xr-x .* opt/julia/lib/libjulia\.so -> libjulia\.so\.' <(listing "$dist") ||
     fail "the dist layer lost the libjulia.so symlink"
-if grep -qE '^opt/julia/(BUILD\.bazel|REPO\.bazel|WORKSPACE)$' <(names "$dist"); then
-    fail "the dist layer ships the repository's Bazel files"
+if grep -qE '^opt/julia/(BUILD\.bazel|REPO\.bazel|WORKSPACE|julia_dist\.txt)$' <(names "$dist"); then
+    fail "the dist layer ships the repository's own files"
 fi
 has "$dist" '^opt/$' "opt/ entry of its own"
 

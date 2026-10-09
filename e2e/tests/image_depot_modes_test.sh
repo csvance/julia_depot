@@ -93,17 +93,4 @@ case "$output" in
 $output" ;;
 esac
 
-# --- the pre-0.1.1 spelling still works ------------------------------------------
-# RULES_JULIA_DEPOT_MIN_ARTIFACTS is honoured, with a deprecation warning, when the new
-# name is unset.
-rc=0
-output="$(build_layer artifacts "$TEST_TMPDIR/floor_old.tar" RULES_JULIA_DEPOT_MIN_ARTIFACTS=9999 2>&1)" || rc=$?
-[ "$rc" -ne 0 ] ||
-    fail "the deprecated RULES_JULIA_DEPOT_MIN_ARTIFACTS=9999 was ignored"
-case "$output" in
-    *"RULES_JULIA_DEPOT_MIN_ARTIFACTS is deprecated; set JULIA_DEPOT_MIN_ARTIFACTS instead"*) ;;
-    *) fail "no deprecation warning for RULES_JULIA_DEPOT_MIN_ARTIFACTS:
-$output" ;;
-esac
-
 echo "PASS: artifacts mode shipped $(printf '%s\n' "$hash_dirs" | wc -l) artifact(s) and no packages, full mode shipped both"

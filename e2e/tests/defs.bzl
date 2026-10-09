@@ -162,10 +162,15 @@ def julia_version_tests(
                 "$(rootpath {}//:stamp.txt)".format(depot_repo),
                 "$(rootpath {}//:stamp.txt)".format(sysimage_depot_repo),
                 minor,
+                "$(rootpath :recording_cc.sh)",
+                "$(rootpath @julia_depot_cc//:bin/cc)",
             ],
             data = _HELPERS + [
+                ":recording_cc.sh",
                 "@julia_depot//julia:sysimage.sh",
                 "@julia_depot//julia:sysimage_envs",
+                "@julia_depot_cc//:bin/cc",
+                "@julia_depot_cc//:cc",
                 depot_repo + "//:stamp.txt",
                 julia_repo + "//:bin/julia",
                 julia_repo + "//:dist",
@@ -174,7 +179,9 @@ def julia_version_tests(
                 sysimage_depot_repo + "//:stamp.txt",
             ],
             env = _TEST_ENV,
-            tags = tags,
+            # Exclusive: it builds a sysimage outside any rule action, so the sysimage rule's
+            # declared memory cannot keep it from running beside others.
+            tags = tags + ["exclusive"],
         )
 
     sh_test(

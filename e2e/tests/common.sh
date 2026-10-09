@@ -70,3 +70,20 @@ copy_project() {
 # test action is not given one.
 export HOME="${TEST_TMPDIR:?tests run under bazel test}/home"
 mkdir -p "$HOME"
+
+# Fails unless a sysimage was linked by a julia.cc compiler for this glibc: zig links with LLD
+# and adds no GCC crt files, and the image may require no glibc symbol newer than the target.
+assert_pinned_link() {
+    local so="$1" glibc="$2" comment newest
+    comment="$(readelf -p .comment "$so" 2>/dev/null)"
+    grep -q 'Linker: LLD' <<<"$comment" ||
+        fail "$(basename "$so") was not linked by zig's LLD; its .comment is:
+$comment"
+    ! grep -q 'GCC:' <<<"$comment" ||
+        fail "$(basename "$so") carries GCC's crt files, so a host compiler linked it:
+$comment"
+    newest="$(readelf -W --version-info "$so" | grep -o 'GLIBC_[0-9.]*' | sed 's/GLIBC_//' | sort -uV | tail -1)"
+    [ -n "$newest" ] || fail "$(basename "$so") requires no versioned glibc symbol at all"
+    [ "$(printf '%s\n%s\n' "$newest" "$glibc" | sort -V | tail -1)" = "$glibc" ] ||
+        fail "$(basename "$so") requires GLIBC_$newest, newer than the $glibc it was linked for"
+}

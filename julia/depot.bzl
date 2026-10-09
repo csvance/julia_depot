@@ -25,7 +25,8 @@ do not; see below.
 
 Read-only depots: a host often has a shared depot, maintained by someone else, that already
 holds most of what a Manifest needs. `read_only_depots` stacks such depots after `dir`, so
-the path becomes `<dir>:<ro1>:<ro2>:...:`. Julia reads packages, artifacts and compiled
+the path becomes `<dir>:<ro1>:<ro2>:...:` (on Julia 1.10 the bundled depots by name in place
+of the trailing separator; see _bundled_depots). Julia reads packages, artifacts and compiled
 caches from every entry and writes only to the first, and Pkg installs nothing that an entry
 already has, so `dir` holds only what the shared depots lack. This rule never writes to or
 creates them. A missing one stays on the path, where Julia ignores it, so a host without the
@@ -38,9 +39,8 @@ make the first entry, the one written to, depend on the shell.
 
 The hook: an environment that resolves through a private registry or package server needs
 that registry in the depot before Pkg.instantiate, and only fetch time can guarantee that.
-`hook` is an executable run first, with JULIA_DEPOT_BIN set, JULIA_DEPOT_PATH set to the
-value env.sh exports, and RULES_JULIA_DEPOT_BIN, the deprecated pre-0.1.1 name for
-JULIA_DEPOT_BIN. `hook_environ` names the variables it reads, so a change to any of them
+`hook` is an executable run first, with JULIA_DEPOT_BIN set and JULIA_DEPOT_PATH set to the
+value env.sh exports. `hook_environ` names the variables it reads, so a change to any of them
 refetches. The hook belongs to the consumer; this module knows no particular registry. With
 read-only depots the path has several entries: a hook that writes must write to the first,
 as Pkg does, and may find what it would add already present in a later one.
@@ -86,6 +86,30 @@ def _expand_depot(rctx, template, attr = "dir"):
         fail("julia_depot: {} must not contain ':', got {}".format(attr, out))
     return out
 
+def _bundled_depots(rctx, julia, version_h):
+    """What follows the declared depots on the path, to keep the bundled ones and no other.
+
+    Since Julia 1.11 a trailing separator expands to the bundled depots alone. On 1.10 it
+    expands to the whole default path, the user depot ~/.julia included, which would put a
+    depot nobody declared behind `dir`. There the bundled depots are named instead, as Julia
+    reports them: its default path after the user depot.
+    """
+    minor = None
+    for line in rctx.read(version_h).splitlines():
+        if line.startswith("#define JULIA_VERSION_MINOR "):
+            minor = int(line.removeprefix("#define JULIA_VERSION_MINOR ").strip())
+    if minor == None:
+        fail("julia_depot: {} has no JULIA_VERSION_MINOR".format(version_h))
+    if minor >= 11:
+        return ":"
+    res = rctx.execute(
+        [str(julia), "--startup-file=no", "-e", "foreach(println, DEPOT_PATH[2:end])"],
+        environment = {"JULIA_DEPOT_PATH": None},
+    )
+    if res.return_code != 0 or not res.stdout.strip():
+        fail("julia_depot: cannot determine Julia's bundled depots:\n{}".format(res.stderr))
+    return "".join([":" + d for d in res.stdout.strip().splitlines()])
+
 def _julia_depot_impl(rctx):
     # The scripts need GNU tar and coreutils and a Linux Julia, whatever distribution is given.
     host_platform(rctx.os.name, rctx.os.arch, "julia_depot")
@@ -123,6 +147,7 @@ def _julia_depot_impl(rctx):
         ))
 
     env = {"JULIA_DEPOT_BIN": str(julia)}
+    bundled = _bundled_depots(rctx, julia, version_h)
 
     # JULIA_DEPOT_PATH only when no `dir` is declared: a declared depot replaces it, so reading
     # it would refetch on every change to a variable that cannot change the result.
@@ -140,10 +165,9 @@ def _julia_depot_impl(rctx):
     # A declared depot overrides the ambient one. The attribute is a template because a depot
     # belongs per user on a local disk and a committed file cannot carry a username: {HOME}
     # and {USER} expand from the fetch environment and register as inputs, so a different
-    # user refetches. The trailing separator keeps Julia's bundled depots on the path and
-    # (since Julia 1.10) leaves the user depot ~/.julia off it. Without the separator Pkg is
-    # recompiled into the fresh depot; see image_depot.sh. The directory is created here so
-    # a hook can write into it.
+    # user refetches. `bundled` keeps Julia's bundled depots on the path and the user depot
+    # ~/.julia off it; without them Pkg is recompiled into the fresh depot, see image_depot.sh.
+    # The directory is created here so a hook can write into it.
     #
     # Read-only depots go between `dir` and the separator, so `dir` stays the only entry Julia
     # and Pkg write to and the bundled depots stay last. They are not created, and a missing
@@ -166,15 +190,15 @@ def _julia_depot_impl(rctx):
             if not ro_path.exists:
                 # buildifier: disable=print
                 print("julia_depot: read-only depot {} does not exist on this host; continuing without it".format(ro))
-        env["JULIA_DEPOT_PATH"] = ":".join(stack) + ":"
+        env["JULIA_DEPOT_PATH"] = ":".join(stack) + bundled
         res = rctx.execute(["mkdir", "-p", depot_dir])
         if res.return_code != 0:
             fail("julia_depot: cannot create depot {}:\n{}".format(depot_dir, res.stderr))
 
     # Neither declared nor ambient: use Julia's default, made explicit, so the hook,
     # instantiate and every consumer of env.sh agree on one depot. Ask Julia for it instead
-    # of assuming $HOME/.julia. The trailing separator restores the bundled depots behind
-    # it, as in the default path.
+    # of assuming $HOME/.julia. `bundled` restores the bundled depots behind it, as in the
+    # default path.
     if "JULIA_DEPOT_PATH" not in env:
         res = rctx.execute(
             [str(julia), "--startup-file=no", "-e", "print(first(DEPOT_PATH))"],
@@ -183,16 +207,12 @@ def _julia_depot_impl(rctx):
         )
         if res.return_code != 0 or not res.stdout:
             fail("julia_depot: cannot determine Julia's default depot:\n{}".format(res.stderr))
-        env["JULIA_DEPOT_PATH"] = res.stdout + ":"
+        env["JULIA_DEPOT_PATH"] = res.stdout + bundled
 
     if rctx.attr.hook != None:
         hook = rctx.path(rctx.attr.hook)
         _watch(rctx, hook)
-
-        # RULES_JULIA_DEPOT_BIN is the pre-0.1.1 name, still set so existing hooks work. It goes
-        # in the release that next raises compatibility_level.
-        hook_env = env | {"RULES_JULIA_DEPOT_BIN": env["JULIA_DEPOT_BIN"]}
-        res = rctx.execute([str(hook)], environment = hook_env, timeout = 600, quiet = False)
+        res = rctx.execute([str(hook)], environment = env, timeout = 600, quiet = False)
         if res.return_code != 0:
             fail("julia_depot: hook {} failed:\n{}\n{}".format(rctx.attr.hook, res.stdout, res.stderr))
 
@@ -217,22 +237,54 @@ def _julia_depot_impl(rctx):
 export JULIA_DEPOT_PATH={depot}
 """.format(depot = _shell_quote(env["JULIA_DEPOT_PATH"])), executable = False)
 
-    # The default target, named after the repository, so `@<name>` alone means it.
+    # The project the depot was fetched for, copied in, so a rule given the depot builds from
+    # exactly these files. The Manifest is watched, so a change refetches and the copy follows.
+    project = rctx.path(str(manifest.dirname) + "/Project.toml")
+    if not project.exists:
+        fail("julia_depot: no Project.toml beside {}".format(rctx.attr.manifest))
+    _watch(rctx, project)
+    rctx.file("project/Project.toml", rctx.read(project), executable = False)
+    rctx.file("project/" + manifest.basename, rctx.read(manifest), executable = False)
+
+    # The default target, named after the repository, so `@<name>` alone means it: env.sh and
+    # stamp.txt as files, and JuliaDepotInfo for the rules that build from the depot.
     name = rctx.original_name
-    rctx.file("BUILD.bazel", """exports_files(["env.sh", "stamp.txt"])
+    if name in ("env", "project"):
+        fail("julia_depot: a depot cannot be named {}, which its own targets use".format(name))
+    rctx.file("BUILD.bazel", """load("{info_bzl}", "julia_depot_info")
+
+exports_files(["env.sh", "stamp.txt"])
 
 filegroup(
     name = "env",
     srcs = ["env.sh", "stamp.txt"],
     visibility = ["//visibility:public"],
 )
-""" + ("" if name == "env" else """
-alias(
+
+julia_depot_info(
     name = "{name}",
-    actual = ":env",
+    env = "env.sh",
+    julia = "{julia}",
+    manifest = "project/{manifest}",
+    project = "project/Project.toml",
+    project_dir = "{project_dir}",
+    stamp = "stamp.txt",
     visibility = ["//visibility:public"],
 )
-""".format(name = name)))
+""".format(
+        info_bzl = str(Label("//julia:depot_info.bzl")),
+        name = name,
+        julia = str(rctx.attr.julia),
+        manifest = manifest.basename,
+        project_dir = _short_dir(rctx.attr.manifest),
+    ))
+
+def _short_dir(label):
+    """The short path of the directory a file label is in, as File.short_path spells it."""
+    parts = [p for p in [label.package, label.name.rpartition("/")[0]] if p]
+    if label.repo_name:
+        parts = ["..", label.repo_name] + parts
+    return "/".join(parts)
 
 def _shell_quote(s):
     return "'" + s.replace("'", "'\\''") + "'"
@@ -253,8 +305,8 @@ julia_depot = repository_rule(
         ),
         "dir": attr.string(
             doc = "The depot directory to instantiate into, overriding JULIA_DEPOT_PATH. {HOME} and " +
-                  "{USER} expand from the fetch environment. Exported through env.sh with a trailing " +
-                  "separator so Julia's bundled depots stay on the path.",
+                  "{USER} expand from the fetch environment. Exported through env.sh with Julia's bundled " +
+                  "depots behind it: a trailing separator, or on Julia 1.10 their paths.",
         ),
         "read_only_depots": attr.string_list(
             doc = "Depots searched after `dir` and never written to, such as a host's shared depot: " +

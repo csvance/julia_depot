@@ -1,4 +1,4 @@
-"""The `julia` module extension: a pinned Julia distribution and Manifest-pinned depots.
+"""The `julia` module extension: a pinned Julia distribution, Manifest-pinned depots, and a pinned C compiler for sysimages.
 
     julia = use_extension("@julia_depot//julia:extensions.bzl", "julia")
     julia.dist(name = "julia_dist", version = "1.12.7")
@@ -9,20 +9,26 @@
     )
     use_repo(julia, "julia_dist", "my_depot")
 
+The module declares one compiler itself, `@julia_depot_cc`, which julia_sysimage_layer uses
+unless told otherwise. `julia.cc` declares another, for a different zig or glibc:
+
+    julia.cc(name = "my_cc", glibc = "2.28")
+
 Naming: a rule attribute that takes a repository is named after what it takes and is given
-the repository itself: `julia = "@julia_dist"`, `depot = "@my_depot"`. The rules use each
-repository's default target, the one named after it. The named targets (`:dist`,
-`bin/julia`, `:env`, `env.sh`, `stamp.txt`) remain for genrules and scripts.
+the repository itself: `julia = "@julia_dist"`, `depot = "@my_depot"`, `cc = "@my_cc"`. The rules
+use each repository's default target, the one named after it. The named targets (`:dist`,
+`bin/julia`, `:env`, `env.sh`, `stamp.txt`, `:cc`, `bin/cc`) remain for genrules and scripts.
 
 Repository names are shared: the extension is evaluated once for the whole module graph, so
 every module's `julia.dist` and `julia.depot` names share one namespace. Two modules
 declaring the same name is an error, even when the declarations are identical, because
-letting either win would make the other module build against a Julia or a manifest it did
-not declare. To keep names apart, the root module names its repositories freely, and a
+letting either win would make the other module build against a Julia, a manifest or a
+compiler it did not declare. To keep names apart, the root module names its repositories freely, and a
 module that others depend on prefixes every name with its own module name (for example
 `reactant_server_julia` for its `julia_dist`).
 """
 
+load(":cc.bzl", "DEFAULT_CC_GLIBC", "DEFAULT_CC_STRIP_PREFIX", "DEFAULT_CC_URL", "DEFAULT_CC_VERSION", "julia_cc")
 load(":depot.bzl", "julia_depot")
 load(":dist.bzl", "DEFAULT_STRIP_PREFIX", "DEFAULT_URL", "julia_dist")
 
@@ -50,7 +56,7 @@ Repository names from the `julia` extension are shared by every module in the gr
 name can be declared once. Rename one of them: a module that others depend on prefixes its
 names with its own module name (for example "{prefix}_{name}"), and the root module keeps the
 plain ones. Neither declaration can win, since the other module would then build against a
-Julia or a manifest it never declared.""".format(
+Julia, a manifest or a compiler it never declared.""".format(
             kind = kind,
             name = name,
             mod = _module_desc(mod),
@@ -86,6 +92,16 @@ def _julia_impl(module_ctx):
                 hook_environ = depot.hook_environ,
                 timeout = depot.timeout,
             )
+        for tc in mod.tags.cc:
+            _claim(names, mod, "cc", tc.name)
+            julia_cc(
+                name = tc.name,
+                version = tc.version,
+                glibc = tc.glibc,
+                sha256 = tc.sha256,
+                url = tc.url,
+                strip_prefix = tc.strip_prefix,
+            )
 
 julia = module_extension(
     implementation = _julia_impl,
@@ -111,6 +127,17 @@ julia = module_extension(
                 "hook": attr.label(doc = "Optional executable run before instantiate (private registries, credentials)."),
                 "hook_environ": attr.string_list(doc = "Environment variables the hook reads; a change refetches."),
                 "timeout": attr.int(default = 3600),
+            },
+        ),
+        "cc": tag_class(
+            doc = "Fetch zig for the host, pinned by sha256, as the C compiler that links sysimages against a fixed glibc. See julia/cc.bzl.",
+            attrs = {
+                "name": attr.string(mandatory = True, doc = "Repository name, e.g. my_cc."),
+                "version": attr.string(default = DEFAULT_CC_VERSION, doc = "zig version."),
+                "glibc": attr.string(default = DEFAULT_CC_GLIBC, doc = "The glibc version to link against: the oldest a sysimage built with it loads on."),
+                "sha256": attr.string_dict(doc = "Tarball sha256 by platform (linux-x86_64, linux-aarch64). Optional for versions this module knows."),
+                "url": attr.string(default = DEFAULT_CC_URL, doc = "Tarball URL template; {version} and {arch} expand. Defaults to ziglang.org."),
+                "strip_prefix": attr.string(default = DEFAULT_CC_STRIP_PREFIX, doc = "Archive prefix template, expanded like `url`."),
             },
         ),
     },

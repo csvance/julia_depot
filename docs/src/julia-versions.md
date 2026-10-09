@@ -34,7 +34,7 @@ producing a subtly different depot.
 The only version-specific thing the module ships is the PackageCompiler environment a
 sysimage is built with, because PackageCompiler's compat and precompile cache are keyed
 on the Julia minor. There is one per minor under `julia/sysimage/v<major>.<minor>/`, and
-`sysimage.sh auto` picks the one matching the running Julia, failing with the list of
+the sysimage rules pick the one matching the running Julia, failing with the list of
 available ones when yours is missing. The minors the module ships one for are the
 directories under
 [`julia/sysimage/`](https://github.com/csvance/julia_depot/tree/main/julia/sysimage); on any
@@ -53,7 +53,7 @@ and `strip_prefix` are templates, so one declaration serves both architectures, 
 too: `{version}` (1.12.7), `{minor}` (1.12), `{platform}` (`linux-x86_64`) and `{arch_dir}`
 (`x64`, the directory julialang-s3 files the build under) expand.
 
-The CPU targets follow the architecture: the image rules and `sysimage.sh` default to the
+The CPU targets follow the architecture: the image and sysimage rules default to the
 official build's list for it, `PORTABLE_X86_64_CPU_TARGET` or `PORTABLE_AARCH64_CPU_TARGET`;
 see [Images](images.md#CPU-targets). The end-to-end suite runs on Linux `x86_64` only.
 

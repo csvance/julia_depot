@@ -13,6 +13,9 @@ env_sh="$(abspath "$1")"
 stamp="$(abspath "$2")"
 manifest="$(abspath "$3")"
 want_version="$4"
+# Optional: what the exported depot path must end with, for a depot whose location the test
+# cannot compute because it was decided at fetch time.
+want_suffix="${5:-}"
 
 [ -s "$stamp" ] || fail "stamp.txt is empty or missing"
 
@@ -61,5 +64,20 @@ exported="$(
 $(cat "$env_sh")"
 [ "$exported" = "$(stamp_value "$stamp" depot)" ] ||
     fail "env.sh exports JULIA_DEPOT_PATH=$exported but the stamp says $(stamp_value "$stamp" depot)"
+case "$exported" in
+    *"$want_suffix") ;;
+    *) fail "env.sh exports JULIA_DEPOT_PATH=$exported, which does not end in $want_suffix" ;;
+esac
+
+# A depot with a declared `dir` (every one but the ambient depot, which passes a suffix) must not
+# reach the user depot: on Julia 1.10 a trailing separator would put ~/.julia behind `dir`.
+if [ -z "$want_suffix" ]; then
+    IFS=: read -r -a entries <<<"$exported"
+    for e in "${entries[@]}"; do
+        case "$e" in
+            */.julia) fail "env.sh exports JULIA_DEPOT_PATH=$exported, which reaches the user depot $e" ;;
+        esac
+    done
+fi
 
 echo "PASS: depot stamped julia $got_version, manifest $got_sha, depot $depot"

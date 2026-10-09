@@ -15,11 +15,6 @@ set -euo pipefail
 
 : "${JULIA_DEPOT_BIN:?julia_depot must run the hook with JULIA_DEPOT_BIN set}"
 
-# The pre-0.1.1 name is still passed (deprecated) so existing hooks keep working.
-[ "${RULES_JULIA_DEPOT_BIN:-}" = "$JULIA_DEPOT_BIN" ] || {
-    echo "julia_depot must still give the hook RULES_JULIA_DEPOT_BIN, equal to JULIA_DEPOT_BIN" >&2
-    exit 1
-}
 : "${E2E_HOOK_VALUE:?this hook is declared with hook_environ = [\"E2E_HOOK_VALUE\"]}"
 
 # The rule always passes JULIA_DEPOT_PATH, the value env.sh exports and stamp.txt records, even
@@ -28,9 +23,8 @@ set -euo pipefail
 : "${JULIA_DEPOT_PATH:?julia_depot must run the hook with JULIA_DEPOT_PATH set}"
 depot="${JULIA_DEPOT_PATH%%:*}"
 
-# The marker is keyed on the Julia version. Every version in the matrix has a hooked depot in this
-# shared ambient depot, so with one filename the last fetch would overwrite the others, and the
-# test would compare a marker against another version's stamp. Asking JULIA_DEPOT_BIN for the
+# The marker is keyed on the Julia version, so that a marker can never be read against another
+# version's stamp, even if two versions' hooked depots ever share a directory. Asking JULIA_DEPOT_BIN for the
 # version also proves the rule passed a Julia that runs.
 version="$("$JULIA_DEPOT_BIN" --startup-file=no -e 'print(VERSION)')"
 

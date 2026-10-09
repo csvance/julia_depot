@@ -18,8 +18,11 @@ module(
     version = "0.0.0",
 )
 
-bazel_dep(name = "julia_depot", version = "0.1.0")
+bazel_dep(name = "julia_depot", version = "0.2.0")
 bazel_dep(name = "rules_shell", version = "0.6.1")
+
+# For the analysis tests in image/cc_test.bzl. Already in the graph through rules_oci.
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
 
 local_path_override(
     module_name = "julia_depot",
@@ -63,6 +66,7 @@ julia.dist(
 # The environment under test, pinned to a Manifest resolved under 1.10.12.
 julia.depot(
     name = "depot_1_10",
+    dir = "{HOME}/.julia-depot-e2e/v1.10",
     julia = "@julia_1_10",
     manifest = "//projects/v1.10:Manifest.toml",
 )
@@ -76,6 +80,7 @@ julia.dist(
 # The environment under test, pinned to a Manifest resolved under 1.12.7.
 julia.depot(
     name = "depot_1_12",
+    dir = "{HOME}/.julia-depot-e2e/v1.12",
     julia = "@julia_1_12",
     manifest = "//projects/v1.12:Manifest.toml",
 )
@@ -86,6 +91,7 @@ julia.depot(
 # depot that never had it.
 julia.depot(
     name = "sysimage_depot_1_12",
+    dir = "{HOME}/.julia-depot-e2e/v1.12",
     julia = "@julia_1_12",
     manifest = "@julia_depot//julia:sysimage/v1.12/Manifest.toml",
 )
@@ -95,13 +101,14 @@ julia.depot(
 # instantiate.
 julia.depot(
     name = "hook_depot_1_12",
+    dir = "{HOME}/.julia-depot-e2e/v1.12",
     hook = "//hooks:marker_hook.sh",
     hook_environ = ["E2E_HOOK_VALUE"],
     julia = "@julia_1_12",
     manifest = "//projects/v1.12:Manifest.toml",
 )
 
-# The same project once more, into a declared depot instead of the ambient one: the `dir`
+# The same project once more, into a directory of its own apart from the version's: the `dir`
 # attribute with a {HOME} placeholder. tests/declared_depot_test.sh checks that env.sh
 # exports the expanded path with the trailing separator and that the fetch wrote there.
 julia.depot(
@@ -139,6 +146,7 @@ julia.dist(
 # for. To add a version to the matrix, copy this block and change the numbers.
 julia.depot(
     name = "depot_1_13",
+    dir = "{HOME}/.julia-depot-e2e/v1.13",
     julia = "@julia_1_13",
     manifest = "//projects/v1.13:Manifest.toml",
 )
@@ -146,6 +154,7 @@ julia.depot(
 # The module's own PackageCompiler environment for this minor.
 julia.depot(
     name = "sysimage_depot_1_13",
+    dir = "{HOME}/.julia-depot-e2e/v1.13",
     julia = "@julia_1_13",
     manifest = "@julia_depot//julia:sysimage/v1.13/Manifest.toml",
 )
@@ -153,15 +162,38 @@ julia.depot(
 # The same project again, fetched through a hook.
 julia.depot(
     name = "hook_depot_1_13",
+    dir = "{HOME}/.julia-depot-e2e/v1.13",
     hook = "//hooks:marker_hook.sh",
     hook_environ = ["E2E_HOOK_VALUE"],
     julia = "@julia_1_13",
     manifest = "//projects/v1.13:Manifest.toml",
 )
 
+# --- the ambient depot ------------------------------------------------------------
+# Every other depot above declares a `dir` of the suite's own, one per Julia version, so no test
+# reads or writes a depot it does not own, whatever the developer's JULIA_DEPOT_PATH holds. This
+# one declares none, to test that case: it instantiates into the ambient depot, which .bazelrc
+# pins to "set by nothing", so Julia's default. tests/depot_stamp_test.sh checks it.
+julia.depot(
+    name = "ambient_depot_1_13",
+    julia = "@julia_1_13",
+    manifest = "//projects/v1.13:Manifest.toml",
+)
+
+# --- C compilers for sysimages -----------------------------------------------------
+# The module's own pinned compiler, @julia_depot_cc, is declared by julia_depot and imported here
+# as any consumer would import it, for the sysimage.sh tests. A second compiler for another glibc
+# is a consumer's own `julia.cc`; image/ uses it to show that the compiler is part of the key.
+julia.cc(
+    name = "cc_glibc_2_28",
+    glibc = "2.28",
+)
+
 # Every repository the matrix declares, visible to //tests.
 use_repo(
     julia,
+    "ambient_depot_1_13",
+    "cc_glibc_2_28",
     "declared_depot_1_12",
     "depot_1_10",
     "depot_1_12",
@@ -171,6 +203,7 @@ use_repo(
     "julia_1_10",
     "julia_1_12",
     "julia_1_13",
+    "julia_depot_cc",
     "read_only_depots_1_12",
     "sysimage_depot_1_12",
     "sysimage_depot_1_13",

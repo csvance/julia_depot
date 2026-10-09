@@ -84,6 +84,10 @@ def host_platform(os_name, arch, what = "julia.dist"):
 # The version header is exported for julia_depot, which reads it so that a version change
 # refetches the depot. bin/julia is a small launcher that need not change between releases,
 # so it cannot be that key.
+#
+# julia_dist.txt records which tarball this is, for a sysimage's inputs file: the version, the
+# platform and the sha256 the download was checked against. It is in :dist so the rules that
+# take the distribution can read it; julia_dist_layer leaves it out of the image.
 _BUILD = """
 filegroup(
     name = "dist",
@@ -91,7 +95,7 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-exports_files(["bin/julia", "include/julia/julia_version.h"])
+exports_files(["bin/julia", "include/julia/julia_version.h", "julia_dist.txt"])
 """
 
 # The default target, so `@<name>` alone means the distribution.
@@ -123,6 +127,7 @@ def _julia_dist_impl(rctx):
         sha256 = sha256,
         strip_prefix = _expand(rctx.attr.strip_prefix, subs),
     )
+    rctx.file("julia_dist.txt", "version={}\nplatform={}\nsha256={}\n".format(version, platform, sha256))
     name = rctx.original_name
     rctx.file("BUILD.bazel", _BUILD + ("" if name == "dist" else _ALIAS.format(name = name)))
 

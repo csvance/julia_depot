@@ -5,6 +5,9 @@
 #   bazel build //image:image_1_13
 #   bazel test //image:all
 
+load("@julia_depot//julia:image.bzl", "julia_sysimage")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":cc_test.bzl", "file_cc_test", "pinned_cc_test", "system_cc_test")
 load(":defs.bzl", "julia_image_tests")
 
 julia_image_tests(
@@ -19,4 +22,173 @@ julia_image_tests(
     julia_repo = "@julia_1_13",
     minor = "1.13",
     project = "//projects/v1.13",
+)
+
+# --- the compiler that links a sysimage --------------------------------------------------------
+# Analysis tests over sysimage_1_13, which names no compiler, and two variants that are
+# never built: one with a consumer's own julia.cc, one with the host's compiler. See cc_test.bzl.
+julia_sysimage(
+    name = "sysimage_cc_glibc_2_28",
+    cc = "@cc_glibc_2_28",
+    depot = "@depot_1_13",
+    packages = ["Crayons"],
+    tags = ["manual"],
+)
+
+julia_sysimage(
+    name = "sysimage_system_cc",
+    depot = "@depot_1_13",
+    packages = ["Crayons"],
+    system_cc = True,
+    tags = ["manual"],
+)
+
+pinned_cc_test(
+    name = "sysimage_default_cc_test",
+    size = "small",
+    repo = "julia_depot_cc",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_1_13",
+)
+
+pinned_cc_test(
+    name = "sysimage_own_cc_test",
+    size = "small",
+    repo = "cc_glibc_2_28",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_cc_glibc_2_28",
+)
+
+system_cc_test(
+    name = "sysimage_system_cc_test",
+    size = "small",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_system_cc",
+)
+
+# --- julia_sysimage: the sysimage as a plain file -----------------------------------------------
+# Its compiler is env_check_cc.sh, a plain file, which fails the link unless `data` and `env`
+# reached the build with {execroot} expanded, then hands the call to the pinned compiler.
+julia_sysimage(
+    name = "sysimage_env_check_1_13",
+    cc = "env_check_cc.sh",
+    cpu_target = "generic",
+    data = [
+        "sysimage_data.txt",
+        "@julia_depot_cc//:bin/cc",
+        "@julia_depot_cc//:cc",
+    ],
+    depot = "@depot_1_13",
+    env = {
+        "E2E_CC_NEXT": "{execroot}/$(execpath @julia_depot_cc//:bin/cc)",
+        "E2E_DATA": "{execroot}/$(execpath sysimage_data.txt)",
+    },
+    packages = ["Crayons"],
+)
+
+sh_test(
+    name = "sysimage_file_1_13_test",
+    size = "small",
+    srcs = ["sysimage_file_test.sh"],
+    args = [
+        "$(rootpath :sysimage_env_check_1_13)",
+        "$(rootpath @julia_1_13//:bin/julia)",
+        "$(rootpath //projects/v1.13:Manifest.toml)",
+        "$(rootpath @depot_1_13//:stamp.txt)",
+    ],
+    data = [
+        ":sysimage_env_check_1_13",
+        "//projects/v1.13:Manifest.toml",
+        "//projects/v1.13:Project.toml",
+        "//tests:common.sh",
+        "@depot_1_13//:stamp.txt",
+        "@julia_1_13//:bin/julia",
+        "@julia_1_13//:dist",
+    ],
+    tags = ["julia1_13"],
+)
+
+file_cc_test(
+    name = "sysimage_file_cc_test",
+    size = "small",
+    cc_file = "image/env_check_cc.sh",
+    env_key = "E2E_DATA",
+    env_path = "image/sysimage_data.txt",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_env_check_1_13",
+)
+
+# --- the inputs file -------------------------------------------------------------------------
+# A twin of sysimage_1_13 and two variants that each change one attribute. Only their
+# inputs output groups are built; see sysimage_inputs_test.sh.
+julia_sysimage(
+    name = "sysimage_twin",
+    depot = "@depot_1_13",
+    packages = [
+        "Bzip2_jll",
+        "Crayons",
+    ],
+    tags = ["manual"],
+)
+
+julia_sysimage(
+    name = "sysimage_other_cc",
+    cc = "@cc_glibc_2_28",
+    depot = "@depot_1_13",
+    packages = [
+        "Bzip2_jll",
+        "Crayons",
+    ],
+    tags = ["manual"],
+)
+
+julia_sysimage(
+    name = "sysimage_other_env",
+    depot = "@depot_1_13",
+    env = {"E2E_VALUE": "changed"},
+    packages = [
+        "Bzip2_jll",
+        "Crayons",
+    ],
+    tags = ["manual"],
+)
+
+[
+    filegroup(
+        name = t + "_inputs",
+        srcs = [":" + t],
+        output_group = "inputs",
+    )
+    for t in [
+        "sysimage_1_13",
+        "sysimage_twin",
+        "sysimage_other_cc",
+        "sysimage_other_env",
+    ]
+]
+
+sh_test(
+    name = "sysimage_inputs_test",
+    size = "small",
+    srcs = ["sysimage_inputs_test.sh"],
+    args = [
+        "$(rootpath :sysimage_layer_1_13)",
+        "$(rootpath :sysimage_1_13_inputs)",
+        "$(rootpath :sysimage_twin_inputs)",
+        "$(rootpath :sysimage_other_cc_inputs)",
+        "$(rootpath :sysimage_other_env_inputs)",
+        "$(rootpath //projects/v1.13:Manifest.toml)",
+        "$(rootpath @julia_1_13//:julia_dist.txt)",
+    ],
+    data = [
+        ":sysimage_1_13_inputs",
+        ":sysimage_layer_1_13",
+        ":sysimage_other_cc_inputs",
+        ":sysimage_other_env_inputs",
+        ":sysimage_twin_inputs",
+        "//projects/v1.13:Manifest.toml",
+        "//tests:common.sh",
+        "@julia_1_13//:julia_dist.txt",
+    ],
+    tags = ["julia1_13"],
 )

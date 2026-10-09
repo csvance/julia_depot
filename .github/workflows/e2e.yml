@@ -117,11 +117,24 @@ jobs:
             exit 1
           }
           echo "$targets"
+          # Memory and disk once a minute. A runner that runs out of either is shut down with
+          # no error from the build, so the last of these lines is what says which it was.
+          while sleep 60; do
+            echo "resources: memory used $(free -m | awk '/^Mem:/ {print $3 "/" $2}') MiB, disk free $(df -h / | awk 'NR == 2 {print $4}')"
+          done &
+          trap 'kill $!' EXIT
           # shellcheck disable=SC2086
           bazel test $targets \
             --disk_cache="$HOME/.cache/bazel-disk" \
             --test_output=errors \
             --keep_going
+
+      # Bazel refetching a depot between two builds, which no test action can drive around
+      # itself. Version-independent, so the 1.13 job alone runs it. Builds only the inputs file
+      # of a sysimage the test step already built, so it adds seconds.
+      - name: refetch test
+        if: ${{ inputs.julia == '1.13' }}
+        run: e2e/refetch_test.sh
 
       - name: Test logs
         if: failure()

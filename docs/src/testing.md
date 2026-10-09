@@ -13,17 +13,13 @@ No Julia has to be installed: the module fetches and pins the distributions itse
 resolves against the public package server, pinned in `e2e/.bazelrc`, so a shell pointing
 `JULIA_PKG_SERVER` at a private mirror does not change what the tests fetch.
 
-The suite assumes `JULIA_DEPOT_PATH` is unset or names a single depot, which is what CI runs
-with. A few tests look for what the fetch installed in the first depot only, so with a
-multi-entry path, where packages and artifacts may already live in a later entry, they fail
-even though the rules work. To run the suite from such a shell, clear the variable for the
-fetch:
-
-```bash
-bazel test //... --repo_env=JULIA_DEPOT_PATH=
-```
-
-That instantiates into Julia's default depot, `~/.julia`.
+The suite is self-contained: it neither reads nor writes the developer's depots, whatever
+`JULIA_DEPOT_PATH` names. Every depot it fetches declares a `dir` of its own under
+`~/.julia-depot-e2e`, one per Julia version, which the rule uses in place of the ambient path.
+The one exception is the depot that tests the ambient case, a fetch with no `dir`. For it,
+`e2e/.bazelrc` pins `JULIA_DEPOT_PATH` empty for repository rules, which Julia reads as unset,
+so that depot always lands in Julia's default, `~/.julia`, and holds the two small packages of
+the 1.13 test project. `rm -rf ~/.julia-depot-e2e` resets the suite's depots.
 
 Expect a few minutes cold, most of it downloading the Julia distributions and
 building two sysimages per version (one for the sysimage tests, one portable one for the image
@@ -91,7 +87,38 @@ what it loads fails the test, and the contract page should change with it.
 One test sits outside the per-version set. The matrix's sysimage tests run over a depot
 that already holds PackageCompiler, so on 1.13 `sysimage.sh auto` is also run on an empty
 depot of the test's own, and has to install its PackageCompiler environment there before
-building. It downloads the General registry and PackageCompiler each time it runs.
+building. It downloads the General registry and PackageCompiler each time it runs. It links
+with the host's compiler, `JULIA_DEPOT_SYSIMAGE_CC=system`, and checks for the warning.
+
+The compiler that links a sysimage is checked from both sides. `sysimage.sh` is given a
+recording compiler that hands each call to the pinned one, and the test checks that it was
+called and that the sysimage was linked by zig's LLD, carries no GCC crt files, and requires no
+glibc symbol newer than 2.17. The image example's sysimage layer, which names no compiler, must
+pass the same link checks. The script must refuse to run with no compiler or with a path that is
+not executable. Analysis tests in `e2e/image/cc_test.bzl` check what the rule hands the script
+for the default compiler, a consumer's own `julia.cc`, a plain-file compiler and `system_cc`,
+and that the compiler is among the action's inputs.
+
+`julia_sysimage` is built on 1.13 with a compiler that checks, inside the build, that `data`
+and `env` reached it with `$(execpath ...)` and `{execroot}` expanded, and then hands the link to
+the pinned compiler. The test starts Julia on the file it wrote and applies the link checks.
+
+The inputs file is tested on 1.13 against a twin of the image example's sysimage layer, a
+target with the same attributes under another name, whose file must be byte-identical, and
+two variants that change only the compiler or only `env`, whose files must differ in that
+entry alone. Only the twin's and variants' inputs files are built. The test also checks the
+recorded Manifest digest and Julia tarball, and that the layer ships the file beside the
+sysimage.
+
+`e2e/refetch_test.sh` covers what no test action can: Bazel refetching a depot between two
+builds. It appends a comment to the 1.13 project's `Project.toml`, builds only the sysimage's
+inputs file, and checks that the file records the edited `Project.toml`, which happens only
+if the depot refetched and recopied it; then it restores the file and checks that the record
+returns to the original. CI runs it in the 1.13 job after the tests, and it runs by hand from
+anywhere.
+
+The scripts the rules run are internal, but several tests drive them directly, because a
+failure path such as the wrong-minor refusal is cheaper to reach there than through a rule.
 
 ## Before pushing
 

@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Build a sysimage for a Manifest-pinned project with PackageCompiler.
 #
-# Usage: JULIA_DEPOT_SYSIMAGE_PACKAGES="Pkg1 Pkg2" sysimage.sh <project dir> <build project> <out.so>
+# Run by julia_sysimage and julia_sysimage_layer. Internal: its arguments and variables are not
+# part of the module's interface and may change in any release.
+#
+# Usage: JULIA_DEPOT_SYSIMAGE_PACKAGES="Pkg1 Pkg2" JULIA_DEPOT_SYSIMAGE_CC=<cc> \
+#            sysimage.sh <project dir> <build project> <out.so>
 #
 #   <project dir>    the project whose packages are baked (a copy; see below)
 #   <build project>  the PackageCompiler environment, or `auto` to use the one shipped
@@ -13,15 +17,24 @@
 # Environment:
 #   JULIA_DEPOT_BIN                  the julia to use (falls back to PATH for hand runs)
 #   JULIA_DEPOT_SYSIMAGE_PACKAGES    required, space-separated package names to bake
+#   JULIA_DEPOT_SYSIMAGE_CC          required, the C compiler that links the sysimage:
+#                                    - the path to a julia.cc repository's bin/cc, such as
+#                                      the module's own @julia_depot_cc//:bin/cc, which pins
+#                                      the compiler and the glibc it links against
+#                                    - the path to any other compiler, used as JULIA_CC
+#                                    - `system`, PackageCompiler's own choice: JULIA_CC if
+#                                      set, otherwise g++, clang++, gcc or clang from PATH.
+#                                      The result then depends on the host, so it must not
+#                                      reach a cache that other hosts read.
+#                                    Under Bazel, a compiler given by path must be among the
+#                                    action's inputs (all of @julia_depot_cc//:cc for the
+#                                    pinned one), so that it is part of the action's key.
 #   JULIA_DEPOT_SYSIMAGE_CPU_TARGET  default: the CPU targets of the official Julia build
 #                                    for the running Julia's architecture, so the sysimage
 #                                    runs on any host of that architecture and uses the
 #                                    best clone for the CPU it lands on. Kept equal to
 #                                    PORTABLE_X86_64_CPU_TARGET and
 #                                    PORTABLE_AARCH64_CPU_TARGET in image.bzl.
-#
-# Before 0.1.1 these were spelled RULES_JULIA_DEPOT_*. The old spelling still works, with a
-# deprecation warning.
 #
 # Cost: code baked into a sysimage cannot be revised. Use the sysimage when the baked
 # packages do not change while you work, and an ordinary Revise loop when they do.
@@ -34,21 +47,44 @@
 # real files, so a write to the project would corrupt the real Manifest.toml.
 set -euo pipefail
 
-# Deprecated spellings: before 0.1.1 these variables were named RULES_JULIA_DEPOT_<name>. The
-# old name is read, with a warning, when the new one is unset. It goes in the release that
-# next raises the module's compatibility_level.
-for _name in BIN SYSIMAGE_PACKAGES SYSIMAGE_CPU_TARGET; do
-    _old="RULES_JULIA_DEPOT_$_name" _new="JULIA_DEPOT_$_name"
-    if [ -z "${!_new+set}" ] && [ -n "${!_old+set}" ]; then
-        echo "warning: $_old is deprecated; set $_new instead" >&2
-        export "$_new=${!_old}"
-    fi
-done
-
 PROJECT_DIR="$1"
 BUILD_PROJECT="$2"
 OUT="$3"
 : "${JULIA_DEPOT_SYSIMAGE_PACKAGES:?set JULIA_DEPOT_SYSIMAGE_PACKAGES to the space-separated packages to bake}"
+
+# The compiler is chosen explicitly, never by falling back to the host's, which would be an
+# input no cache key covers.
+case "${JULIA_DEPOT_SYSIMAGE_CC:-}" in
+    "")
+        cat >&2 <<'EOF'
+set JULIA_DEPOT_SYSIMAGE_CC to the C compiler that links the sysimage, one of:
+  the pinned compiler  the path to @julia_depot_cc//:bin/cc, with @julia_depot_cc//:cc among the inputs
+  your own compiler    the path to it, among the inputs
+  the host's compiler  system, whose result depends on the host and must not reach a shared cache
+EOF
+        exit 2
+        ;;
+    system)
+        cat >&2 <<'EOF'
+################################################################################
+WARNING: JULIA_DEPOT_SYSIMAGE_CC=system links this sysimage with the host's C
+compiler and C library, which are not inputs of the build. Another host can
+produce a different sysimage from the same inputs, or one that does not load
+there. Do not write this result to a cache that other hosts read.
+################################################################################
+EOF
+        ;;
+    *)
+        [ -f "$JULIA_DEPOT_SYSIMAGE_CC" ] && [ -x "$JULIA_DEPOT_SYSIMAGE_CC" ] || {
+            echo "JULIA_DEPOT_SYSIMAGE_CC=$JULIA_DEPOT_SYSIMAGE_CC is not an executable file" >&2
+            exit 2
+        }
+        # PackageCompiler splits JULIA_CC like a shell command line, hence the quoting.
+        cc_abs="$(cd "$(dirname "$JULIA_DEPOT_SYSIMAGE_CC")" && pwd)/$(basename "$JULIA_DEPOT_SYSIMAGE_CC")"
+        printf -v JULIA_CC '%q' "$cc_abs"
+        export JULIA_CC
+        ;;
+esac
 JULIA="${JULIA_DEPOT_BIN:-julia}"
 
 # The PackageCompiler environment must have been resolved under the same Julia minor as
