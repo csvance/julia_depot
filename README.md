@@ -27,7 +27,7 @@ something subtly wrong.
 
 This module pins whole environments to the `Manifest.toml` Pkg already writes and packages
 them into images. It is not a Julia language ruleset:
-[rules_julia](https://github.com/periareon/rules_julia) models Julia code as Bazel targets
+[`rules_julia`](https://github.com/periareon/rules_julia) models Julia code as Bazel targets
 (`julia_library`, `julia_binary`, `julia_test`) with a Bazel toolchain.
 
 ## The core workflow
@@ -58,7 +58,7 @@ use_repo(julia, "julia_dist", "my_depot")
 4. For an image, the rules in `julia/image.bzl` do the Julia-specific part: the distribution,
    depot, sysimage and precompile-cache layers as deterministic tars, the image's environment,
    and a test that the image starts without compiling anything. You assemble the image with
-   rules_oci (or anything else that takes tars); this module does not depend on it. See
+   `rules_oci` (or anything else that takes tars); this module does not depend on it. See
    [images](https://csvance.github.io/julia_depot/dev/images/).
 
 Moving to a new Julia takes a new distribution version and a re-resolved manifest; see

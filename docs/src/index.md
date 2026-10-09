@@ -94,7 +94,8 @@ use_repo(julia, "julia_dist", "my_depot")
 
 Moving to a new Julia takes a new distribution version and a re-resolved manifest. Private
 registries plug in through the depot's `hook`. A host-wide shared depot can sit read-only
-behind a per-user one; see [a shared depot](recipes.md#A-shared-depot-behind-a-declared-one).
+behind a per-user one, so each user's depot holds only what it lacks; see
+[a shared depot](recipes.md#A-shared-depot-behind-a-declared-one).
 
 ## What is in the box
 
