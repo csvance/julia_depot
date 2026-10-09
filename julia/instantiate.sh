@@ -71,7 +71,9 @@ isempty(missing_projects) || error("the project needs " * join(map(p -> joinpath
                                    ", which " * (length(missing_projects) == 1 ? "is" : "are") * " not in $root; " *
                                    "a julia.depot with `project` must list every workspace member and path package in `project_srcs`")
 
-Pkg.instantiate()
+# Pkg.instantiate precompiles on its own after installing anything, and that would ignore
+# precompile = False; the only precompile is the one below.
+Pkg.instantiate(; allow_autoprecomp = false)
 
 # Pkg.precompile skips a package whose source is missing and reports success, which would leave
 # a path package uncompiled without a word. A staged project has no sources, so say so instead.

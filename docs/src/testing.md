@@ -111,7 +111,10 @@ sysimage.
 `e2e/projects/workspace` is a workspace with one path-package member and its lock in `deploy/`,
 fetched with `project`, `project_srcs`, `precompile = False` and an `env` that a hook checks.
 An image built from it must start without compiling, and the instantiate step must fail, naming
-the fix, for a staged tree missing the member and for a precompile without sources.
+the fix, for a staged tree missing the member and for a precompile without sources. Into an
+empty depot, `precompile = False` must leave no `compiled/`, since Pkg.instantiate would
+otherwise precompile on its own, and precompile on, with the member's source present, must
+write the caches.
 
 `e2e/refetch_test.sh` covers what no test action can: Bazel refetching a depot between two
 builds. It appends a comment to a watched file, builds only a sysimage's inputs file, and checks

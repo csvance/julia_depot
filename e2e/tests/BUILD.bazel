@@ -242,6 +242,7 @@ sh_test(
         "$(rootpath @julia_1_13//:bin/julia)",
         "$(rootpath //projects/workspace:Project.toml)",
         "$(rootpath //projects/workspace:packages/WsMember/Project.toml)",
+        "$(rootpath //projects/workspace:member_src)",
         "$(rootpath //projects/workspace:deploy/Manifest.toml)",
         "$(rootpath @workspace_depot_1_13//:stamp.txt)",
     ],
@@ -249,6 +250,7 @@ sh_test(
         "common.sh",
         "//projects/workspace:Project.toml",
         "//projects/workspace:deploy/Manifest.toml",
+        "//projects/workspace:member_src",
         "//projects/workspace:packages/WsMember/Project.toml",
         "@julia_1_13//:bin/julia",
         "@julia_1_13//:dist",
@@ -256,5 +258,8 @@ sh_test(
         "@workspace_depot_1_13//:stamp.txt",
     ],
     env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
-    tags = ["julia1_13"],
+    tags = [
+        "julia1_13",
+        "requires-network",
+    ],
 )
