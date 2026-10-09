@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Testing — julia_depot</title>
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=e2283325">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <meta name="title" content="Testing — julia_depot">
+  <meta property="og:title" content="Testing — julia_depot">
+  <meta property="twitter:title" content="Testing — julia_depot">
+  <meta name="description" content="Documentation for julia_depot.">
+  <meta property="og:description" content="Documentation for julia_depot.">
+  <meta property="twitter:description" content="Documentation for julia_depot.">
+  <meta property="og:url" content="https://csvance.github.io/julia_depot/testing/">
+  <meta property="twitter:url" content="https://csvance.github.io/julia_depot/testing/">
+  <link rel="canonical" href="https://csvance.github.io/julia_depot/testing/">
+  <link rel="stylesheet" href="../assets/documenterlandingpage/landing.css">
+  <link rel="stylesheet" href="../assets/documenterlandingpage/landing-material.css">
+  <script>
+    (function(){
+      document.documentElement.classList.add('no-transition');
+      window.addEventListener('load',function(){setTimeout(function(){document.documentElement.classList.remove('no-transition');},50);});
+    })()
+  </script>
+</head>
+<body data-warn-outdated>
+  <header class="md-navbar">
+    <button id="md-hamburger" class="md-icon-btn md-hamburger" aria-label="Toggle navigation" aria-expanded="false"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+    <span class="md-navbar-title">julia_depot</span>
+    <span class="md-navbar-spacer"></span>
+    <button id="md-search-btn" class="md-search-bar" aria-label="Search documentation" aria-expanded="false">
+      <svg class="md-icon md-search-bar-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="md-search-bar-label">Search docs</span>
+      <kbd class="md-search-bar-kbd">Ctrl K</kbd>
+    </button>
+    <div id="md-version" class="md-version" hidden>
+      <button id="md-version-btn" class="md-version-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select documentation version">
+        <span id="md-version-current" class="md-version-current"></span>
+        <svg class="md-icon md-version-caret" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <ul id="md-version-menu" class="md-version-menu" role="listbox" hidden></ul>
+    </div>
+    <a class="md-icon-btn md-repo-link" href="https://github.com/csvance/julia_depot" title="View the repository on GitHub" aria-label="View the repository on GitHub" rel="noopener" target="_blank"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 .3a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0012 .3z"/></svg><span class="md-repo-label">GitHub</span></a>
+  </header>
+  <div class="md-layout">
+    <nav class="md-sidebar">
+      <a href="../">Home</a>
+      <a href="../images/">Images</a>
+      <a href="../recipes/">Recipes</a>
+      <a href="../contract/">The contract</a>
+      <a href="../julia-versions/">Julia versions</a>
+      <a href="../testing/" class="md-nav-active">Testing</a>
+      <a href="../used-by/">Used by</a>
+    </nav>
+    <main class="md-content">
+      <article class="md-article">
+      <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="https://github.com/csvance/julia_depot/blob/main/docs/src/testing.md" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
+<h1 id="Testing" class="md-heading">Testing<a href="#Testing" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
+<p>The tests live in <code class="md-code-inline">e2e/</code>, a separate Bazel module that depends on this one through <code class="md-code-inline">local_path_override</code>. The suite tests the consumer interface, so it uses the module the way a consumer does: through <code class="md-code-inline">bazel_dep</code>, the extension, and the repositories it produces.</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-bash">cd e2e
+bazel test //...</code></pre>
+</div>
+<p>No Julia has to be installed: the module fetches and pins the distributions itself. It resolves against the public package server, pinned in <code class="md-code-inline">e2e/.bazelrc</code>, so a shell pointing <code class="md-code-inline">JULIA_PKG_SERVER</code> at a private mirror does not change what the tests fetch.</p>
+<p>The suite is self-contained: it neither reads nor writes the developer&#39;s depots, whatever <code class="md-code-inline">JULIA_DEPOT_PATH</code> names. Every depot it fetches declares a <code class="md-code-inline">dir</code> of its own under <code class="md-code-inline">~/.julia-depot-e2e</code>, one per Julia version, which the rule uses in place of the ambient path. The one exception is the depot that tests the ambient case, a fetch with no <code class="md-code-inline">dir</code>. For it, <code class="md-code-inline">e2e/.bazelrc</code> pins <code class="md-code-inline">JULIA_DEPOT_PATH</code> empty for repository rules, which Julia reads as unset, so that depot always lands in Julia&#39;s default, <code class="md-code-inline">~/.julia</code>, and holds the two small packages of the 1.13 test project. <code class="md-code-inline">rm -rf ~/.julia-depot-e2e</code> resets the suite&#39;s depots.</p>
+<p>Expect a few minutes cold, most of it downloading the Julia distributions and building two sysimages per version (one for the sysimage tests, one portable one for the image example); warm, the whole matrix takes a few minutes.</p>
+<h2 id="The-matrix" class="md-heading">The matrix<a href="#The-matrix" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>The matrix is every supported Julia version (see <a href="../julia-versions/#Supported-versions">supported versions</a>), one <code class="md-code-inline">julia_version_tests()</code> call each in <code class="md-code-inline">e2e/tests/BUILD.bazel</code> and one workflow each, <code class="md-code-inline">.github/workflows/julia-&lt;minor&gt;.yml</code>, with its own badge in the README. The tests are tagged <code class="md-code-inline">julia&lt;minor&gt;</code> for the Julia they run, so a CI shard needs only that version&#39;s distribution and depot:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-bash">bazel test $(bazel query &quot;attr(tags, &#39;julia1_13&#39;, tests(//...))&quot;)</code></pre>
+</div>
+<p>For each version: the distribution is a Julia of that version that can load its own stdlib; a depot over a manifest resolved under it stamps the right version, manifest hash and depot, and its <code class="md-code-inline">env.sh</code> exports that same depot and names no Julia binary; a hook runs before instantiate and sees its <code class="md-code-inline">hook_environ</code>; <code class="md-code-inline">image_depot.sh</code> ships artifacts and no packages in <code class="md-code-inline">artifacts</code> mode and both in <code class="md-code-inline">full</code>, honours the image prefix and the artifact floor, and never ships depot credentials; artifact overrides are honoured, and a broken one fails the build instead of producing an image with two copies of a library; and <code class="md-code-inline">sysimage.sh auto</code> selects that version&#39;s PackageCompiler environment, builds an image, and that image starts and loads what was baked into it. Across versions, a manifest resolved under one Julia is refused by the other in both directions, and a PackageCompiler environment pinned to the wrong minor is refused before any work starts.</p>
+<p>The long-term support release runs a reduced set: the distribution, the depot stamp, both <code class="md-code-inline">image_depot.sh</code> modes, artifact overrides and the wrong-minor refusal. It has no sysimage build, since the module ships no PackageCompiler environment for it, no hook test, which is the same on every version, and no image example, which builds a sysimage layer. A <code class="md-code-inline">julia_version_tests()</code> call without <code class="md-code-inline">sysimage_depot_repo</code> and <code class="md-code-inline">hook_depot_repo</code> is that reduced set.</p>
+<p>Each version in the full set also builds the image example in <code class="md-code-inline">e2e/image</code>: the dist, full depot, compiled and application layers from <code class="md-code-inline">julia/image.bzl</code>, the image environment, and an <code class="md-code-inline">oci_image</code> assembled from them with <code class="md-code-inline">rules_oci</code> on a digest-pinned Debian base. <code class="md-code-inline">rules_oci</code> is a dependency of the e2e module only. Every layer entry must be normalised (uid and gid 0, epoch mtime, 0755 or 0644), the dist and depot layers must come out byte-identical from two separate actions, the compiled layer the same entries up to the cache file hash, and <code class="md-code-inline">rules_oci</code>&#39;s config must carry the environment file and the layers in order. <code class="md-code-inline">julia_precompile_test</code> must pass on the image&#39;s layers and must fail, naming what it compiled, on the same layers without the compiled layer. A sysimage layer over an artifacts-only depot, whose registry is fetched fresh, must start without precompiling too. The layers are large: the distribution alone is about a gigabyte per copy, and the determinism test builds it twice.</p>
+<p>The depot attributes that do not depend on the Julia version are tested on 1.12 alone: <code class="md-code-inline">dir</code>, and <code class="md-code-inline">read_only_depots</code>, whose depot has a hook seed a shared depot behind <code class="md-code-inline">dir</code> before instantiate. That test checks the exported path and its order, that a missing read-only depot neither fails the fetch nor is created, that <code class="md-code-inline">dir</code> received none of what the shared depot held, that the shared depot is unchanged by the fetch, and that <code class="md-code-inline">image_depot.sh</code> on the stacked path copies the shared depot&#39;s registry rather than installing one. Its depots live under <code class="md-code-inline">~/.julia-depot-e2e</code>.</p>
+<p>A second test damages copies of that shared depot after the fetch and checks what loading the environment does, and whether rerunning <code class="md-code-inline">instantiate.sh</code>, which is what a forced refetch runs, repairs it: a removed package or artifact fails to load and is repaired, a truncated library fails to load and is not, corrupted compiled caches are rebuilt into <code class="md-code-inline">dir</code>, and modified package source and an added <code class="md-code-inline">Overrides.toml</code> load silently. The last two assert the trust described in <a href="../contract/#What-is-not-hermetic">what is not hermetic</a>, so a Julia that starts verifying what it loads fails the test, and the contract page should change with it.</p>
+<p>One test sits outside the per-version set. The matrix&#39;s sysimage tests run over a depot that already holds PackageCompiler, so on 1.13 <code class="md-code-inline">sysimage.sh auto</code> is also run on an empty depot of the test&#39;s own, and has to install its PackageCompiler environment there before building. It downloads the General registry and PackageCompiler each time it runs. It links with the host&#39;s compiler, <code class="md-code-inline">JULIA_DEPOT_SYSIMAGE_CC=system</code>, and checks for the warning.</p>
+<p>The compiler that links a sysimage is checked from both sides. <code class="md-code-inline">sysimage.sh</code> is given a recording compiler that hands each call to the pinned one, and the test checks that it was called and that the sysimage was linked by zig&#39;s LLD, carries no GCC crt files, and requires no glibc symbol newer than 2.17. The image example&#39;s sysimage layer, which names no compiler, must pass the same link checks. The script must refuse to run with no compiler or with a path that is not executable. Analysis tests in <code class="md-code-inline">e2e/image/cc_test.bzl</code> check what the rule hands the script for the default compiler, a consumer&#39;s own <code class="md-code-inline">julia.cc</code>, a plain-file compiler and <code class="md-code-inline">system_cc</code>, and that the compiler is among the action&#39;s inputs.</p>
+<p><code class="md-code-inline">julia_sysimage</code> is built on 1.13 with a compiler that checks, inside the build, that <code class="md-code-inline">data</code> and <code class="md-code-inline">env</code> reached it with <code class="md-code-inline">$(execpath ...)</code> and <code class="md-code-inline">{execroot}</code> expanded, and then hands the link to the pinned compiler. The test starts Julia on the file it wrote and applies the link checks.</p>
+<p>The inputs file is tested on 1.13 against a twin of the image example&#39;s sysimage layer, a target with the same attributes under another name, whose file must be byte-identical, and two variants that change only the compiler or only <code class="md-code-inline">env</code>, whose files must differ in that entry alone. Only the twin&#39;s and variants&#39; inputs files are built. The test also checks the recorded Manifest digest and Julia tarball, and that the layer ships the file beside the sysimage.</p>
+<p>The scripts the rules run are internal, but several tests drive them directly, because a failure path such as the wrong-minor refusal is cheaper to reach there than through a rule.</p>
+<h2 id="Before-pushing" class="md-heading">Before pushing<a href="#Before-pushing" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p><code class="md-code-inline">tools/check_no_private_refs.sh</code> greps everything git would publish for internal hostnames, machine paths and credentials. The patterns are generic and live in <code class="md-code-inline">tools/private_ref_patterns.txt</code>; site-specific literals go in a file of your own named by <code class="md-code-inline">PRIVATE_REF_PATTERNS_EXTRA</code>, so that list never has to be published to be enforced. CI runs it, along with <code class="md-code-inline">buildifier -mode=check -lint=warn -r .</code>.</p>
+      </article>
+      <footer class="md-footer">
+<p>Built with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and <a href="https://github.com/mthelm85/MaterialDocs.jl">MaterialDocs.jl</a>.</p>
+      </footer>
+    </main>
+    <aside class="md-toc">
+      <div class="md-toc-inner">
+        <p class="md-toc-title">On this page</p>
+          <a class="md-toc-link md-toc-h2" href="#The-matrix">The matrix</a>
+          <a class="md-toc-link md-toc-h2" href="#Before-pushing">Before pushing</a>
+      </div>
+    </aside>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia-repl.min.js"></script>
+  <script>hljs.highlightAll();</script>
+  <script src="../siteinfo.js"></script>
+  <script src="../../versions.js"></script>
+  <script src="../assets/materialdocs.js?v=e2283325"></script>
+</body>
+</html>
