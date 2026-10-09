@@ -48,53 +48,22 @@ jobs:
     secrets:
       publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
 
-  # publish-to-bcr opens the BCR pull request with a fixed body, a link to the release and
-  # nothing else, and has no input to change it. Registry maintainers review from that pull
-  # request, so this puts the CHANGELOG.md notes at the top of it. publish-to-bcr names the
-  # branch <module>-<tag> on the fork, which is how the pull request is found. A failure here
-  # leaves the release and the pull request as they are: add the notes by hand.
+  # Puts the CHANGELOG.md notes at the top of the BCR pull request publish opened, which has
+  # a fixed body otherwise; see bcr_notes.sh. A failure here leaves the release and the pull
+  # request as they are: run bcr_notes.sh by hand.
   bcr_notes:
     needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      GH_TOKEN: ${{ secrets.BCR_PUBLISH_TOKEN }}
-      TAG: ${{ github.ref_name }}
-      # Must match publish.yaml's registry_fork and MODULE.bazel's module name.
-      FORK_OWNER: csvance
-      MODULE: julia_depot
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
       - name: Put the release notes in the BCR pull request
-        run: |
-          set -o errexit -o nounset -o pipefail
-          marker="<!-- julia_depot release notes -->"
-          pr="$(gh pr list --repo bazelbuild/bazel-central-registry --head "${MODULE}-${TAG}" \
-            --state open --json url,body,headRepositoryOwner \
-            --jq "map(select(.headRepositoryOwner.login == \"${FORK_OWNER}\")) | first")"
-          if [[ -z "${pr}" || "${pr}" == null ]]; then
-            echo "no open BCR pull request from ${FORK_OWNER}:${MODULE}-${TAG}" >&2
-            exit 1
-          fi
-          url="$(jq -r .url <<<"${pr}")"
-          body="$(jq -r .body <<<"${pr}")"
-          if [[ "${body}" == *"${marker}"* ]]; then
-            echo "${url} already has the notes"
-            exit 0
-          fi
-          {
-            echo "${marker}"
-            .github/workflows/release_notes.sh "${TAG#v}"
-            echo
-            echo "---"
-            echo
-            echo "${body}"
-          } > "${RUNNER_TEMP}/body.md"
-          gh pr edit "${url}" --body-file "${RUNNER_TEMP}/body.md"
-          echo "notes added to ${url}"
+        env:
+          GH_TOKEN: ${{ secrets.BCR_PUBLISH_TOKEN }}
+        run: .github/workflows/bcr_notes.sh "${{ github.ref_name }}"
 
   finalize:
     needs: publish

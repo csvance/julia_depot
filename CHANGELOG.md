@@ -2,7 +2,7 @@
 
 Each release has a section here, written before it is tagged. The section for a version
 becomes its GitHub release notes and the body of its Bazel Central Registry pull request;
-see `.github/workflows/release_notes.sh`.
+see `.github/workflows/release_notes.sh` and `bcr_notes.sh`.
 
 ## 0.1.1
 
