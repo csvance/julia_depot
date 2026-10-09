@@ -93,4 +93,27 @@ case "$output" in
 $output" ;;
 esac
 
+# --- a project with no artifacts --------------------------------------------------
+# No JLL, so instantiate writes no artifacts/. The default floor fails it, naming the count, and
+# a floor of 0 builds a layer with an empty artifacts/.
+empty="$TEST_TMPDIR/empty-project"
+mkdir -p "$empty"
+: > "$empty/Project.toml"
+printf 'julia_version = "%s"\nmanifest_format = "2.0"\n\n[deps]\n' \
+    "$("$julia_bin" --startup-file=no -e 'print(VERSION)')" > "$empty/Manifest.toml"
+rc=0
+output="$(project="$empty" build_layer artifacts "$TEST_TMPDIR/empty-floor.tar" 2>&1)" || rc=$?
+[ "$rc" -ne 0 ] || fail "a project with no artifacts passed the default floor of 1"
+case "$output" in
+    *"only 0 artifact directories, below JULIA_DEPOT_MIN_ARTIFACTS=1"*) ;;
+    *) fail "a project with no artifacts failed the default floor with the wrong message:
+$output" ;;
+esac
+output="$(project="$empty" build_layer artifacts "$TEST_TMPDIR/empty.tar" JULIA_DEPOT_MIN_ARTIFACTS=0 2>&1)" ||
+    fail "JULIA_DEPOT_MIN_ARTIFACTS=0 did not build a layer for a project with no artifacts:
+$output"
+grep -qx 'opt/julia-depot/artifacts/' <(tar -tf "$TEST_TMPDIR/empty.tar") ||
+    fail "the layer for a project with no artifacts has no empty opt/julia-depot/artifacts/:
+$(tar -tf "$TEST_TMPDIR/empty.tar")"
+
 echo "PASS: artifacts mode shipped $(printf '%s\n' "$hash_dirs" | wc -l) artifact(s) and no packages, full mode shipped both"

@@ -59,6 +59,9 @@ for 0.1.x through the transition.
   packages from `~/.julia` behind `dir`, and Pkg installed nothing into `dir` that `~/.julia`
   already held. The bundled depots are now named instead on 1.10; 1.11 and later, where a
   trailing separator means the bundled depots alone, are unchanged.
+- `julia_depot_layer` failed for a project with no JLLs, even with `min_artifacts = 0`: it
+  required an `artifacts/` directory before counting. It now ships an empty one, and the floor
+  alone decides; with the default of 1 such a project still fails, naming the count.
 
 ### New
 
