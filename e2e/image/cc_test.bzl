@@ -1,4 +1,4 @@
-"""Analysis tests: which compiler julia_sysimage_layer hands sysimage.sh, and what that does to its action.
+"""Analysis tests: which compiler julia_sysimage hands sysimage.sh, and what that does to its action.
 
 A sysimage build takes minutes, so the wiring is checked at analysis time instead: the
 JULIA_DEPOT_SYSIMAGE_CC the action is given, and whether the compiler is among its inputs, which
@@ -10,8 +10,8 @@ no-remote-cache tag on a system_cc build is not checked here.
 load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts")
 
 def _sysimage_action(env):
-    actions = [a for a in analysistest.target_actions(env) if a.mnemonic == "JuliaSysimageLayer"]
-    asserts.equals(env, 1, len(actions), "JuliaSysimageLayer actions")
+    actions = [a for a in analysistest.target_actions(env) if a.mnemonic == "JuliaSysimage"]
+    asserts.equals(env, 1, len(actions), "JuliaSysimage actions")
     return actions[0] if actions else None
 
 def _input_paths(action):

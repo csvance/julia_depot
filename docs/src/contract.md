@@ -167,7 +167,7 @@ compilers would produce different sysimages under the same cache key, and a sysi
 against a newer glibc than another host has would not load there. So the compiler is a declared
 input, chosen explicitly:
 
-- **Pinned**, the default for `julia_sysimage_layer`: a `julia.cc` repository, zig fetched by
+- **Pinned**, the default for `julia_sysimage`: a `julia.cc` repository, zig fetched by
   sha256 and run as `zig cc -target <arch>-linux-gnu.<glibc>`. One tarball holds the compiler,
   the linker and the glibc stubs, so every host links against the same C library. The module
   declares one itself, `@julia_depot_cc`, targeting glibc 2.17 like the official Julia builds;
@@ -193,7 +193,7 @@ A sysimage is not reproducible: Julia stamps the code it compiles with a build i
 build's paths are baked in. Two builds of the same commit therefore give different bytes, and a
 check that compares a rebuilt sysimage with a released one by digest fails. What does reproduce
 is what the sysimage was built from, so each sysimage rule also writes an inputs file,
-`<name>.inputs.json`, and `julia_sysimage_layer` ships it beside the sysimage
+`<name>.inputs.json`, and `julia_sysimage_layer` ships it beside the sysimage it packages
 (`/opt/julia-sysimage/sys.inputs.json` for the default `path`).
 
 It records everything the rule declares, and nothing that depends on the host:

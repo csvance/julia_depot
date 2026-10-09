@@ -5,7 +5,7 @@
 #   bazel build //image:image_1_13
 #   bazel test //image:all
 
-load("@julia_depot//julia:image.bzl", "julia_sysimage", "julia_sysimage_layer")
+load("@julia_depot//julia:image.bzl", "julia_sysimage")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load(":cc_test.bzl", "file_cc_test", "pinned_cc_test", "system_cc_test")
 load(":defs.bzl", "julia_image_tests")
@@ -25,10 +25,10 @@ julia_image_tests(
 )
 
 # --- the compiler that links a sysimage --------------------------------------------------------
-# Analysis tests over sysimage_layer_1_13, which names no compiler, and two variants that are
+# Analysis tests over sysimage_1_13, which names no compiler, and two variants that are
 # never built: one with a consumer's own julia.cc, one with the host's compiler. See cc_test.bzl.
-julia_sysimage_layer(
-    name = "sysimage_layer_cc_glibc_2_28",
+julia_sysimage(
+    name = "sysimage_cc_glibc_2_28",
     cc = "@cc_glibc_2_28",
     depot = "@depot_1_13",
     julia = "@julia_1_13",
@@ -38,8 +38,8 @@ julia_sysimage_layer(
     tags = ["manual"],
 )
 
-julia_sysimage_layer(
-    name = "sysimage_layer_system_cc",
+julia_sysimage(
+    name = "sysimage_system_cc",
     depot = "@depot_1_13",
     julia = "@julia_1_13",
     manifest = "//projects/v1.13:Manifest.toml",
@@ -54,7 +54,7 @@ pinned_cc_test(
     size = "small",
     repo = "julia_depot_cc",
     tags = ["julia1_13"],
-    target_under_test = ":sysimage_layer_1_13",
+    target_under_test = ":sysimage_1_13",
 )
 
 pinned_cc_test(
@@ -62,21 +62,21 @@ pinned_cc_test(
     size = "small",
     repo = "cc_glibc_2_28",
     tags = ["julia1_13"],
-    target_under_test = ":sysimage_layer_cc_glibc_2_28",
+    target_under_test = ":sysimage_cc_glibc_2_28",
 )
 
 system_cc_test(
     name = "sysimage_system_cc_test",
     size = "small",
     tags = ["julia1_13"],
-    target_under_test = ":sysimage_layer_system_cc",
+    target_under_test = ":sysimage_system_cc",
 )
 
 # --- julia_sysimage: the sysimage as a plain file -----------------------------------------------
 # Its compiler is env_check_cc.sh, a plain file, which fails the link unless `data` and `env`
 # reached the build with {execroot} expanded, then hands the call to the pinned compiler.
 julia_sysimage(
-    name = "sysimage_1_13",
+    name = "sysimage_env_check_1_13",
     cc = "env_check_cc.sh",
     cpu_target = "generic",
     data = [
@@ -100,13 +100,13 @@ sh_test(
     size = "small",
     srcs = ["sysimage_file_test.sh"],
     args = [
-        "$(rootpath :sysimage_1_13)",
+        "$(rootpath :sysimage_env_check_1_13)",
         "$(rootpath @julia_1_13//:bin/julia)",
         "$(rootpath //projects/v1.13:Manifest.toml)",
         "$(rootpath @depot_1_13//:stamp.txt)",
     ],
     data = [
-        ":sysimage_1_13",
+        ":sysimage_env_check_1_13",
         "//projects/v1.13:Manifest.toml",
         "//projects/v1.13:Project.toml",
         "//tests:common.sh",
@@ -124,14 +124,14 @@ file_cc_test(
     env_key = "E2E_DATA",
     env_path = "image/sysimage_data.txt",
     tags = ["julia1_13"],
-    target_under_test = ":sysimage_1_13",
+    target_under_test = ":sysimage_env_check_1_13",
 )
 
 # --- the inputs file -------------------------------------------------------------------------
-# A twin of sysimage_layer_1_13 and two variants that each change one attribute. Only their
+# A twin of sysimage_1_13 and two variants that each change one attribute. Only their
 # inputs output groups are built; see sysimage_inputs_test.sh.
-julia_sysimage_layer(
-    name = "sysimage_layer_twin",
+julia_sysimage(
+    name = "sysimage_twin",
     depot = "@depot_1_13",
     julia = "@julia_1_13",
     manifest = "//projects/v1.13:Manifest.toml",
@@ -143,8 +143,8 @@ julia_sysimage_layer(
     tags = ["manual"],
 )
 
-julia_sysimage_layer(
-    name = "sysimage_layer_other_cc",
+julia_sysimage(
+    name = "sysimage_other_cc",
     cc = "@cc_glibc_2_28",
     depot = "@depot_1_13",
     julia = "@julia_1_13",
@@ -157,8 +157,8 @@ julia_sysimage_layer(
     tags = ["manual"],
 )
 
-julia_sysimage_layer(
-    name = "sysimage_layer_other_env",
+julia_sysimage(
+    name = "sysimage_other_env",
     depot = "@depot_1_13",
     env = {"E2E_VALUE": "changed"},
     julia = "@julia_1_13",
@@ -178,10 +178,10 @@ julia_sysimage_layer(
         output_group = "inputs",
     )
     for t in [
-        "sysimage_layer_1_13",
-        "sysimage_layer_twin",
-        "sysimage_layer_other_cc",
-        "sysimage_layer_other_env",
+        "sysimage_1_13",
+        "sysimage_twin",
+        "sysimage_other_cc",
+        "sysimage_other_env",
     ]
 ]
 
@@ -191,19 +191,19 @@ sh_test(
     srcs = ["sysimage_inputs_test.sh"],
     args = [
         "$(rootpath :sysimage_layer_1_13)",
-        "$(rootpath :sysimage_layer_1_13_inputs)",
-        "$(rootpath :sysimage_layer_twin_inputs)",
-        "$(rootpath :sysimage_layer_other_cc_inputs)",
-        "$(rootpath :sysimage_layer_other_env_inputs)",
+        "$(rootpath :sysimage_1_13_inputs)",
+        "$(rootpath :sysimage_twin_inputs)",
+        "$(rootpath :sysimage_other_cc_inputs)",
+        "$(rootpath :sysimage_other_env_inputs)",
         "$(rootpath //projects/v1.13:Manifest.toml)",
         "$(rootpath @julia_1_13//:julia_dist.txt)",
     ],
     data = [
+        ":sysimage_1_13_inputs",
         ":sysimage_layer_1_13",
-        ":sysimage_layer_1_13_inputs",
-        ":sysimage_layer_other_cc_inputs",
-        ":sysimage_layer_other_env_inputs",
-        ":sysimage_layer_twin_inputs",
+        ":sysimage_other_cc_inputs",
+        ":sysimage_other_env_inputs",
+        ":sysimage_twin_inputs",
         "//projects/v1.13:Manifest.toml",
         "//tests:common.sh",
         "@julia_1_13//:julia_dist.txt",

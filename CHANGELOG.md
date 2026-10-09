@@ -31,12 +31,16 @@ for 0.1.x through the transition.
 
 - `sysimage.sh` and `image_depot.sh` are internal. Replace a genrule that calls one with the
   rule that runs it:
-  - `sysimage.sh` → `julia_sysimage`, or `julia_sysimage_layer` for an image. `srcs` are the
+  - `sysimage.sh` → `julia_sysimage`, plus `julia_sysimage_layer` for an image. `srcs` are the
     project's files; a file outside the project goes in `data`, and `env` can name it as
     `"{execroot}/$(execpath <label>)"`. Drop the genrule's `no-sandbox` tag along with it.
   - `image_depot.sh` → `julia_depot_layer`, with `depot` for the registries and server
     credentials, and `contents`, `prefix`, `min_artifacts` and `overrides_build` /
     `overrides_image` in place of the script's `JULIA_DEPOT_*` variables.
+- `julia_sysimage_layer` no longer builds: it takes `sysimage`, a `julia_sysimage`, and ships
+  it at `path`, so a build that needs the file and the layer compiles the sysimage once. Move
+  its build attributes (`project`, `manifest`, `srcs`, `depot`, `julia`, `packages`,
+  `cpu_target`, `env`) to a `julia_sysimage` and pass that as `sysimage`.
 - Sysimages are linked by the pinned compiler `@julia_depot_cc` unless the rule is given `cc`
   (another compiler) or `system_cc = True` (the host's, which prints a warning and tags the
   action `no-remote-cache`). Nothing to change for a build that wants the pinned compiler.
@@ -57,12 +61,12 @@ for 0.1.x through the transition.
 - `julia.cc` declares another pinned compiler, for a different zig version or glibc target:
   `julia.cc(name = "my_cc", glibc = "2.28")`, then `cc = "@my_cc"` on a sysimage rule.
 - An inputs file for every sysimage, `<name>.inputs.json` in the `inputs` output group, shipped
-  by `julia_sysimage_layer` beside the sysimage: the Julia tarball, the compiler, the
+  by `julia_sysimage_layer` beside the sysimage it packages: the Julia tarball, the compiler, the
   PackageCompiler environment, and each declared input by sha256, with no host paths.
   `bazel build --output_groups=inputs` writes it without building the sysimage, to check a
   rebuild against a release.
-- `data` on `julia_sysimage` and `julia_sysimage_layer`, for build inputs outside the project,
-  and `$(execpath ...)` and `{execroot}` expansion in their `env`.
+- `data` on `julia_sysimage`, for build inputs outside the project, and `$(execpath ...)` and
+  `{execroot}` expansion in its `env`.
 
 ## 0.1.1
 

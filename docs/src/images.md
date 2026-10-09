@@ -73,12 +73,16 @@ your code. `e2e/image/` builds this for every Julia version in the test matrix.
 
 All layer rules write `<name>.tar` and take `julia`, the distribution from `julia.dist`, e.g. `@julia_dist`.
 
-| rule | what the tar holds | attributes beyond `julia` |
+| rule | what the tar holds | attributes |
 | --- | --- | --- |
-| `julia_dist_layer` | the distribution at `prefix`, its own relative symlinks kept | `prefix` (`/opt/julia`) |
-| `julia_depot_layer` | a clean depot for the project at `prefix` | `project`, `manifest`, `srcs`, `contents` (`artifacts` or `full`), `prefix` (`/opt/julia-depot`), `depot`, `min_artifacts`, `overrides_build`, `overrides_image`, `env` |
-| `julia_sysimage_layer` | a PackageCompiler sysimage at `path`; `julia_sysimage` writes the same build as a file | `project`, `manifest`, `srcs`, `depot` (required), `packages`, `cpu_target`, `path` (`/opt/julia-sysimage/sys.so`), `data`, `env` (`$(execpath)` and `{execroot}` expand), `cc` (`@julia_depot_cc`), `system_cc` |
-| `julia_compiled_layer` | the depot's `compiled/`, for the entry projects | `image_env`, `layers`, `projects`, `sysimage`, `env` (`{root}` expands to the unpacked tree) |
+| `julia_dist_layer` | the distribution at `prefix`, its own relative symlinks kept | `julia`, `prefix` (`/opt/julia`) |
+| `julia_depot_layer` | a clean depot for the project at `prefix` | `julia`, `project`, `manifest`, `srcs`, `contents` (`artifacts` or `full`), `prefix` (`/opt/julia-depot`), `depot`, `min_artifacts`, `overrides_build`, `overrides_image`, `env` |
+| `julia_sysimage_layer` | a `julia_sysimage` at `path`, its inputs file beside it; ships that build, so the sysimage is compiled once | `sysimage`, `path` (`/opt/julia-sysimage/sys.so`) |
+| `julia_compiled_layer` | the depot's `compiled/`, for the entry projects | `julia`, `image_env`, `layers`, `projects`, `sysimage`, `env` (`{root}` expands to the unpacked tree) |
+
+`julia_sysimage` builds the sysimage itself: `julia`, `project`, `manifest`, `srcs`, `depot`,
+`packages`, `cpu_target`, `data`, `env` (`$(execpath)` and `{execroot}` expand), `cc`
+(`@julia_depot_cc`) and `system_cc`; see [Recipes](recipes.md#A-sysimage).
 
 Both sysimage rules also write an inputs file, the sysimage's declared inputs by sha256, in the
 `inputs` output group; the layer ships it beside the sysimage. A sysimage is not reproducible,

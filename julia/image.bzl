@@ -24,9 +24,9 @@ through `JuliaImageEnvInfo`, so the caches are built for, and checked against, t
 the image runs with. `julia_image_env_vars` returns the same variables as a dict, for a BUILD
 file that merges them with its own.
 
-`julia_sysimage` is the one rule here that writes no layer: the sysimage as a plain file, for a
-build or a test that starts Julia with it directly. `julia_sysimage_layer` is the same build as a
-layer.
+`julia_sysimage` is the one rule here that writes no layer: it builds the sysimage as a plain
+file, for a build or a test that starts Julia with it directly. `julia_sysimage_layer` ships that
+file in an image, so a build that needs both compiles the sysimage once.
 
 The rules call image_layers.sh, which wraps image_depot.sh and sysimage.sh. All three scripts are
 internal: the rules are the interface. What the scripts decide is documented there.
@@ -395,7 +395,7 @@ def _julia_dist_txt(ctx):
             return f
     fail("julia: {} has no julia_dist.txt; pass a julia.dist repository, e.g. @julia_dist".format(ctx.attr.julia.label))
 
-def _sysimage_inputs(ctx, out, cc, path = None):
+def _sysimage_inputs(ctx, out, cc):
     """Writes the inputs file: what the sysimage is built from, the same bytes on any host."""
     config = {
         "cc": cc.kind,
@@ -403,8 +403,6 @@ def _sysimage_inputs(ctx, out, cc, path = None):
         "env": {k: ctx.attr.env[k] for k in sorted(ctx.attr.env)},
         "packages": ctx.attr.packages,
     }
-    if path != None:
-        config["path"] = path
     keyed = [("project/" + rel, f) for rel, f in _stage_pairs(ctx)]
     keyed += [("data/" + str(f.owner), f) for f in ctx.files.data]
     if cc.kind == "julia.cc":
@@ -439,8 +437,8 @@ def _sysimage_inputs(ctx, out, cc, path = None):
         progress_message = "Writing the inputs of %{output}",
     )
 
-def _sysimage_run(ctx, out, subcommand, args, mnemonic, message, cc, extra_inputs = []):
-    """Runs a sysimage build: image_layers.sh <subcommand> with the attributes both rules share."""
+def _sysimage_run(ctx, out, cc):
+    """Runs the sysimage build: image_layers.sh sysimage."""
     stage, files = _stage_args(ctx)
     stamp = _stamp(ctx)
     if not ctx.attr.packages:
@@ -451,8 +449,8 @@ def _sysimage_run(ctx, out, subcommand, args, mnemonic, message, cc, extra_input
     _layer_run(
         ctx,
         out,
-        [subcommand, _julia_bin(ctx).path, out.path, stamp.path] + args + env_args + stage,
-        files + [stamp] + cc.files + ctx.files.data + extra_inputs,
+        ["sysimage", _julia_bin(ctx).path, out.path, stamp.path] + env_args + stage,
+        files + [stamp] + cc.files + ctx.files.data,
         env = {
             "JULIA_DEPOT_SYSIMAGE_PACKAGES": " ".join(ctx.attr.packages),
             "JULIA_DEPOT_SYSIMAGE_CPU_TARGET": _cpu_target(ctx),
@@ -462,8 +460,8 @@ def _sysimage_run(ctx, out, subcommand, args, mnemonic, message, cc, extra_input
         network = True,
         # The host's compiler is not in the key, so its result must not be shared.
         remote_cache = not ctx.attr.system_cc,
-        mnemonic = mnemonic,
-        message = message,
+        mnemonic = "JuliaSysimage",
+        message = "Building Julia sysimage %{output}",
     )
 
 def _sysimage_attrs():
@@ -497,53 +495,74 @@ the same on every build of the same inputs, since the sysimage itself is not rep
 written by its own action, so `--output_groups=inputs` builds it without the sysimage.
 """
 
+JuliaSysimageInfo = provider(
+    doc = "A sysimage from julia_sysimage, for julia_sysimage_layer to ship without building it again.",
+    fields = {
+        "sysimage": "File: the sysimage.",
+        "inputs": "File: its inputs file.",
+        "host_cc": "bool: linked with the host's compiler (system_cc), so not to be cached remotely.",
+    },
+)
+
 def _julia_sysimage_impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name + ".so")
     inputs = ctx.actions.declare_file(ctx.label.name + ".inputs.json")
     cc = _sysimage_cc(ctx)
     _sysimage_inputs(ctx, inputs, cc)
-    _sysimage_run(ctx, out, "sysimage_so", [], "JuliaSysimage", "Building Julia sysimage %{output}", cc)
+    _sysimage_run(ctx, out, cc)
     return [
         DefaultInfo(files = depset([out])),
         OutputGroupInfo(inputs = depset([inputs])),
+        JuliaSysimageInfo(sysimage = out, inputs = inputs, host_cc = ctx.attr.system_cc),
     ]
 
 julia_sysimage = rule(
     implementation = _julia_sysimage_impl,
     doc = """A PackageCompiler sysimage, `<name>.so`, to start Julia with: `julia --sysimage <file>`.
+For an image, pass it to julia_sysimage_layer, which ships this build rather than repeating it.
 """ + _SYSIMAGE_DOC,
     attrs = _sysimage_attrs(),
 )
 
 def _julia_sysimage_layer_impl(ctx):
+    info = ctx.attr.sysimage[JuliaSysimageInfo]
     out = ctx.actions.declare_file(ctx.label.name + ".tar")
-    inputs = ctx.actions.declare_file(ctx.label.name + ".inputs.json")
-    path = _check_absolute("path", ctx.attr.path)
-    cc = _sysimage_cc(ctx)
-    _sysimage_inputs(ctx, inputs, cc, path)
-    _sysimage_run(
-        ctx,
-        out,
-        "sysimage",
-        [path, inputs.path],
-        "JuliaSysimageLayer",
-        "Building Julia sysimage layer %{output}",
-        cc,
-        [inputs],
+    reqs = {"no-remote-exec": "1"}
+    if info.host_cc:
+        # The sysimage inside carries the host's link, so the layer must not be shared either.
+        reqs["no-remote-cache"] = "1"
+    ctx.actions.run(
+        executable = ctx.executable._tool,
+        arguments = ["sysimage_layer", out.path, info.sysimage.path, info.inputs.path, _check_absolute("path", ctx.attr.path)],
+        inputs = [info.sysimage, info.inputs],
+        outputs = [out],
+        use_default_shell_env = True,
+        execution_requirements = reqs,
+        mnemonic = "JuliaSysimageLayer",
+        progress_message = "Writing Julia sysimage layer %{output}",
     )
     return [
         DefaultInfo(files = depset([out])),
-        OutputGroupInfo(inputs = depset([inputs])),
+        OutputGroupInfo(inputs = depset([info.inputs])),
     ]
 
 julia_sysimage_layer = rule(
     implementation = _julia_sysimage_layer_impl,
-    doc = """The julia_sysimage build as one image layer, with the sysimage at `path`.
+    doc = """A julia_sysimage as one image layer: the sysimage at `path`, its inputs file beside it.
 
-Ship a julia_depot_layer beside it for the artifacts, and start Julia with `--sysimage <path>`.
-""" + _SYSIMAGE_DOC,
-    attrs = _sysimage_attrs() | {
-        "path": attr.string(default = "/opt/julia-sysimage/sys.so", doc = "Where the image keeps the sysimage."),
+It ships the sysimage `sysimage` built, so a build that needs the file as well as the layer
+compiles it once. Ship a julia_depot_layer beside it for the artifacts, and start Julia with
+`--sysimage <path>`. The `inputs` output group holds the sysimage's inputs file.
+""",
+    attrs = {
+        "sysimage": attr.label(mandatory = True, providers = [JuliaSysimageInfo], doc = "The julia_sysimage to ship."),
+        "path": attr.string(default = "/opt/julia-sysimage/sys.so", doc = "Where the image keeps the sysimage; the inputs file goes beside it as `<path without .so>.inputs.json`."),
+        "_tool": attr.label(
+            default = "//julia:image_layers.sh",
+            allow_single_file = True,
+            executable = True,
+            cfg = "exec",
+        ),
     },
 )
 

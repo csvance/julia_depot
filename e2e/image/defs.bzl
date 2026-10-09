@@ -18,6 +18,7 @@ load(
     "julia_dist_layer",
     "julia_image_env",
     "julia_precompile_test",
+    "julia_sysimage",
     "julia_sysimage_layer",
 )
 load("@rules_oci//oci:defs.bzl", "oci_image")
@@ -293,8 +294,9 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         project = project + ":Project.toml",
     )
 
-    julia_sysimage_layer(
-        name = n("sysimage_layer"),
+    # One build, two shapes: the file, and the layer that ships it.
+    julia_sysimage(
+        name = n("sysimage"),
         depot = depot_repo,
         julia = julia,
         manifest = project + ":Manifest.toml",
@@ -303,6 +305,11 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
             "Crayons",
         ],
         project = project + ":Project.toml",
+    )
+
+    julia_sysimage_layer(
+        name = n("sysimage_layer"),
+        sysimage = n("sysimage"),
     )
 
     julia_precompile_test(
@@ -321,7 +328,8 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         tags = tags,
     )
 
-    # The layer above names no compiler, so the module's pinned one linked it.
+    # The sysimage above names no compiler, so the module's pinned one linked it, and the layer
+    # ships those same bytes rather than a second build.
     sh_test(
         name = n("sysimage_link") + "_test",
         size = "small",
@@ -329,7 +337,11 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         args = [
             "$(rootpath {})".format(n("sysimage_layer")),
             "/opt/julia-sysimage/sys.so",
+            "$(rootpath {})".format(n("sysimage")),
         ],
-        data = _HELPERS + [n("sysimage_layer")],
+        data = _HELPERS + [
+            n("sysimage"),
+            n("sysimage_layer"),
+        ],
         tags = tags,
     )

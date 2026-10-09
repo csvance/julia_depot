@@ -42,7 +42,8 @@ The default CPU target is the portable list for the target platform, which runs 
 that architecture and makes the build slower; `cpu_target = "generic"` builds once, for a
 baseline CPU. The sysimage is linked by the module's pinned C compiler; see
 [the compiler that links it](contract.md#The-compiler-that-links-it) for `cc` and `system_cc`.
-For an image, `julia_sysimage_layer` is the same build as a layer; see [Images](images.md).
+For an image, `julia_sysimage_layer(name = "app_sysimage_layer", sysimage = ":app_sysimage")`
+ships that same file as a layer, so the sysimage is compiled once; see [Images](images.md).
 
 Beside the sysimage the rule writes `app_sysimage.inputs.json`, its declared inputs by sha256.
 The sysimage's own bytes differ between builds, so compare this file instead to check that

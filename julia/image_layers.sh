@@ -4,8 +4,8 @@
 #
 #   image_layers.sh dist      <julia> <prefix> <out.tar>
 #   image_layers.sh depot     <julia> <out.tar> <source stamp|-> [<rel> <file>]...
-#   image_layers.sh sysimage  <julia> <out.tar> <source stamp> <path in image> <inputs.json> <sysimage args>...
-#   image_layers.sh sysimage_so <julia> <out.so> <source stamp> <sysimage args>...
+#   image_layers.sh sysimage  <julia> <out.so> <source stamp> <sysimage args>...
+#   image_layers.sh sysimage_layer <out.tar> <sysimage.so> <inputs.json> <path in image>
 #   image_layers.sh inputs    <out.json> <julia_dist.txt> <config json> <file list>
 #   image_layers.sh compiled  <julia> <out.tar> <image flags>...
 #   image_layers.sh check     <julia> <image flags>... [--modules "A B"]
@@ -34,7 +34,7 @@
 # give the same bytes, so a layer's digest changes only when its content does.
 set -euo pipefail
 
-cmd="${1:?usage: image_layers.sh dist|depot|sysimage|sysimage_so|inputs|compiled|check ...}"
+cmd="${1:?usage: image_layers.sh dist|depot|sysimage|sysimage_layer|inputs|compiled|check ...}"
 shift
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -282,25 +282,21 @@ build_sysimage() {
 }
 
 cmd_sysimage() {
-    local julia="$1" out="$2" stamp="$3" path="${4#/}" inputs="$5"
-    shift 5
-    local stage="$scratch/stage"
-    build_sysimage "$julia" "$stage/$path" "$stamp" "$@"
-    cp "$inputs" "$stage/$(inputs_name "$path")"
-    write_layer "$out" "$stage"
-}
-
-# The inputs file's name beside a sysimage: sys.so -> sys.inputs.json. image.bzl names the
-# julia_sysimage output the same way.
-inputs_name() {
-    printf '%s.inputs.json\n' "${1%.so}"
-}
-
-# --- sysimage_so: the same sysimage as a file, for a build that starts Julia with it directly ---
-cmd_sysimage_so() {
     local julia="$1" out="$2" stamp="$3"
     shift 3
     build_sysimage "$julia" "$(abspath "$out")" "$stamp" "$@"
+}
+
+# --- sysimage_layer: a built sysimage and its inputs file, at a path in the image -------------
+# The inputs file's name beside the sysimage: sys.so -> sys.inputs.json, as image.bzl names the
+# julia_sysimage outputs.
+cmd_sysimage_layer() {
+    local out="$1" so="$2" inputs="$3" path="${4#/}"
+    local stage="$scratch/stage"
+    mkdir -p "$stage/$(dirname "$path")"
+    cp "$so" "$stage/$path"
+    cp "$inputs" "$stage/${path%.so}.inputs.json"
+    write_layer "$out" "$stage"
 }
 
 # --- inputs: what a sysimage was built from ----------------------------------------------
@@ -454,7 +450,7 @@ case "$cmd" in
     dist) cmd_dist "$@" ;;
     depot) cmd_depot "$@" ;;
     sysimage) cmd_sysimage "$@" ;;
-    sysimage_so) cmd_sysimage_so "$@" ;;
+    sysimage_layer) cmd_sysimage_layer "$@" ;;
     inputs) cmd_inputs "$@" ;;
     compiled) cmd_compiled "$@" ;;
     check) cmd_check "$@" ;;
