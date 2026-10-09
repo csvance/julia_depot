@@ -7,6 +7,8 @@
 #
 #   - the `julia` extension's tag classes (dist, depot, cc) and their attributes
 #   - the rules and functions in julia/image.bzl, their attributes and JuliaImageEnvInfo,
+#     the sysimage rules' `inputs` output group and the format of the file in it (its
+#     "format" key; a change to what it records without a change of format is a bug),
 #     and the names PORTABLE_X86_64_CPU_TARGET and PORTABLE_AARCH64_CPU_TARGET (their
 #     values may gain CPU clones in any release, as Julia's official builds do)
 #   - what a depot repository provides: its default target, :env, env.sh (which exports

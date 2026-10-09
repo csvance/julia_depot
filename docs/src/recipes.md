@@ -44,6 +44,11 @@ baseline CPU. The sysimage is linked by the module's pinned C compiler; see
 [the compiler that links it](contract.md#The-compiler-that-links-it) for `cc` and `system_cc`.
 For an image, `julia_sysimage_layer` is the same build as a layer; see [Images](images.md).
 
+Beside the sysimage the rule writes `app_sysimage.inputs.json`, its declared inputs by sha256.
+The sysimage's own bytes differ between builds, so compare this file instead to check that
+two sysimages were built from the same inputs; `--output_groups=inputs` builds it alone. See
+[the inputs file](contract.md#The-inputs-file).
+
 ## A depot layer for an image
 
 ```python

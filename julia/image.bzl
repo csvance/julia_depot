@@ -223,11 +223,10 @@ def _tool_attrs():
         "_scripts": attr.label(default = "//julia:image_scripts"),
     }
 
-def _stage_args(ctx):
-    """<rel> <file> pairs that rebuild the project tree around Project.toml."""
+def _stage_pairs(ctx):
+    """(rel, file) pairs that rebuild the project tree around Project.toml."""
     project = ctx.file.project
     base = project.short_path.rpartition("/")[0]
-    files = [project, ctx.file.manifest]
     pairs = [("Project.toml", project), ("Manifest.toml", ctx.file.manifest)]
     for f in ctx.files.srcs:
         if base and not f.short_path.startswith(base + "/"):
@@ -236,10 +235,15 @@ def _stage_args(ctx):
         if rel in ("Project.toml", "Manifest.toml"):
             continue
         pairs.append((rel, f))
-        files.append(f)
+    return pairs
+
+def _stage_args(ctx):
+    """<rel> <file> arguments that rebuild the project tree, and the files they name."""
     args = []
-    for rel, f in pairs:
+    files = []
+    for rel, f in _stage_pairs(ctx):
         args += [rel, f.path]
+        files.append(f)
     return args, files
 
 def _stamp(ctx):
@@ -364,28 +368,83 @@ julia_compiled_layer needs. Fetches from the package server: set JULIA_PKG_SERVE
 # --- julia_sysimage and julia_sysimage_layer ------------------------------------------------
 
 def _sysimage_cc(ctx):
-    """JULIA_DEPOT_SYSIMAGE_CC for sysimage.sh, and the files the compiler needs as inputs."""
+    """The compiler: struct(env, files, kind, identity).
+
+    env is JULIA_DEPOT_SYSIMAGE_CC for sysimage.sh, files what the build needs as inputs, kind
+    what the inputs file records, and identity the files whose bytes identify the compiler there.
+    A julia.cc repository is identified by bin/cc alone, which records the zig tarball's sha256.
+    """
     if ctx.attr.system_cc:
-        return "system", []
+        return struct(env = "system", files = [], kind = "system", identity = [])
     files = ctx.files.cc
     for f in files:
         if f.owner.name == "bin/cc":
-            return f.path, files
+            return struct(env = f.path, files = files, kind = "julia.cc", identity = [f])
     info = ctx.attr.cc[DefaultInfo]
     exe = info.files_to_run.executable
     if exe:
-        return exe.path, files + [exe] + info.default_runfiles.files.to_list()
+        all = files + [exe] + info.default_runfiles.files.to_list()
+        return struct(env = exe.path, files = all, kind = "executable", identity = all)
     if len(files) == 1:
-        return files[0].path, files
+        return struct(env = files[0].path, files = files, kind = "file", identity = files)
     fail("cc: {} is neither a julia.cc repository, an executable target nor a single file".format(ctx.attr.cc.label))
 
-def _sysimage_run(ctx, out, subcommand, args, mnemonic, message):
+def _julia_dist_txt(ctx):
+    for f in ctx.files.julia:
+        if f.owner.name == "julia_dist.txt":
+            return f
+    fail("julia: {} has no julia_dist.txt; pass a julia.dist repository, e.g. @julia_dist".format(ctx.attr.julia.label))
+
+def _sysimage_inputs(ctx, out, cc, path = None):
+    """Writes the inputs file: what the sysimage is built from, the same bytes on any host."""
+    config = {
+        "cc": cc.kind,
+        "cpu_target": _cpu_target(ctx),
+        "env": {k: ctx.attr.env[k] for k in sorted(ctx.attr.env)},
+        "packages": ctx.attr.packages,
+    }
+    if path != None:
+        config["path"] = path
+    keyed = [("project/" + rel, f) for rel, f in _stage_pairs(ctx)]
+    keyed += [("data/" + str(f.owner), f) for f in ctx.files.data]
+    if cc.kind == "julia.cc":
+        keyed += [("cc/bin/cc", f) for f in cc.identity]
+    else:
+        keyed += [("cc/" + str(f.owner), f) for f in cc.identity]
+
+    # The module's own files that decide the build: the scripts and the PackageCompiler
+    # environments. image_layers.sh keeps only the environment for the Julia minor.
+    for f in ctx.files._scripts:
+        if f.owner.name in ("sysimage.sh", "image_layers.sh") or f.owner.name.startswith("sysimage/"):
+            keyed.append(("julia_depot/{}/{}".format(f.owner.package, f.owner.name), f))
+    seen = {}
+    lines = []
+    files = []
+    for key, f in sorted(keyed, key = lambda kf: kf[0]):
+        if key in seen:
+            continue
+        seen[key] = True
+        lines.append("{}\t{}".format(key, f.path))
+        files.append(f)
+    listing = ctx.actions.declare_file(out.basename + ".files")
+    ctx.actions.write(listing, "\n".join(lines) + "\n")
+    dist = _julia_dist_txt(ctx)
+    ctx.actions.run(
+        executable = ctx.executable._tool,
+        arguments = ["inputs", out.path, dist.path, json.encode(config), listing.path],
+        inputs = files + [dist, listing],
+        outputs = [out],
+        use_default_shell_env = True,
+        mnemonic = "JuliaSysimageInputs",
+        progress_message = "Writing the inputs of %{output}",
+    )
+
+def _sysimage_run(ctx, out, subcommand, args, mnemonic, message, cc, extra_inputs = []):
     """Runs a sysimage build: image_layers.sh <subcommand> with the attributes both rules share."""
     stage, files = _stage_args(ctx)
     stamp = _stamp(ctx)
     if not ctx.attr.packages:
         fail("packages: name at least one package to bake")
-    cc, cc_files = _sysimage_cc(ctx)
     env_args = []
     for k, v in ctx.attr.env.items():
         env_args += ["--env", "{}={}".format(k, ctx.expand_location(v, ctx.attr.data))]
@@ -393,11 +452,11 @@ def _sysimage_run(ctx, out, subcommand, args, mnemonic, message):
         ctx,
         out,
         [subcommand, _julia_bin(ctx).path, out.path, stamp.path] + args + env_args + stage,
-        files + [stamp] + cc_files + ctx.files.data,
+        files + [stamp] + cc.files + ctx.files.data + extra_inputs,
         env = {
             "JULIA_DEPOT_SYSIMAGE_PACKAGES": " ".join(ctx.attr.packages),
             "JULIA_DEPOT_SYSIMAGE_CPU_TARGET": _cpu_target(ctx),
-            "JULIA_DEPOT_SYSIMAGE_CC": cc,
+            "JULIA_DEPOT_SYSIMAGE_CC": cc.env,
         },
         # Used only when the depot lacks PackageCompiler and sysimage.sh installs it.
         network = True,
@@ -432,12 +491,22 @@ artifacts at startup.
 The sysimage is linked by `cc`, by default the module's pinned compiler, so the compiler and the
 glibc it links against are inputs of the action. `system_cc = True` uses the host's compiler
 instead; the action is then tagged no-remote-cache.
+
+The `inputs` output group holds `<name>.inputs.json`: the sysimage's declared inputs by sha256,
+the same on every build of the same inputs, since the sysimage itself is not reproducible. It is
+written by its own action, so `--output_groups=inputs` builds it without the sysimage.
 """
 
 def _julia_sysimage_impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name + ".so")
-    _sysimage_run(ctx, out, "sysimage_so", [], "JuliaSysimage", "Building Julia sysimage %{output}")
-    return [DefaultInfo(files = depset([out]))]
+    inputs = ctx.actions.declare_file(ctx.label.name + ".inputs.json")
+    cc = _sysimage_cc(ctx)
+    _sysimage_inputs(ctx, inputs, cc)
+    _sysimage_run(ctx, out, "sysimage_so", [], "JuliaSysimage", "Building Julia sysimage %{output}", cc)
+    return [
+        DefaultInfo(files = depset([out])),
+        OutputGroupInfo(inputs = depset([inputs])),
+    ]
 
 julia_sysimage = rule(
     implementation = _julia_sysimage_impl,
@@ -448,15 +517,24 @@ julia_sysimage = rule(
 
 def _julia_sysimage_layer_impl(ctx):
     out = ctx.actions.declare_file(ctx.label.name + ".tar")
+    inputs = ctx.actions.declare_file(ctx.label.name + ".inputs.json")
+    path = _check_absolute("path", ctx.attr.path)
+    cc = _sysimage_cc(ctx)
+    _sysimage_inputs(ctx, inputs, cc, path)
     _sysimage_run(
         ctx,
         out,
         "sysimage",
-        [_check_absolute("path", ctx.attr.path)],
+        [path, inputs.path],
         "JuliaSysimageLayer",
         "Building Julia sysimage layer %{output}",
+        cc,
+        [inputs],
     )
-    return [DefaultInfo(files = depset([out]))]
+    return [
+        DefaultInfo(files = depset([out])),
+        OutputGroupInfo(inputs = depset([inputs])),
+    ]
 
 julia_sysimage_layer = rule(
     implementation = _julia_sysimage_layer_impl,

@@ -15,6 +15,8 @@ module's whole interface.
   compiler that is an input of the action: zig 0.16.0, fetched by sha256, linking against
   glibc 2.17, so a sysimage loads on any host with glibc 2.17 or later. The sysimage rules also
   run sandboxed: the depot is only read, and anything the build writes goes to a scratch depot.
+  A sysimage is still not bit-reproducible, so each one now comes with an inputs file, its
+  declared inputs by sha256, which is the same for every build of the same inputs on any host.
 - **A Starlark interface.** Everything a build needs is a rule or a tag: `julia_sysimage`
   writes a sysimage as a file, so no build calls `sysimage.sh` or `image_depot.sh` any more.
   Both scripts are now internal, free to change in any release like the module's other
@@ -46,6 +48,11 @@ for 0.1.x through the transition.
 - `julia_sysimage`: a sysimage as a file, `<name>.so`, to start Julia with.
 - `julia.cc` declares another pinned compiler, for a different zig version or glibc target:
   `julia.cc(name = "my_cc", glibc = "2.28")`, then `cc = "@my_cc"` on a sysimage rule.
+- An inputs file for every sysimage, `<name>.inputs.json` in the `inputs` output group, shipped
+  by `julia_sysimage_layer` beside the sysimage: the Julia tarball, the compiler, the
+  PackageCompiler environment, and each declared input by sha256, with no host paths.
+  `bazel build --output_groups=inputs` writes it without building the sysimage, to check a
+  rebuild against a release.
 - `data` on `julia_sysimage` and `julia_sysimage_layer`, for build inputs outside the project,
   and `$(execpath ...)` and `{execroot}` expansion in their `env`.
 

@@ -185,3 +185,40 @@ The pinned compiler only links: PackageCompiler compiles the code with Julia's o
 compiler's part is the link and the C library the sysimage is linked against. That is what it
 pins. The precompile caches of `julia_compiled_layer` need no C compiler, since Julia links
 them with the `lld` it bundles.
+
+### The inputs file
+
+A sysimage is not reproducible: Julia stamps the code it compiles with a build id, and the
+build's paths are baked in. Two builds of the same commit therefore give different bytes, and a
+check that compares a rebuilt sysimage with a released one by digest fails. What does reproduce
+is what the sysimage was built from, so each sysimage rule also writes an inputs file,
+`<name>.inputs.json`, and `julia_sysimage_layer` ships it beside the sysimage
+(`/opt/julia-sysimage/sys.inputs.json` for the default `path`).
+
+It records everything the rule declares, and nothing that depends on the host:
+
+- `julia`: the version, platform and sha256 of the tarball the distribution was fetched from
+- `config`: the packages, the CPU target, `env` as written (before `{execroot}` expands),
+  the kind of compiler, and the layer's `path`
+- `files`: the sha256 of each project file (`project/...`), each `data` file
+  (`data/<label>`), the compiler (`cc/bin/cc` for a `julia.cc` repository, which records zig's
+  sha256 and the glibc target), the PackageCompiler environment for the Julia minor, and the
+  module's scripts that run the build
+- `format`: the version of this layout
+
+The depot is not in it. The Manifest is, and the Manifest determines the depot (see
+[what the Manifest guarantees](#What-the-Manifest-guarantees)), which leaves the trust
+described in [what is not hermetic](#What-is-not-hermetic). With `system_cc` it records the
+compiler only as `system`, so it vouches for nothing about the link.
+
+The file is written by its own action, from the same declared inputs as the build, so it is
+cheap to produce without building the sysimage:
+
+```sh
+bazel build --output_groups=inputs //:app_sysimage
+```
+
+Comparing that with the file a released image carries checks a rebuild against a release:
+equal files mean the same declared inputs. Two caveats: a key under `data/` or `cc/` holds the
+file's canonical label, which can change with the module graph or the Bazel version, so compare
+files from the same Bazel; and the files are equal only if the rule's attributes are.

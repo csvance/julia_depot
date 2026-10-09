@@ -126,3 +126,87 @@ file_cc_test(
     tags = ["julia1_13"],
     target_under_test = ":sysimage_1_13",
 )
+
+# --- the inputs file -------------------------------------------------------------------------
+# A twin of sysimage_layer_1_13 and two variants that each change one attribute. Only their
+# inputs output groups are built; see sysimage_inputs_test.sh.
+julia_sysimage_layer(
+    name = "sysimage_layer_twin",
+    depot = "@depot_1_13",
+    julia = "@julia_1_13",
+    manifest = "//projects/v1.13:Manifest.toml",
+    packages = [
+        "Bzip2_jll",
+        "Crayons",
+    ],
+    project = "//projects/v1.13:Project.toml",
+    tags = ["manual"],
+)
+
+julia_sysimage_layer(
+    name = "sysimage_layer_other_cc",
+    cc = "@cc_glibc_2_28",
+    depot = "@depot_1_13",
+    julia = "@julia_1_13",
+    manifest = "//projects/v1.13:Manifest.toml",
+    packages = [
+        "Bzip2_jll",
+        "Crayons",
+    ],
+    project = "//projects/v1.13:Project.toml",
+    tags = ["manual"],
+)
+
+julia_sysimage_layer(
+    name = "sysimage_layer_other_env",
+    depot = "@depot_1_13",
+    env = {"E2E_VALUE": "changed"},
+    julia = "@julia_1_13",
+    manifest = "//projects/v1.13:Manifest.toml",
+    packages = [
+        "Bzip2_jll",
+        "Crayons",
+    ],
+    project = "//projects/v1.13:Project.toml",
+    tags = ["manual"],
+)
+
+[
+    filegroup(
+        name = t + "_inputs",
+        srcs = [":" + t],
+        output_group = "inputs",
+    )
+    for t in [
+        "sysimage_layer_1_13",
+        "sysimage_layer_twin",
+        "sysimage_layer_other_cc",
+        "sysimage_layer_other_env",
+    ]
+]
+
+sh_test(
+    name = "sysimage_inputs_test",
+    size = "small",
+    srcs = ["sysimage_inputs_test.sh"],
+    args = [
+        "$(rootpath :sysimage_layer_1_13)",
+        "$(rootpath :sysimage_layer_1_13_inputs)",
+        "$(rootpath :sysimage_layer_twin_inputs)",
+        "$(rootpath :sysimage_layer_other_cc_inputs)",
+        "$(rootpath :sysimage_layer_other_env_inputs)",
+        "$(rootpath //projects/v1.13:Manifest.toml)",
+        "$(rootpath @julia_1_13//:julia_dist.txt)",
+    ],
+    data = [
+        ":sysimage_layer_1_13",
+        ":sysimage_layer_1_13_inputs",
+        ":sysimage_layer_other_cc_inputs",
+        ":sysimage_layer_other_env_inputs",
+        ":sysimage_layer_twin_inputs",
+        "//projects/v1.13:Manifest.toml",
+        "//tests:common.sh",
+        "@julia_1_13//:julia_dist.txt",
+    ],
+    tags = ["julia1_13"],
+)

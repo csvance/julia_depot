@@ -80,6 +80,11 @@ All layer rules write `<name>.tar` and take `julia`, the distribution from `juli
 | `julia_sysimage_layer` | a PackageCompiler sysimage at `path`; `julia_sysimage` writes the same build as a file | `project`, `manifest`, `srcs`, `depot` (required), `packages`, `cpu_target`, `path` (`/opt/julia-sysimage/sys.so`), `data`, `env` (`$(execpath)` and `{execroot}` expand), `cc` (`@julia_depot_cc`), `system_cc` |
 | `julia_compiled_layer` | the depot's `compiled/`, for the entry projects | `image_env`, `layers`, `projects`, `sysimage`, `env` (`{root}` expands to the unpacked tree) |
 
+Both sysimage rules also write an inputs file, the sysimage's declared inputs by sha256, in the
+`inputs` output group; the layer ships it beside the sysimage. A sysimage is not reproducible,
+so this file is how a rebuild is checked against a release; see
+[the inputs file](contract.md#The-inputs-file).
+
 `julia_image_env` writes `<name>.env` and provides `JuliaImageEnvInfo`. Its attributes are
 `julia_prefix`, `depot_prefix`, `extra_depots`, `project`, `load_path`, `cpu_target`, `offline`
 (default true), `path` (default true) and `env`. `julia_image_env_vars(...)` returns the same

@@ -107,6 +107,13 @@ and that the compiler is among the action's inputs.
 and `env` reached it with `$(execpath ...)` and `{execroot}` expanded, and then hands the link to
 the pinned compiler. The test starts Julia on the file it wrote and applies the link checks.
 
+The inputs file is tested on 1.13 against a twin of the image example's sysimage layer, a
+target with the same attributes under another name, whose file must be byte-identical, and
+two variants that change only the compiler or only `env`, whose files must differ in that
+entry alone. Only the twin's and variants' inputs files are built. The test also checks the
+recorded Manifest digest and Julia tarball, and that the layer ships the file beside the
+sysimage.
+
 The scripts the rules run are internal, but several tests drive them directly, because a
 failure path such as the wrong-minor refusal is cheaper to reach there than through a rule.
 
