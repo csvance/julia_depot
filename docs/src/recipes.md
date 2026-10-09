@@ -167,7 +167,8 @@ expand like `dir` and need it. Julia reads from every entry and writes only to t
 Pkg installs nothing a later entry already has, so the per-user depot holds only what the
 shared one lacks. A host without the shared depot fetches into `dir` alone. Whether each
 read-only depot exists is an input, but not what is in it: if the shared depot is pruned of
-something the environment used, refetch with `bazel fetch --force @app_depot`.
+something the environment used, refetch with `bazel fetch --force @app_depot`. A refetch
+cannot repair a file damaged in place in the shared depot; that has to be fixed there.
 
 This is deliberately not hermetic. Julia loads what the shared depot holds without checking it
 against the Manifest's hashes, so the shared depot is trusted code, and an

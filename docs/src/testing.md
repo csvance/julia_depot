@@ -81,6 +81,14 @@ that the shared depot is unchanged by the fetch, and that `image_depot.sh` on th
 copies the shared depot's registry rather than installing one. Its depots live under
 `~/.julia-depot-e2e`.
 
+A second test damages copies of that shared depot after the fetch and checks what loading the
+environment does, and whether rerunning `instantiate.sh`, which is what a forced refetch runs,
+repairs it: a removed package or artifact fails to load and is repaired, a truncated library
+fails to load and is not, corrupted compiled caches are rebuilt into `dir`, and modified package
+source and an added `Overrides.toml` load silently. The last two assert the trust described in
+[what is not hermetic](contract.md#What-is-not-hermetic), so a Julia that starts verifying
+what it loads fails the test, and the contract page should change with it.
+
 One test sits outside the per-version set. The matrix's sysimage tests run over a depot
 that already holds PackageCompiler, so on 1.13 `sysimage.sh auto` is also run on an empty
 depot of the test's own, and has to install its PackageCompiler environment there before
