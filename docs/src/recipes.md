@@ -129,7 +129,8 @@ julia.depot(
 `{HOME}` and `{USER}` expand from the fetch environment and are registered as inputs, so another
 user refetches rather than reusing a depot conformed for someone else. The directory is created
 before the hook runs, and `env.sh` exports it with a trailing separator so Julia's bundled
-depots stay on the path. Consumers that want a writable depot in front of it (a per-sandbox
+depots stay on the path (on Julia 1.10, the bundled depots by name, since a trailing separator
+there would also add `~/.julia`). Consumers that want a writable depot in front of it (a per-sandbox
 scratch depot, say) prepend to `JULIA_DEPOT_PATH` after sourcing `env.sh`; Julia writes to the
 first entry and reads packages, artifacts and compiled caches from all of them. Pkg reads
 package-server credentials (`servers/<host>/auth.toml`) from the first depot only, so a front

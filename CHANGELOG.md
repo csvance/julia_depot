@@ -43,6 +43,14 @@ for 0.1.x through the transition.
 - The `RULES_JULIA_DEPOT_*` spellings are removed, as 0.1.1 announced: a hook is given only
   `JULIA_DEPOT_BIN`.
 
+### Fixed
+
+- On Julia 1.10, a `julia.depot` with `dir` exported `<dir>:` with a trailing separator, which
+  1.10 expands to its whole default path, the user depot `~/.julia` included. Julia then read
+  packages from `~/.julia` behind `dir`, and Pkg installed nothing into `dir` that `~/.julia`
+  already held. The bundled depots are now named instead on 1.10; 1.11 and later, where a
+  trailing separator means the bundled depots alone, are unchanged.
+
 ### New
 
 - `julia_sysimage`: a sysimage as a file, `<name>.so`, to start Julia with.

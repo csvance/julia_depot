@@ -206,3 +206,26 @@ sh_test(
         "requires-network",
     ],
 )
+
+# A depot with no `dir`, fetched with no JULIA_DEPOT_PATH (.bazelrc pins it empty): it lands in
+# Julia's default depot, and env.sh still exports that path, with the trailing separator that
+# keeps the bundled depots. Version-independent, so 1.13 alone.
+sh_test(
+    name = "ambient_depot_stamp_1_13_test",
+    size = "small",
+    srcs = ["depot_stamp_test.sh"],
+    args = [
+        "$(rootpath @ambient_depot_1_13//:env.sh)",
+        "$(rootpath @ambient_depot_1_13//:stamp.txt)",
+        "$(rootpath //projects/v1.13:Manifest.toml)",
+        "1.13.0",
+        "/.julia:",
+    ],
+    data = [
+        "common.sh",
+        "//projects/v1.13:Manifest.toml",
+        "@ambient_depot_1_13//:env.sh",
+        "@ambient_depot_1_13//:stamp.txt",
+    ],
+    tags = ["julia1_13"],
+)

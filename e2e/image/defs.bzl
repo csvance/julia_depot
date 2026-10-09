@@ -73,7 +73,7 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
     )
 
     # `full`, because the image loads its packages from source with the compiled layer's caches.
-    # `depot` reuses the ambient depot's registry instead of fetching it again.
+    # `depot` reuses the version's depot's registry instead of fetching it again.
     julia_depot_layer(
         name = n("depot_layer"),
         contents = "full",

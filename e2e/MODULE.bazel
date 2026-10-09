@@ -66,6 +66,7 @@ julia.dist(
 # The environment under test, pinned to a Manifest resolved under 1.10.12.
 julia.depot(
     name = "depot_1_10",
+    dir = "{HOME}/.julia-depot-e2e/v1.10",
     julia = "@julia_1_10",
     manifest = "//projects/v1.10:Manifest.toml",
 )
@@ -79,6 +80,7 @@ julia.dist(
 # The environment under test, pinned to a Manifest resolved under 1.12.7.
 julia.depot(
     name = "depot_1_12",
+    dir = "{HOME}/.julia-depot-e2e/v1.12",
     julia = "@julia_1_12",
     manifest = "//projects/v1.12:Manifest.toml",
 )
@@ -89,6 +91,7 @@ julia.depot(
 # depot that never had it.
 julia.depot(
     name = "sysimage_depot_1_12",
+    dir = "{HOME}/.julia-depot-e2e/v1.12",
     julia = "@julia_1_12",
     manifest = "@julia_depot//julia:sysimage/v1.12/Manifest.toml",
 )
@@ -98,13 +101,14 @@ julia.depot(
 # instantiate.
 julia.depot(
     name = "hook_depot_1_12",
+    dir = "{HOME}/.julia-depot-e2e/v1.12",
     hook = "//hooks:marker_hook.sh",
     hook_environ = ["E2E_HOOK_VALUE"],
     julia = "@julia_1_12",
     manifest = "//projects/v1.12:Manifest.toml",
 )
 
-# The same project once more, into a declared depot instead of the ambient one: the `dir`
+# The same project once more, into a directory of its own apart from the version's: the `dir`
 # attribute with a {HOME} placeholder. tests/declared_depot_test.sh checks that env.sh
 # exports the expanded path with the trailing separator and that the fetch wrote there.
 julia.depot(
@@ -142,6 +146,7 @@ julia.dist(
 # for. To add a version to the matrix, copy this block and change the numbers.
 julia.depot(
     name = "depot_1_13",
+    dir = "{HOME}/.julia-depot-e2e/v1.13",
     julia = "@julia_1_13",
     manifest = "//projects/v1.13:Manifest.toml",
 )
@@ -149,6 +154,7 @@ julia.depot(
 # The module's own PackageCompiler environment for this minor.
 julia.depot(
     name = "sysimage_depot_1_13",
+    dir = "{HOME}/.julia-depot-e2e/v1.13",
     julia = "@julia_1_13",
     manifest = "@julia_depot//julia:sysimage/v1.13/Manifest.toml",
 )
@@ -156,8 +162,20 @@ julia.depot(
 # The same project again, fetched through a hook.
 julia.depot(
     name = "hook_depot_1_13",
+    dir = "{HOME}/.julia-depot-e2e/v1.13",
     hook = "//hooks:marker_hook.sh",
     hook_environ = ["E2E_HOOK_VALUE"],
+    julia = "@julia_1_13",
+    manifest = "//projects/v1.13:Manifest.toml",
+)
+
+# --- the ambient depot ------------------------------------------------------------
+# Every other depot above declares a `dir` of the suite's own, one per Julia version, so no test
+# reads or writes a depot it does not own, whatever the developer's JULIA_DEPOT_PATH holds. This
+# one declares none, to test that case: it instantiates into the ambient depot, which .bazelrc
+# pins to "set by nothing", so Julia's default. tests/depot_stamp_test.sh checks it.
+julia.depot(
+    name = "ambient_depot_1_13",
     julia = "@julia_1_13",
     manifest = "//projects/v1.13:Manifest.toml",
 )
@@ -174,6 +192,7 @@ julia.cc(
 # Every repository the matrix declares, visible to //tests.
 use_repo(
     julia,
+    "ambient_depot_1_13",
     "cc_glibc_2_28",
     "declared_depot_1_12",
     "depot_1_10",

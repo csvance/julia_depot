@@ -90,7 +90,8 @@ holds, its `Overrides.toml` included, is in scope for the sysimage.
 ### Read-only depots
 
 `read_only_depots` stacks depots after `dir`, so the path is `<dir>:<ro1>:<ro2>:...:`, the
-trailing separator keeping Julia's bundled depots last. Julia reads packages, artifacts and
+trailing separator keeping Julia's bundled depots last. On Julia 1.10 a trailing separator would
+also add the user depot `~/.julia`, so there the two bundled depots are named instead. Julia reads packages, artifacts and
 compiled caches from every entry and writes only to the first, and Pkg installs nothing some
 entry already holds, so `dir` ends up holding only what the read-only depots lack. The rule
 writes nothing to them: it neither creates them nor fails when one is missing, since Julia
@@ -138,7 +139,7 @@ Two details are easy to miss:
   the fresh directory alone drops `<julia>/share/julia`, where the stdlib precompile
   caches live, and `using Pkg` then recompiles Pkg serially before anything else. The
   build appends the two bundled depots by name. A trailing colon would expand to the
-  same two (since Julia 1.10 it leaves `~/.julia` out), but naming them keeps the path
+  same two since Julia 1.11 (on 1.10 it adds `~/.julia` as well), but naming them keeps the path
   explicit.
 - Nothing is precompiled into the layer. A cache built in the build's temporary depot,
   laid out differently from the image, would not be valid there. `julia_compiled_layer`

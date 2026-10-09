@@ -4,6 +4,11 @@
 # on a CI runner with no private network.
 common --repo_env=JULIA_PKG_SERVER=https://pkg.julialang.org
 
+# Never the developer's depots. Each depot in MODULE.bazel declares a `dir` of the suite's own,
+# except ambient_depot_1_13, which tests the case of a fetch environment with no
+# JULIA_DEPOT_PATH; an empty value is read as unset, so that case holds on every machine.
+common --repo_env=JULIA_DEPOT_PATH=
+
 # The same pin for build actions: the depot layers in image/ instantiate their manifests in an
 # action, through image_depot.sh.
 common --action_env=JULIA_PKG_SERVER=https://pkg.julialang.org

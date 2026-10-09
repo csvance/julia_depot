@@ -13,17 +13,13 @@ No Julia has to be installed: the module fetches and pins the distributions itse
 resolves against the public package server, pinned in `e2e/.bazelrc`, so a shell pointing
 `JULIA_PKG_SERVER` at a private mirror does not change what the tests fetch.
 
-The suite assumes `JULIA_DEPOT_PATH` is unset or names a single depot, which is what CI runs
-with. A few tests look for what the fetch installed in the first depot only, so with a
-multi-entry path, where packages and artifacts may already live in a later entry, they fail
-even though the rules work. To run the suite from such a shell, clear the variable for the
-fetch:
-
-```bash
-bazel test //... --repo_env=JULIA_DEPOT_PATH=
-```
-
-That instantiates into Julia's default depot, `~/.julia`.
+The suite is self-contained: it neither reads nor writes the developer's depots, whatever
+`JULIA_DEPOT_PATH` names. Every depot it fetches declares a `dir` of its own under
+`~/.julia-depot-e2e`, one per Julia version, which the rule uses in place of the ambient path.
+The one exception is the depot that tests the ambient case, a fetch with no `dir`. For it,
+`e2e/.bazelrc` pins `JULIA_DEPOT_PATH` empty for repository rules, which Julia reads as unset,
+so that depot always lands in Julia's default, `~/.julia`, and holds the two small packages of
+the 1.13 test project. `rm -rf ~/.julia-depot-e2e` resets the suite's depots.
 
 Expect a few minutes cold, most of it downloading the Julia distributions and
 building two sysimages per version (one for the sysimage tests, one portable one for the image

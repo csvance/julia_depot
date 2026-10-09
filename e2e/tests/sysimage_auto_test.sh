@@ -29,8 +29,8 @@ pinned_cc="$(abspath "$8")"
 project="$(copy_project "$manifest" "$TEST_TMPDIR/project")"
 src_depot="$(first_depot "$(stamp_value "$stamp" depot)")"
 
-# Both depots instantiate into the ambient depot, so the PackageCompiler environment for this
-# minor is in the same tree as the project. If that stopped being true, `auto` would find the
+# Both depots declare the same `dir`, so the PackageCompiler environment for this minor is in the
+# same tree as the project. If that stopped being true, `auto` would find the
 # environment's files but not its packages, so it is asserted here.
 [ "$(first_depot "$(stamp_value "$sysimage_stamp" depot)")" = "$src_depot" ] ||
     fail "the PackageCompiler environment was instantiated into a different depot than the project"
