@@ -77,7 +77,7 @@ All layer rules write `<name>.tar` and take `julia`, the distribution from `juli
 | --- | --- | --- |
 | `julia_dist_layer` | the distribution at `prefix`, its own relative symlinks kept | `prefix` (`/opt/julia`) |
 | `julia_depot_layer` | a clean depot for the project at `prefix`: `image_depot.sh` as a rule | `project`, `manifest`, `srcs`, `contents` (`artifacts` or `full`), `prefix` (`/opt/julia-depot`), `depot`, `min_artifacts`, `overrides_build`, `overrides_image`, `env` |
-| `julia_sysimage_layer` | a PackageCompiler sysimage at `path`: `sysimage.sh` as a rule | `project`, `manifest`, `srcs`, `depot` (required), `packages`, `cpu_target`, `path` (`/opt/julia-sysimage/sys.so`), `env` |
+| `julia_sysimage_layer` | a PackageCompiler sysimage at `path`: `sysimage.sh` as a rule | `project`, `manifest`, `srcs`, `depot` (required), `packages`, `cpu_target`, `path` (`/opt/julia-sysimage/sys.so`), `env`, `cc` (`@julia_depot_cc`), `system_cc` |
 | `julia_compiled_layer` | the depot's `compiled/`, for the entry projects | `image_env`, `layers`, `projects`, `sysimage`, `env` (`{root}` expands to the unpacked tree) |
 
 `julia_image_env` writes `<name>.env` and provides `JuliaImageEnvInfo`. Its attributes are

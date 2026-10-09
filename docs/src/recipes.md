@@ -6,9 +6,7 @@ real path are tagged `no-sandbox`. `local` would also let them see it, but it di
 remote caching too.
 
 The scripts' own variables are spelled `JULIA_DEPOT_*`, beside Julia's `JULIA_DEPOT_PATH`.
-Before 0.1.1 they were `RULES_JULIA_DEPOT_*`. Until a future release raises the module's
-compatibility level, that spelling still works with a deprecation warning, and a hook is
-also given `RULES_JULIA_DEPOT_BIN`.
+The `RULES_JULIA_DEPOT_*` spelling from before 0.1.1 was removed in 0.2.0.
 
 ## A depot layer for an image
 
@@ -78,6 +76,8 @@ genrule(
         "@julia_dist//:dist",
         "@julia_dist//:bin/julia",
         "@julia_depot//julia:sysimage_envs",
+        "@julia_depot_cc//:cc",
+        "@julia_depot_cc//:bin/cc",
     ],
     outs = ["app.so"],
     tools = ["@julia_depot//julia:sysimage.sh"],
@@ -86,6 +86,7 @@ set -euo pipefail
 . $(location @my_depot//:env.sh)
 export JULIA_DEPOT_BIN="$$(cd "$$(dirname $(location @julia_dist//:bin/julia))" && pwd)/julia"
 export JULIA_DEPOT_SYSIMAGE_PACKAGES="MyApp"
+export JULIA_DEPOT_SYSIMAGE_CC="$(location @julia_depot_cc//:bin/cc)"
 proj="$$(mktemp -d)"; trap 'rm -rf "$$proj"' EXIT
 cp -rL "$$(dirname $(location Manifest.toml))"/. "$$proj"/
 $(location @julia_depot//julia:sysimage.sh) "$$proj" auto "$@"
@@ -97,6 +98,13 @@ $(location @julia_depot//julia:sysimage.sh) "$$proj" auto "$@"
 `auto` selects the PackageCompiler environment shipped for the running Julia's minor
 version. The project is copied first because Bazel stages `srcs` as symlinks to the real
 files, and PackageCompiler writes into the project it is given.
+
+`@julia_depot_cc` is the module's pinned compiler; import it with
+`use_repo(julia, "julia_depot_cc")`, or declare your own with `julia.cc(name = "my_cc", ...)`.
+Both its labels go in `srcs`: `bin/cc` is the path the script takes, and `:cc` brings the zig
+distribution it runs. `JULIA_DEPOT_SYSIMAGE_CC` is required. Set it to `system` to link with
+the host's compiler instead, which prints a warning and makes the result host-dependent, so
+keep it out of a shared cache. See [the compiler that links it](contract.md#The-compiler-that-links-it).
 
 ## A REPL or a server on the pinned environment
 

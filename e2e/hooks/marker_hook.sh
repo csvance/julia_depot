@@ -15,11 +15,6 @@ set -euo pipefail
 
 : "${JULIA_DEPOT_BIN:?julia_depot must run the hook with JULIA_DEPOT_BIN set}"
 
-# The pre-0.1.1 name is still passed (deprecated) so existing hooks keep working.
-[ "${RULES_JULIA_DEPOT_BIN:-}" = "$JULIA_DEPOT_BIN" ] || {
-    echo "julia_depot must still give the hook RULES_JULIA_DEPOT_BIN, equal to JULIA_DEPOT_BIN" >&2
-    exit 1
-}
 : "${E2E_HOOK_VALUE:?this hook is declared with hook_environ = [\"E2E_HOOK_VALUE\"]}"
 
 # The rule always passes JULIA_DEPOT_PATH, the value env.sh exports and stamp.txt records, even

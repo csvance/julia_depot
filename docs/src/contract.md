@@ -155,3 +155,34 @@ A sysimage bakes compiled code, not native libraries, so it does not replace the
 layer: JLLs resolve their artifact directories in `__init__`, at startup. The build
 environment PackageCompiler runs in is pinned per Julia minor and checked against the
 running Julia before any work starts.
+
+### The compiler that links it
+
+PackageCompiler links the sysimage with a C compiler. Left to itself it takes the first of g++,
+clang++, gcc and clang on the host's `PATH`, and the sysimage then depends on that compiler and
+on the host's C library, neither of which is an input of the action. Two hosts with different
+compilers would produce different sysimages under the same cache key, and a sysimage linked
+against a newer glibc than another host has would not load there. So the compiler is a declared
+input, chosen explicitly:
+
+- **Pinned**, the default for `julia_sysimage_layer`: a `julia.cc` repository, zig fetched by
+  sha256 and run as `zig cc -target <arch>-linux-gnu.<glibc>`. One tarball holds the compiler,
+  the linker and the glibc stubs, so every host links against the same C library. The module
+  declares one itself, `@julia_depot_cc`, targeting glibc 2.17 like the official Julia builds;
+  a sysimage linked for it loads on any glibc from 2.17 up. Declare your own with `julia.cc`
+  for another zig or glibc. The generated `bin/cc` records the zig version, its sha256 and the
+  target, so changing any of them changes its digest and with it the action key.
+- **Your own**: any compiler, as a label for the rule's `cc` or a path for the script. It is
+  then yours to keep pinned and among the action's inputs.
+- **The host's**, by opt-in only: `system_cc = True` on the rule, or
+  `JULIA_DEPOT_SYSIMAGE_CC=system` for the script, which prints a warning. The rule also tags
+  the action `no-remote-cache`; a genrule calling the script has to keep the result out of a
+  shared cache itself.
+
+`sysimage.sh` with no compiler configured fails, naming the three choices. Nothing falls back
+to the host's compiler silently.
+
+The pinned compiler only links: PackageCompiler compiles the code with Julia's own LLVM, so the
+compiler's part is the link and the C library the sysimage is linked against. That is what it
+pins. The precompile caches of `julia_compiled_layer` need no C compiler, since Julia links
+them with the `lld` it bundles.

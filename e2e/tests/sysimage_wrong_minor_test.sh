@@ -6,6 +6,10 @@
 # minutes into a build, with an unrelated message. The script checks the pin up front. This test
 # drives the explicit-project branch, where the consumer names the environment instead of using
 # `auto`; only that branch can get the minor wrong.
+#
+# It also checks the guards that run before any slow work: a missing package list, and a
+# missing or unusable JULIA_DEPOT_SYSIMAGE_CC. The pin check runs with the compiler set to
+# `system`, since it fails before anything is linked.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -24,6 +28,7 @@ output="$(
     env JULIA_DEPOT_BIN="$julia_bin" \
         JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
         JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
+        JULIA_DEPOT_SYSIMAGE_CC=system \
         "$sysimage_sh" "$project" "$build_project" "$TEST_TMPDIR/sysimage.so" 2>&1
 )" || rc=$?
 
@@ -53,25 +58,39 @@ case "$output" in
 $output" ;;
 esac
 
-# The same run with only the pre-0.1.1 RULES_JULIA_DEPOT_* spellings: each is still honoured with
-# a deprecation warning, and the environment is refused for the same reason.
+# No compiler configured: the script refuses rather than picking the host's, and names the
+# variable and each of its three kinds of value.
 rc=0
 output="$(
-    env -u JULIA_DEPOT_BIN -u JULIA_DEPOT_SYSIMAGE_PACKAGES \
-        RULES_JULIA_DEPOT_BIN="$julia_bin" \
-        JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
-        RULES_JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
-        "$sysimage_sh" "$project" "$build_project" "$TEST_TMPDIR/sysimage.so" 2>&1
+    env -u JULIA_DEPOT_SYSIMAGE_CC JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
+        JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
+        "$sysimage_sh" "$project" auto "$TEST_TMPDIR/sysimage.so" 2>&1
 )" || rc=$?
-[ "$rc" -eq 2 ] ||
-    fail "with the deprecated spellings, expected the pin check to exit 2, got $rc:
+[ "$rc" -eq 2 ] || fail "with no JULIA_DEPOT_SYSIMAGE_CC, expected exit 2, got $rc:
 $output"
-for name in BIN SYSIMAGE_PACKAGES; do
+for want in "set JULIA_DEPOT_SYSIMAGE_CC" "@julia_depot_cc//:bin/cc" "your own compiler" "system"; do
     case "$output" in
-        *"RULES_JULIA_DEPOT_$name is deprecated; set JULIA_DEPOT_$name instead"*) ;;
-        *) fail "no deprecation warning for RULES_JULIA_DEPOT_$name:
+        *"$want"*) ;;
+        *) fail "the missing-compiler failure does not mention '$want':
 $output" ;;
     esac
 done
 
-echo "PASS: a v$build_minor environment under julia $running_minor was refused, exit 2, also under the deprecated spellings"
+# A compiler path that is not an executable file.
+rc=0
+output="$(
+    env JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
+        JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" JULIA_DEPOT_SYSIMAGE_CC="$TEST_TMPDIR/no-such-cc" \
+        "$sysimage_sh" "$project" auto "$TEST_TMPDIR/sysimage.so" 2>&1
+)" || rc=$?
+[ "$rc" -eq 2 ] || fail "with a missing compiler path, expected exit 2, got $rc:
+$output"
+case "$output" in
+    *"JULIA_DEPOT_SYSIMAGE_CC=$TEST_TMPDIR/no-such-cc is not an executable file"*) ;;
+    *) fail "the bad compiler path failure does not name the path:
+$output" ;;
+esac
+[ ! -e "$TEST_TMPDIR/sysimage.so" ] ||
+    fail "sysimage.sh wrote an image despite refusing its compiler"
+
+echo "PASS: a v$build_minor environment under julia $running_minor was refused, exit 2, as were a missing package list and a missing or unusable compiler"

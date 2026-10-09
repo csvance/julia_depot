@@ -91,7 +91,17 @@ what it loads fails the test, and the contract page should change with it.
 One test sits outside the per-version set. The matrix's sysimage tests run over a depot
 that already holds PackageCompiler, so on 1.13 `sysimage.sh auto` is also run on an empty
 depot of the test's own, and has to install its PackageCompiler environment there before
-building. It downloads the General registry and PackageCompiler each time it runs.
+building. It downloads the General registry and PackageCompiler each time it runs. It links
+with the host's compiler, `JULIA_DEPOT_SYSIMAGE_CC=system`, and checks for the warning.
+
+The compiler that links a sysimage is checked from both sides. `sysimage.sh` is given a
+recording compiler that hands each call to the pinned one, and the test checks that it was
+called and that the sysimage was linked by zig's LLD, carries no GCC crt files, and requires no
+glibc symbol newer than 2.17. The image example's sysimage layer, which names no compiler, must
+pass the same link checks. The script must refuse to run with no compiler or with a path that is
+not executable. Analysis tests in `e2e/image/cc_test.bzl` check what the rule hands the script
+for the default compiler, a consumer's own `julia.cc` and `system_cc`, and that a pinned
+compiler is among the action's inputs.
 
 ## Before pushing
 

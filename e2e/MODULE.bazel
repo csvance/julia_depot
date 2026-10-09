@@ -18,8 +18,11 @@ module(
     version = "0.0.0",
 )
 
-bazel_dep(name = "julia_depot", version = "0.1.0")
+bazel_dep(name = "julia_depot", version = "0.2.0")
 bazel_dep(name = "rules_shell", version = "0.6.1")
+
+# For the analysis tests in image/cc_test.bzl. Already in the graph through rules_oci.
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
 
 local_path_override(
     module_name = "julia_depot",
@@ -159,9 +162,19 @@ julia.depot(
     manifest = "//projects/v1.13:Manifest.toml",
 )
 
+# --- C compilers for sysimages -----------------------------------------------------
+# The module's own pinned compiler, @julia_depot_cc, is declared by julia_depot and imported here
+# as any consumer would import it, for the sysimage.sh tests. A second compiler for another glibc
+# is a consumer's own `julia.cc`; image/ uses it to show that the compiler is part of the key.
+julia.cc(
+    name = "cc_glibc_2_28",
+    glibc = "2.28",
+)
+
 # Every repository the matrix declares, visible to //tests.
 use_repo(
     julia,
+    "cc_glibc_2_28",
     "declared_depot_1_12",
     "depot_1_10",
     "depot_1_12",
@@ -171,6 +184,7 @@ use_repo(
     "julia_1_10",
     "julia_1_12",
     "julia_1_13",
+    "julia_depot_cc",
     "read_only_depots_1_12",
     "sysimage_depot_1_12",
     "sysimage_depot_1_13",

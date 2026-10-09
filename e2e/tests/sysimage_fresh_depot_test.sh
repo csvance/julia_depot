@@ -12,6 +12,9 @@
 # printed and that PackageCompiler is in this depot, instead of inferring both from a successful
 # build.
 #
+# It also covers the opt-in to the host's compiler, JULIA_DEPOT_SYSIMAGE_CC=system: the build
+# works, and it prints the warning that the result depends on the host.
+#
 # Network: the project, the General registry and PackageCompiler are all downloaded.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
@@ -40,7 +43,7 @@ log="$TEST_TMPDIR/sysimage.log"
 # environment, and compiling four CPU clones per build, with builds in parallel, ran a CI runner
 # out of memory.
 env JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
-    JULIA_DEPOT_SYSIMAGE_CPU_TARGET="generic" \
+    JULIA_DEPOT_SYSIMAGE_CPU_TARGET="generic" JULIA_DEPOT_SYSIMAGE_CC=system \
     "$sysimage_sh" "$project" auto "$out" > "$log" 2>&1 ||
     fail "sysimage.sh auto failed on a depot without PackageCompiler:
 $(cat "$log")"
@@ -51,6 +54,9 @@ $(cat "$log")"
 [ -d "$depot/packages/PackageCompiler" ] ||
     fail "sysimage.sh reported installing PackageCompiler but it is not in $depot/packages"
 [ -f "$out" ] || fail "sysimage.sh reported success but wrote no $out"
+grep -q 'WARNING: JULIA_DEPOT_SYSIMAGE_CC=system links this sysimage with the host' "$log" ||
+    fail "sysimage.sh used the host's compiler without its warning:
+$(cat "$log")"
 
 loaded="$(
     "$julia_bin" --startup-file=no --sysimage "$out" --project="$project" \
@@ -59,4 +65,4 @@ loaded="$(
 [ "$loaded" = "true" ] ||
     fail "the sysimage loaded but Crayons did not come out of it: got '$loaded'"
 
-echo "PASS: sysimage.sh installed PackageCompiler into a fresh depot and built an image that loads"
+echo "PASS: sysimage.sh installed PackageCompiler into a fresh depot and built an image with the host's compiler, with the warning, that loads"

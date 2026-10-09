@@ -36,7 +36,7 @@ them into images. It is not a Julia language ruleset:
 2. Declare a Julia and a depot in `MODULE.bazel`:
 
 ```python
-bazel_dep(name = "julia_depot", version = "0.1.1")
+bazel_dep(name = "julia_depot", version = "0.2.0")
 julia = use_extension("@julia_depot//julia:extensions.bzl", "julia")
 julia.dist(name = "julia_dist", version = "1.12.7")
 julia.depot(
@@ -54,7 +54,8 @@ use_repo(julia, "julia_dist", "my_depot")
    that it was resolved under the Julia you pinned, and produces an `env.sh` to source.
    From there, a genrule or `sh_binary` sources `env.sh`, takes Julia by label, and runs
    whatever you need: your code, `sysimage.sh` for a sysimage, or `image_depot.sh` for a
-   clean depot layer to stack into an OCI image; see the [recipes](https://csvance.github.io/julia_depot/dev/recipes/).
+   clean depot layer to stack into an OCI image. A sysimage is linked by a pinned C compiler,
+   `@julia_depot_cc`, so the host's compiler and C library never reach it; see the [recipes](https://csvance.github.io/julia_depot/dev/recipes/).
 4. For an image, the rules in `julia/image.bzl` do the Julia-specific part: the distribution,
    depot, sysimage and precompile-cache layers as deterministic tars, the image's environment,
    and a test that the image starts without compiling anything. You assemble the image with

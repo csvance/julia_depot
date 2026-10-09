@@ -5,6 +5,8 @@
 #   bazel build //image:image_1_13
 #   bazel test //image:all
 
+load("@julia_depot//julia:image.bzl", "julia_sysimage_layer")
+load(":cc_test.bzl", "pinned_cc_test", "system_cc_test")
 load(":defs.bzl", "julia_image_tests")
 
 julia_image_tests(
@@ -19,4 +21,52 @@ julia_image_tests(
     julia_repo = "@julia_1_13",
     minor = "1.13",
     project = "//projects/v1.13",
+)
+
+# --- the compiler that links a sysimage --------------------------------------------------------
+# Analysis tests over sysimage_layer_1_13, which names no compiler, and two variants that are
+# never built: one with a consumer's own julia.cc, one with the host's compiler. See cc_test.bzl.
+julia_sysimage_layer(
+    name = "sysimage_layer_cc_glibc_2_28",
+    cc = "@cc_glibc_2_28",
+    depot = "@depot_1_13",
+    julia = "@julia_1_13",
+    manifest = "//projects/v1.13:Manifest.toml",
+    packages = ["Crayons"],
+    project = "//projects/v1.13:Project.toml",
+    tags = ["manual"],
+)
+
+julia_sysimage_layer(
+    name = "sysimage_layer_system_cc",
+    depot = "@depot_1_13",
+    julia = "@julia_1_13",
+    manifest = "//projects/v1.13:Manifest.toml",
+    packages = ["Crayons"],
+    project = "//projects/v1.13:Project.toml",
+    system_cc = True,
+    tags = ["manual"],
+)
+
+pinned_cc_test(
+    name = "sysimage_default_cc_test",
+    size = "small",
+    repo = "julia_depot_cc",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_layer_1_13",
+)
+
+pinned_cc_test(
+    name = "sysimage_own_cc_test",
+    size = "small",
+    repo = "cc_glibc_2_28",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_layer_cc_glibc_2_28",
+)
+
+system_cc_test(
+    name = "sysimage_system_cc_test",
+    size = "small",
+    tags = ["julia1_13"],
+    target_under_test = ":sysimage_layer_system_cc",
 )

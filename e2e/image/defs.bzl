@@ -320,3 +320,16 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         sysimage = "/opt/julia-sysimage/sys.so",
         tags = tags,
     )
+
+    # The layer above names no compiler, so the module's pinned one linked it.
+    sh_test(
+        name = n("sysimage_link") + "_test",
+        size = "small",
+        srcs = ["sysimage_link_test.sh"],
+        args = [
+            "$(rootpath {})".format(n("sysimage_layer")),
+            "/opt/julia-sysimage/sys.so",
+        ],
+        data = _HELPERS + [n("sysimage_layer")],
+        tags = tags,
+    )

@@ -12,6 +12,9 @@ package(default_testonly = True)
 # Sourced by the image tests in //image as well.
 exports_files(["common.sh"])
 
+# A user-supplied compiler for the sysimage tests; see the script.
+exports_files(["recording_cc.sh"])
+
 # 1.10, the long-term support release, with the reduced set: no sysimage build (the module
 # ships no PackageCompiler environment for 1.10) and no hook test (version-independent).
 julia_version_tests(

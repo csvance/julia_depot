@@ -38,9 +38,8 @@ make the first entry, the one written to, depend on the shell.
 
 The hook: an environment that resolves through a private registry or package server needs
 that registry in the depot before Pkg.instantiate, and only fetch time can guarantee that.
-`hook` is an executable run first, with JULIA_DEPOT_BIN set, JULIA_DEPOT_PATH set to the
-value env.sh exports, and RULES_JULIA_DEPOT_BIN, the deprecated pre-0.1.1 name for
-JULIA_DEPOT_BIN. `hook_environ` names the variables it reads, so a change to any of them
+`hook` is an executable run first, with JULIA_DEPOT_BIN set and JULIA_DEPOT_PATH set to the
+value env.sh exports. `hook_environ` names the variables it reads, so a change to any of them
 refetches. The hook belongs to the consumer; this module knows no particular registry. With
 read-only depots the path has several entries: a hook that writes must write to the first,
 as Pkg does, and may find what it would add already present in a later one.
@@ -188,11 +187,7 @@ def _julia_depot_impl(rctx):
     if rctx.attr.hook != None:
         hook = rctx.path(rctx.attr.hook)
         _watch(rctx, hook)
-
-        # RULES_JULIA_DEPOT_BIN is the pre-0.1.1 name, still set so existing hooks work. It goes
-        # in the release that next raises compatibility_level.
-        hook_env = env | {"RULES_JULIA_DEPOT_BIN": env["JULIA_DEPOT_BIN"]}
-        res = rctx.execute([str(hook)], environment = hook_env, timeout = 600, quiet = False)
+        res = rctx.execute([str(hook)], environment = env, timeout = 600, quiet = False)
         if res.return_code != 0:
             fail("julia_depot: hook {} failed:\n{}\n{}".format(rctx.attr.hook, res.stdout, res.stderr))
 

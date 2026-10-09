@@ -4,6 +4,41 @@ Each release has a section here, written before it is tagged. The section for a 
 becomes its GitHub release notes and the body of its Bazel Central Registry pull request;
 see `.github/workflows/release_notes.sh` and `bcr_notes.sh`.
 
+## 0.2.0
+
+`compatibility_level` is now 2. Every module in a graph must agree on it, so a module and
+the modules it depends on move to 0.2.0 together. A root `git_override` or
+`local_path_override` of julia_depot applies to every module in the graph, so it carries a
+dependency that still asks for 0.1.x through the transition.
+
+### Breaking
+
+- **A sysimage is linked by a declared compiler.** PackageCompiler used to link with whatever
+  g++, clang++, gcc or clang was on the host's `PATH`, which was not an input of the action,
+  so two hosts could produce different sysimages under the same cache key. The module now
+  ships a pinned one, `@julia_depot_cc`: zig 0.16.0 fetched by sha256, linking against glibc
+  2.17, so a sysimage loads on any host with glibc 2.17 or later. The host's compiler is
+  available by opt-in only.
+  - `julia_sysimage_layer`: nothing to change. It links with `@julia_depot_cc` unless given
+    `cc` (another compiler) or `system_cc = True` (the host's, with the action tagged
+    `no-remote-cache`).
+  - A genrule calling `sysimage.sh`: `JULIA_DEPOT_SYSIMAGE_CC` is now required. Add
+    `use_repo(julia, "julia_depot_cc")` to `MODULE.bazel`, add `@julia_depot_cc//:cc` and
+    `@julia_depot_cc//:bin/cc` to the genrule's `srcs`, and
+    `export JULIA_DEPOT_SYSIMAGE_CC="$(location @julia_depot_cc//:bin/cc)"` before calling the
+    script. See the sysimage recipe. `JULIA_DEPOT_SYSIMAGE_CC=system` restores the old
+    behaviour, with a warning.
+  - A module using only the depot, the dist or the other layers: bump the `bazel_dep`.
+- The `RULES_JULIA_DEPOT_*` spellings are removed, as 0.1.1 announced: `image_depot.sh` and
+  `sysimage.sh` read only `JULIA_DEPOT_*`, and a hook is given only `JULIA_DEPOT_BIN`.
+
+### New
+
+- `julia.cc` declares a pinned C compiler for sysimages, for another zig version or glibc
+  target: `julia.cc(name = "my_cc", glibc = "2.28")`, then `cc = "@my_cc"` on
+  `julia_sysimage_layer`. It provides `:cc` and `bin/cc` like `julia.dist` provides `:dist`
+  and `bin/julia`.
+
 ## 0.1.1
 
 ### New
