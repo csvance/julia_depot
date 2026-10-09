@@ -1,8 +1,8 @@
-# The end-to-end suite. One call per Julia version in the matrix, plus the pairs.
+# The end-to-end suite: one call per Julia version in the matrix, plus one per ordered pair.
 #
-# The matrix is declared in ../MODULE.bazel, which is where the repositories come from;
-# these calls only have to agree with it. See tests/defs.bzl for what each call
-# declares and the top-level README for how to add a version.
+# The matrix and its repositories are declared in ../MODULE.bazel, and these calls must agree
+# with it. See tests/defs.bzl for what each call declares and docs/src/julia-versions.md for how
+# to add a version.
 
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load(":defs.bzl", "julia_version_tests", "version_mismatch_test")
@@ -45,9 +45,8 @@ julia_version_tests(
     sysimage_depot_repo = "@sysimage_depot_1_13",
 )
 
-# A 1.13 manifest under 1.12, and a 1.12 manifest under 1.13. Both directions, because
-# the check compares strings and a one-sided test would pass on a check that only
-# noticed one kind of difference.
+# A 1.13 manifest under 1.12, and a 1.12 manifest under 1.13. The check compares strings,
+# and a test in one direction would pass a check that caught only one kind of difference.
 version_mismatch_test(
     depot_repo = "@depot_1_12",
     julia_repo = "@julia_1_12",
@@ -68,8 +67,8 @@ version_mismatch_test(
     running_patch = "1.13.0",
 )
 
-# The pinned manifest must be the one Julia uses: a versioned Manifest-v1.12.toml beside
-# Manifest.toml wins in Julia. Version-independent, so 1.12 alone covers it.
+# Julia must use the pinned manifest, even though it prefers a versioned Manifest-v1.12.toml
+# beside Manifest.toml. Version-independent, so 1.12 alone covers it.
 sh_test(
     name = "manifest_choice_1_12_test",
     size = "medium",
@@ -95,7 +94,7 @@ sh_test(
 )
 
 # The `dir` attribute: a declared depot with a {HOME} placeholder, instead of the ambient
-# JULIA_DEPOT_PATH. One version is enough; the attribute is version-independent.
+# JULIA_DEPOT_PATH. The attribute is version-independent, so one version is enough.
 sh_test(
     name = "declared_depot_1_12_test",
     size = "small",
@@ -114,8 +113,8 @@ sh_test(
 )
 
 # `read_only_depots`: a declared depot with a shared depot and a missing one stacked behind it.
-# Version-independent, like `dir`. image_depot.sh runs on the stamp too, since its registries
-# then live only in the shared depot.
+# Version-independent, like `dir`. The test also runs image_depot.sh on this stamp, because
+# this depot's registries live only in the shared depot.
 sh_test(
     name = "read_only_depots_1_12_test",
     size = "large",
@@ -177,8 +176,8 @@ sh_test(
     ],
 )
 
-# sysimage.sh on a depot with no PackageCompiler in it, which is what a consumer following
-# docs/src/recipes.md has: the matrix's sysimage tests all run over a depot that already holds
+# sysimage.sh on a depot with no PackageCompiler in it, as a consumer following
+# docs/src/recipes.md has. The matrix's sysimage tests all run on a depot that already holds
 # it. The install step is version-independent, so 1.13 alone covers it.
 sh_test(
     name = "sysimage_fresh_depot_1_13_test",

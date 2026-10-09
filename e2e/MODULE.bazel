@@ -1,11 +1,11 @@
 """End-to-end tests for julia_depot, over a matrix of Julia versions.
 
-This is a separate Bazel module rather than a package of the module under test, because
-what is being tested IS the consumer interface: a root module that declares
-`bazel_dep`, calls the extension, and uses the repositories it produces. A test inside
-the module would exercise the implementation and miss the seam that consumers land on.
+This is a separate Bazel module because the thing under test is the consumer interface: a
+root module that declares `bazel_dep`, calls the extension, and uses the repositories it
+produces. A test inside the module would exercise the implementation and miss the interface
+consumers use.
 
-THE MATRIX lives here and nowhere else. Every Julia version in it gets four
+The matrix is declared here and nowhere else. Every Julia version in it gets four
 repositories, and tests/BUILD.bazel turns those into the same set of test cases for
 each. Adding a version means adding one block below, one `projects/v<minor>` directory
 with a Manifest resolved under that exact Julia, one `julia/sysimage/v<minor>`
@@ -33,14 +33,14 @@ bazel_dep(name = "rules_oci", version = "2.2.6")
 
 # rules_oci 2.2.6 pins aspect_bazel_lib 2.7.2, which registers its tar and zstd toolchains against
 # @local_config_platform. Bazel 9 removed that repository, so toolchain resolution fails for every
-# target, including ones that have nothing to do with images. MVS takes the higher version, so
-# naming it here is the whole fix.
+# target, including ones unrelated to images. MVS takes the higher version, so declaring it here
+# fixes this.
 bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 
-# The base the example image starts from: debian:bookworm-slim, pinned by digest. Small, and with
-# the glibc the official Julia build needs; anything comparable would do.
+# The base of the example image: debian:bookworm-slim, pinned by digest. It is small and has the
+# glibc the official Julia build needs. Any comparable base would work.
 oci.pull(
     name = "debian_base",
     digest = "sha256:3783cc01769c7b2b1b83a5c5ad96c815348e28ed7da68e2e3687004faa906251",
@@ -52,8 +52,9 @@ use_repo(oci, "debian_base", "debian_base_linux_amd64")
 julia = use_extension("@julia_depot//julia:extensions.bzl", "julia")
 
 # --- Julia 1.10, the long-term support release ------------------------------------
-# A reduced set: the distribution and a depot, and no sysimage or hook depot, because the
-# module ships no PackageCompiler environment for 1.10 and the hook is version-independent.
+# A reduced set: the distribution and a depot. No sysimage depot, because the module ships no
+# PackageCompiler environment for 1.10, and no hook depot, because the hook is
+# version-independent.
 julia.dist(
     name = "julia_1_10",
     version = "1.10.12",
@@ -80,18 +81,18 @@ julia.depot(
 )
 
 # The module's own PackageCompiler environment for this minor, instantiated ahead of the
-# sysimage tests so they start warm. A consumer needs no such depot: `sysimage.sh`
-# installs the environment itself when it is missing, which
-# tests/sysimage_fresh_depot_test.sh checks on a depot that never had it.
+# sysimage tests so they start warm. A consumer needs no such depot: `sysimage.sh` installs
+# the environment when it is missing, and tests/sysimage_fresh_depot_test.sh checks this on a
+# depot that never had it.
 julia.depot(
     name = "sysimage_depot_1_12",
     julia = "@julia_1_12",
     manifest = "@julia_depot//julia:sysimage/v1.12/Manifest.toml",
 )
 
-# The same project again, fetched through a `hook`. The hook records that it ran and
-# what it was told to read; tests/hook_test.sh checks both, and checks that it ran
-# before instantiate rather than after.
+# The same project again, fetched through a `hook`. The hook records that it ran and what
+# it was told to read. tests/hook_test.sh checks both, and that the hook ran before
+# instantiate.
 julia.depot(
     name = "hook_depot_1_12",
     hook = "//hooks:marker_hook.sh",
@@ -100,10 +101,9 @@ julia.depot(
     manifest = "//projects/v1.12:Manifest.toml",
 )
 
-# The same project once more, into a DECLARED depot rather than the ambient one: the
-# `dir` attribute with a {HOME} placeholder. tests/declared_depot_test.sh checks that
-# env.sh exports the expanded path with the trailing separator and that the fetch landed
-# there.
+# The same project once more, into a declared depot instead of the ambient one: the `dir`
+# attribute with a {HOME} placeholder. tests/declared_depot_test.sh checks that env.sh
+# exports the expanded path with the trailing separator and that the fetch wrote there.
 julia.depot(
     name = "declared_depot_1_12",
     dir = "{HOME}/.julia-depot-e2e/declared",
@@ -111,11 +111,11 @@ julia.depot(
     manifest = "//projects/v1.12:Manifest.toml",
 )
 
-# The same project into a declared depot with READ-ONLY DEPOTS behind it: a shared depot the
-# hook seeds before instantiate (standing in for a host-wide one), and one that never exists.
-# tests/read_only_depots_test.sh checks that env.sh exports the stack in order with the
-# trailing separator, that the missing one neither failed the fetch nor was created, that what
-# the shared depot held was not installed into `dir` again, and that the shared depot was not
+# The same project into a declared depot with read-only depots behind it: a shared depot,
+# seeded by the hook before instantiate to stand in for a host-wide one, and a depot that never
+# exists. tests/read_only_depots_test.sh checks four things. env.sh exports the stack in order
+# with the trailing separator. The missing depot neither failed the fetch nor was created.
+# Nothing the shared depot held was installed into `dir` again. The shared depot was not
 # written to.
 julia.depot(
     name = "read_only_depots_1_12",
@@ -136,7 +136,7 @@ julia.dist(
 )
 
 # The environment under test. See the 1.12 block above for what each of these three is
-# for; a version added to the matrix is this block again with the numbers changed.
+# for. To add a version to the matrix, copy this block and change the numbers.
 julia.depot(
     name = "depot_1_13",
     julia = "@julia_1_13",

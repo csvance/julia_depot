@@ -1,17 +1,15 @@
 """An official Julia distribution for the host, pinned by sha256, as a repository rule.
 
-THE HOST DECIDES THE BUILD. The platform is detected when the repository is fetched, not
-when the extension is evaluated, so a host that cannot run Julia here only fails when a
-Julia target is actually needed, and the extension's result in MODULE.bazel.lock stays the
-same on every host.
+The host decides the build. The platform is detected when the repository is fetched, not
+when the extension is evaluated, so a host that cannot run Julia fails only when a Julia
+target is needed, and the extension's result in MODULE.bazel.lock is the same on every host.
 
     Linux x86_64    linux-x86_64     https://julialang-s3.julialang.org/bin/linux/x64/...
     Linux aarch64   linux-aarch64    https://julialang-s3.julialang.org/bin/linux/aarch64/...
 
-Linux x86_64 is the supported platform. Linux aarch64 is mapped too, but untested and not
-supported: it may work. macOS and Windows are refused, as is any other architecture: the
-module's scripts need GNU tar, coreutils and a Linux layout, so a distribution that
-downloaded would still fail later.
+Linux x86_64 is supported. Linux aarch64 is mapped but untested and unsupported. macOS,
+Windows and other architectures fail at fetch: the module's scripts need GNU tar, coreutils
+and a Linux layout, so a downloaded distribution would fail later anyway.
 
 `url` and `strip_prefix` are templates, so one declaration serves every supported platform,
 a mirror included: {version} (1.12.7), {minor} (1.12), {platform} (linux-x86_64) and
@@ -57,7 +55,7 @@ _ARCHES = {
 }
 
 def host_platform(os_name, arch, what = "julia.dist"):
-    """Maps a host to the Julia build for it: (platform, arch_dir), or fails clearly.
+    """Maps a host to the Julia build for it: (platform, arch_dir). Fails on an unsupported host.
 
     Args:
       os_name: repository_ctx.os.name.
@@ -79,13 +77,13 @@ def host_platform(os_name, arch, what = "julia.dist"):
     julia_arch, arch_dir = _ARCHES[arch]
     return "linux-" + julia_arch, arch_dir
 
-# The WHOLE distribution is exposed, not just bin/julia. Julia locates its bundled
-# depots (share/julia, where the stdlib JLLs live) relative to Sys.BINDIR, so a consumer
-# that took only the binary would come up without a stdlib.
+# The whole distribution is exposed. Julia locates its bundled depots (share/julia, where
+# the stdlib JLLs live) relative to Sys.BINDIR, so a consumer that took only bin/julia would
+# start without a stdlib.
 #
 # The version header is exported for julia_depot, which reads it so that a version change
 # refetches the depot. bin/julia is a small launcher that need not change between releases,
-# so it cannot serve as that key.
+# so it cannot be that key.
 _BUILD = """
 filegroup(
     name = "dist",

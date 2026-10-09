@@ -1,10 +1,9 @@
 # Shared helpers for the julia_depot end-to-end tests. Sourced, never executed.
 #
-# Two things every test here has to get right. Runfiles arrive as paths relative to the
-# test's working directory, and every script under test changes directory, so paths are
-# made absolute before anything else happens. And runfiles are SYMLINKS into the source
-# tree, so a project directory is copied before Pkg is pointed at it: Pkg writes to the
-# project it is given, and the manifests in this repository are the pins under test.
+# Runfiles arrive as paths relative to the test's working directory, and every script under test
+# changes directory, so tests make paths absolute first (abspath). Runfiles are symlinks into the
+# source tree, so a project directory is copied before Pkg is pointed at it (copy_project): Pkg
+# writes to the project it is given, and the manifests in this repository are the pins under test.
 
 fail() {
     echo "FAIL: $*" >&2
@@ -42,10 +41,10 @@ bundled_depots() {
     printf '%s:%s\n' "$prefix/local/share/julia" "$prefix/share/julia"
 }
 
-# A depot Julia may WRITE to, with the already-instantiated one behind it for reads and
-# the distribution's bundled depots after that. The tests run sandboxed, where the real
-# depot is visible but read-only, so anything Julia decides to precompile on the way has
-# to land somewhere else. Pass the julia binary so the bundled depots can be found.
+# A depot path with a writable depot first, the already-instantiated one behind it for reads, and,
+# when the julia binary is passed, the distribution's bundled depots after that. Tests run
+# sandboxed, where the real depot is visible but read-only, so anything Julia precompiles along
+# the way must be written elsewhere.
 overlay_depot() {
     local src="$1" julia_bin="${2:-}"
     mkdir -p "$TEST_TMPDIR/overlay-depot"

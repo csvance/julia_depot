@@ -9,43 +9,42 @@ JLL's artifacts are hash-pinned in its `Artifacts.toml`, which is the normal sta
 resolved manifest. Path entries are your own source and are Bazel `srcs`, not depot
 content. Check your manifest for `repo-url` before relying on this.
 
-Nothing in the module runs Pkg's resolver. A manifest is pinned, never re-resolved.
+The module never runs Pkg's resolver. A manifest is pinned, never re-resolved.
 
 ## The depot rule
 
-`julia.depot` is a repository rule, not a build action, because fetch time is where
-hitting the network is legitimate and because the rule's inputs, the manifest, the hook,
-the Julia version and the environment variables it names, are what Bazel keys the fetch
-on. Change any of them and the depot is re-conformed.
+`julia.depot` is a repository rule because a fetch may use the network, and because Bazel
+keys a fetch on the rule's inputs: the manifest, the hook, the Julia version and the
+environment variables it names. Changing any of them re-conforms the depot.
 
-It runs `instantiate.sh` on the ambient depot (`JULIA_DEPOT_PATH`, or Julia's default),
-not a private one: a fresh depot per manifest would mean gigabytes of artifacts on every
-change, and the ambient depot already has most of them. The trade is that `compiled/` can
-thrash between branches with different manifests. The script refuses a manifest whose
-`julia_version` differs from the running Julia, since such a manifest can instantiate and
-then behave differently, which is exactly the failure the pin exists to prevent.
+It runs `instantiate.sh` on the declared `dir`, or else on the ambient depot
+(`JULIA_DEPOT_PATH`, or Julia's default). A fresh depot per manifest would mean gigabytes of
+artifacts on every change, and an existing depot already has most of them. The cost is that `compiled/` can thrash between branches
+with different manifests. The script refuses a manifest whose `julia_version` differs from
+the running Julia, because such a manifest can instantiate and then behave differently,
+the failure the pin exists to prevent.
 
 The rule produces `env.sh`, which always exports `JULIA_DEPOT_PATH`: the depot the fetch
 instantiated into, whether declared with `dir`, set in the launching environment, or
 Julia's default made explicit, followed by any `read_only_depots`. A hook is given the same
-value, and writes, like Pkg, to its first entry. It also produces
-`stamp.txt` with the manifest sha256, Julia version, host triplet and depot. Julia itself
-is deliberately not in `env.sh`: consumers take it as a label from the distribution
-(`@julia_dist//:bin/julia`). The depot is the one machine-specific path in the file, and
-it is per user by nature.
+value, and writes, like Pkg, to its first entry. The rule also produces `stamp.txt` with
+the manifest sha256, Julia version, host triplet and depot. `env.sh` does not name Julia:
+consumers take it as a label from the distribution (`@julia_dist//:bin/julia`). The depot
+is the only machine-specific path in the file, and it is per user.
 
-The manifest is the file Julia actually instantiates from, and the rule checks that. Julia
-prefers a versioned `Manifest-v<major>.<minor>.toml` beside `Manifest.toml`, and a
-`Project.toml` can name another file with `manifest = ...`; the fetch fails unless
-`manifest` points at the file Julia uses. A project can therefore carry one manifest per
-Julia version, each pinned by its own `julia.depot`.
+The rule checks that `manifest` is the file Julia instantiates from. Julia prefers a
+versioned `Manifest-v<major>.<minor>.toml` beside `Manifest.toml`, and a `Project.toml` can
+name another file with `manifest = ...`. The fetch fails unless `manifest` points at the
+file Julia uses, so a project can carry one manifest per Julia version, each pinned by its
+own `julia.depot`.
 
 The fetch is keyed on the manifest, the hook, the Julia version (through the
 distribution's version header), the declared `dir` and `read_only_depots`, whether each
 read-only depot exists, and the variables `HOME`, `JULIA_PKG_SERVER`, every `hook_environ`
-entry and, when no `dir` is declared, `JULIA_DEPOT_PATH`. Not on what a read-only depot
-holds: watching a shared depot's whole tree would cost more than the fetch it guards, so a
-shared depot that loses something the environment relied on needs `bazel fetch --force`.
+entry and, when no `dir` is declared, `JULIA_DEPOT_PATH`. It is not keyed on what a
+read-only depot holds, because watching a shared depot's whole tree would cost more than
+the fetch it guards. A shared depot that loses something the environment relied on needs
+`bazel fetch --force`.
 
 ### What is not hermetic
 
@@ -59,33 +58,34 @@ manifest change and share nothing between workspaces or users.
 
 The Manifest decides where Julia looks, not what it finds there. It names every package by
 tree hash and every artifact by content hash, and Julia looks both up by those names in every
-depot on the path. Pkg checks the hash when it downloads; nothing checks it again when Julia
-loads, so a directory under the right name is used as it is. A compiled cache, `.ji` or
+depot on the path. Pkg checks the hash when it downloads, and nothing checks it again when
+Julia loads, so a directory under the right name is used as it is. A compiled cache, `.ji` or
 pkgimage `.so`, is reused when Julia's staleness check passes, which compares its sources,
 dependencies and flags, not its bits. A depot on the path is therefore trusted the way any
-binary you run is: a shared depot's maintainer supplies code you load. What the arrangement
-does guarantee is that a missing package or artifact, because a shared depot was pruned,
-fails to load rather than resolving to some other version, and a forced refetch installs it
-into `dir`. A damaged one is different: Pkg takes a directory that exists as installed, so a
-refetch leaves a truncated library or a modified source file in place, and only repairing the
-shared depot, or no longer stacking it, fixes the environment. A corrupted compiled cache is
-the exception, since Julia rejects it and compiles a fresh one into `dir`. The e2e suite checks
-each of these; see [Testing](testing.md).
+binary you run is: a shared depot's maintainer supplies code you load. What is guaranteed is
+that a missing package or artifact, for example one pruned from a shared depot, fails to load
+instead of resolving to some other version, and that a forced refetch installs it into `dir`.
+A damaged one is different. Pkg treats a directory that exists as installed, so a refetch
+leaves a truncated library or a modified source file in place; only repairing the shared
+depot, or no longer stacking it, fixes the environment. A corrupted compiled cache is the
+exception: Julia rejects it and compiles a fresh one into `dir`. The e2e suite checks each of
+these; see [Testing](testing.md).
 
-`artifacts/Overrides.toml` goes further. Julia reads it from every depot on the path, an
-earlier depot winning over a later one, and an override can point an artifact at any
+`artifacts/Overrides.toml` extends this trust further. Julia reads it from every depot on the
+path, an earlier depot winning over a later one, and an override can point an artifact at any
 directory, under any hash. An `Overrides.toml` in a shared depot therefore changes what loads
 for everyone who stacks that depot. Keep shared depots free of one, or treat it as part of
 what every consumer builds against.
 
-The image layers differ in what they take from these depots. The depot layer takes nothing
-but registries and package server credentials: `image_depot.sh` downloads every package and
+The image layers differ in what they take from these depots. The depot layer takes nothing but
+registries and package server credentials: `image_depot.sh` downloads every package and
 artifact again into a clean depot, with only Julia's bundled depots behind it, so Pkg verifies
-everything that goes in, except the artifacts an `overrides_build` file substitutes. That makes it independent of the host's depots, not hermetic: it is
-an action that uses the network. The compiled layer precompiles offline inside the assembled
-image, so no host cache reaches it. The sysimage layer is the exception: it builds from the
-packages on the depot path the stamp records, `dir` and any `read_only_depots`, so whatever a
-shared depot holds, its `Overrides.toml` included, is in scope for the sysimage.
+everything that goes in, except the artifacts an `overrides_build` file substitutes. That
+makes it independent of the host's depots, but not hermetic, since it is an action that uses
+the network. The compiled layer precompiles offline inside the assembled image, so no host
+cache reaches it. The sysimage layer is the exception: it builds from the packages on the
+depot path the stamp records, `dir` and any `read_only_depots`, so whatever a shared depot
+holds, its `Overrides.toml` included, is in scope for the sysimage.
 
 ### Read-only depots
 
@@ -96,12 +96,12 @@ entry already holds, so `dir` ends up holding only what the read-only depots lac
 writes nothing to them: it neither creates them nor fails when one is missing, since Julia
 skips a missing entry and a host may not have the shared depot at all. Julia itself does
 update the timestamp of a cache file it loads, in whichever depot, and ignores the failure
-where it may not, so a shared depot should be read-only to its users in fact as well as in
-name. The attribute requires `dir`: without one the depot path is the ambient
-`JULIA_DEPOT_PATH`, which can already list as many depots as it likes, and the depot written
-to would then depend on the shell.
+where it lacks permission, so a shared depot's files should be read-only to its users at the
+filesystem level. The attribute requires `dir`: without one the depot path is the ambient
+`JULIA_DEPOT_PATH`, which can already list any number of depots, and the depot written to
+would then depend on the shell.
 
-The image side needs nothing of its own for this. `image_depot.sh` instantiates into a clean
+The image side needs no extra support for this. `image_depot.sh` instantiates into a clean
 depot whatever the source depot holds, and copies the registries of every entry of the
 source path, so a registry that lives only in a shared depot still reaches the instantiate;
 the sysimage layer reads the whole path the stamp records.
@@ -109,9 +109,9 @@ the sysimage layer reads the whole path the stamp records.
 ## Repository names
 
 The `julia` extension is evaluated once for the whole module graph, so the names given to
-`julia.dist` and `julia.depot` share one namespace across every module that uses it. A name
-can be declared once: a second declaration, in any module, fails with an error naming both
-modules, even when the two are identical.
+`julia.dist` and `julia.depot` share one namespace across every module that uses it. Each
+name can be declared only once: a second declaration, in any module, fails with an error
+naming both modules, even when the two are identical.
 
 The convention that keeps names apart:
 
@@ -119,20 +119,20 @@ The convention that keeps names apart:
 - A module that others depend on prefixes every name it declares with its own module name:
   `my_library_julia`, `my_library_depot`.
 
-Neither declaration wins a clash, by design. Had the root's won, the other module would
-build against a Julia or a manifest it never declared, and a module with no depot, one that
-only builds image layers, would ship the root's Julia with nothing to say so.
+A clash fails even when one side is the root module. If the root's declaration won, the
+other module would build against a Julia or a manifest it never declared, and a module with
+no depot, one that only builds image layers, would ship the root's Julia with no sign of it.
 
 ## The image script
 
-`image_depot.sh` is the opposite choice, on purpose: it instantiates into a clean depot,
-because an image must carry exactly the closure. It does not enumerate artifacts from
-`Artifacts.toml` files, because a static walk silently under-counts: packages may augment
-the platform with their own code (`HDF5_jll` tags its entries `mpi`), and a plain
-`HostPlatform()` then matches nothing and drops the artifact with no error. Letting Pkg
-instantiate means Pkg performs the augmented selection.
+`image_depot.sh` makes the opposite choice: it instantiates into a clean depot, because an
+image must carry exactly the closure. It does not enumerate artifacts from `Artifacts.toml`
+files, because a static walk under-counts: packages may augment the platform with their own
+code (`HDF5_jll` tags its entries `mpi`), and a plain `HostPlatform()` then matches nothing
+and drops the artifact with no error. Letting Pkg instantiate means Pkg performs the augmented
+selection.
 
-Two details that cost real time when missed:
+Two details are easy to miss:
 
 - The distribution's bundled depots stay on the depot path. Setting `JULIA_DEPOT_PATH` to
   the fresh directory alone drops `<julia>/share/julia`, where the stdlib precompile

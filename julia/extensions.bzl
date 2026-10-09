@@ -9,18 +9,18 @@
     )
     use_repo(julia, "julia_dist", "my_depot")
 
-NAMING. A rule attribute that takes a repository is named after what it takes and is given
-the repository itself: `julia = "@julia_dist"`, `depot = "@my_depot"`. Each repository's
-default target, the one named after it, is what the rules need from it. The named targets
-(`:dist`, `bin/julia`, `:env`, `env.sh`, `stamp.txt`) stay for genrules and scripts.
+Naming: a rule attribute that takes a repository is named after what it takes and is given
+the repository itself: `julia = "@julia_dist"`, `depot = "@my_depot"`. The rules use each
+repository's default target, the one named after it. The named targets (`:dist`,
+`bin/julia`, `:env`, `env.sh`, `stamp.txt`) remain for genrules and scripts.
 
-REPOSITORY NAMES ARE SHARED. The extension is evaluated once for the whole module graph,
-so every module's `julia.dist` and `julia.depot` names land in one namespace, and two
-modules declaring the same name is an error, even when the declarations are identical.
-Nobody's declaration wins, because either way a module would silently build against a
-Julia or a manifest it never asked for. The convention that keeps names apart: the root
-module names its repositories freely, and a module that others depend on prefixes every
-name it declares with its own module name (`reactant_server_julia`, not `julia_dist`).
+Repository names are shared: the extension is evaluated once for the whole module graph, so
+every module's `julia.dist` and `julia.depot` names share one namespace. Two modules
+declaring the same name is an error, even when the declarations are identical, because
+letting either win would make the other module build against a Julia or a manifest it did
+not declare. To keep names apart, the root module names its repositories freely, and a
+module that others depend on prefixes every name with its own module name (for example
+`reactant_server_julia` for its `julia_dist`).
 """
 
 load(":depot.bzl", "julia_depot")
@@ -32,7 +32,7 @@ def _module_desc(mod):
     return "{} (version {})".format(mod.name, mod.version or "unversioned")
 
 def _claim(names, mod, kind, name):
-    """Records that `mod` declares `name`, failing clearly when another declaration has it."""
+    """Records that `mod` declares `name`, failing when another declaration already has it."""
     if name in names:
         other_mod, other_kind = names[name]
         if other_mod.name == mod.name:
@@ -62,7 +62,7 @@ Julia or a manifest it never declared.""".format(
 
 def _julia_impl(module_ctx):
     # Every repository this extension creates, by name, with the module and tag that declared
-    # it: one namespace for the whole graph. See REPOSITORY NAMES ARE SHARED above.
+    # it: one namespace for the whole graph. See "Repository names are shared" above.
     names = {}
     for mod in module_ctx.modules:
         for tc in mod.tags.dist:
@@ -101,7 +101,7 @@ julia = module_extension(
             },
         ),
         "depot": tag_class(
-            doc = "Instantiate and precompile a Manifest-pinned project into the ambient depot.",
+            doc = "Instantiate and precompile a Manifest-pinned project into the declared (`dir`) or ambient depot.",
             attrs = {
                 "name": attr.string(mandatory = True),
                 "manifest": attr.label(mandatory = True),

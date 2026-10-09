@@ -1,25 +1,24 @@
 #!/usr/bin/env bash
-# Artifact overrides: the substitution works, and a broken one is caught rather than
-# shipped.
+# Artifact overrides: a correct override is honoured, and a broken one fails the build.
 #
-# An override swaps a locally built native library in for the registry one. It takes two
-# files because the path differs between build and image, and the dangerous outcome is
-# not a hard failure: if Pkg downloads the registry artifact anyway, the image carries
-# BOTH copies and loads the wrong one, silently. So each case is driven end to end.
+# An override substitutes a locally built native library for the registry one. It takes two files
+# because the path differs between build and image. A broken override does not fail by itself: Pkg
+# downloads the registry artifact anyway, and the image carries both copies and loads the wrong
+# one without any error. So each case is driven end to end.
 #
 #   correct   the build-time override points at a directory that exists, Pkg skips the
-#             download, the hash is absent from the layer, and the IMAGE Overrides.toml
-#             is what ships (naming the in-image path, not this machine's)
+#             download, the hash is absent from the layer, and the image Overrides.toml
+#             ships (naming the in-image path, not this machine's)
 #   broken    the override points at a directory that does not exist, Pkg downloads the
 #             artifact, and the script fails instead of producing that image
-#   quoted    the same broken case with the hash written as a quoted TOML key, which is
-#             equally valid TOML and must not slip past the check
+#   quoted    the broken case with the hash written as a quoted TOML key, which is equally
+#             valid TOML and must be caught too
 #
-# It also covers the guard on the pair itself: a build-time override with no image-time
-# one would ship this host's paths, and is refused before any work happens.
+# It also covers the pairing guard: a build-time override with no image-time one would ship this
+# host's paths, so the script refuses it before doing any work.
 #
-# The artifact hash is not hard-coded. It is measured with the module's own
-# artifact_paths.jl, which is what a consumer writing an override has to do anyway.
+# The artifact hash is not hard-coded. It is measured with the module's artifact_paths.jl, as a
+# consumer writing an override must do.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -51,8 +50,8 @@ esac
 [ "${#hash}" -eq 40 ] || fail "expected a 40 character artifact hash, got '$hash'"
 
 # --- the correct override ---------------------------------------------------------
-# A stand-in for a locally built bzip2. Its contents do not matter: what matters is that
-# the directory exists, because that is what makes Pkg treat the artifact as installed.
+# A stand-in for a locally built bzip2. Only the directory's existence matters: it makes Pkg
+# treat the artifact as installed.
 local_build="$TEST_TMPDIR/local-bzip2"
 mkdir -p "$local_build/lib"
 : > "$local_build/lib/libbz2.so.1.0.8"
@@ -60,9 +59,8 @@ mkdir -p "$local_build/lib"
 printf '%s = "%s"\n' "$hash" "$local_build" > "$TEST_TMPDIR/overrides-build.toml"
 printf '%s = "%s"\n' "$hash" "/opt/julia-depot/local/bzip2" > "$TEST_TMPDIR/overrides-image.toml"
 
-# The floor goes to zero deliberately: the project's only artifact is the overridden
-# one, so a correct build produces an EMPTY artifacts directory, and the default floor
-# of one would call that a failure.
+# The floor is zero because the project's only artifact is the overridden one, so a correct
+# build produces an empty artifacts directory, which the default floor of one would reject.
 env JULIA_DEPOT_BIN="$julia_bin" \
     JULIA_DEPOT_PATH="$src_depot" \
     JULIA_DEPOT_CONTENTS=artifacts \
@@ -72,7 +70,7 @@ env JULIA_DEPOT_BIN="$julia_bin" \
     "$image_depot" "$project" "$TEST_TMPDIR/overridden.tar"
 
 listing="$(tar -tf "$TEST_TMPDIR/overridden.tar")"
-# Here-strings rather than pipes: see image_depot_modes_test.sh.
+# Search with here-strings; see image_depot_modes_test.sh for why.
 if grep -q "^opt/julia-depot/artifacts/$hash/" <<<"$listing"; then
     fail "artifact $hash was shipped despite being overridden to $local_build"
 fi
@@ -115,8 +113,8 @@ $output" ;;
 esac
 
 # --- the same break, written as a quoted TOML key ---------------------------------
-# A quoted key is the spelling Julia's own documentation uses, and a check that only
-# reads bare keys passes this file while silently checking nothing.
+# Julia's documentation writes the key quoted, and a check that reads only bare keys would pass
+# this file without checking anything.
 printf '"%s" = "%s"\n' "$hash" "$TEST_TMPDIR/was-never-built" > "$TEST_TMPDIR/overrides-quoted.toml"
 
 rc=0

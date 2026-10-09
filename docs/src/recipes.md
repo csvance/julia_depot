@@ -1,14 +1,14 @@
 # Recipes
 
 Every recipe has the same shape: source the depot's `env.sh`, take Julia by label so no
-machine path enters an action key, and run a script. `no-sandbox` rather than `local` on
-the actions that need the depot at its real path: both let the action see it, but `local`
-also disables remote caching.
+machine path enters an action key, and run a script. Actions that need the depot at its
+real path are tagged `no-sandbox`. `local` would also let them see it, but it disables
+remote caching too.
 
 The scripts' own variables are spelled `JULIA_DEPOT_*`, beside Julia's `JULIA_DEPOT_PATH`.
-Before 0.1.1 they were `RULES_JULIA_DEPOT_*`; that spelling still works, with a deprecation
-warning, and a hook is still given `RULES_JULIA_DEPOT_BIN` too, until a future release raises
-the module's compatibility level.
+Before 0.1.1 they were `RULES_JULIA_DEPOT_*`. Until a future release raises the module's
+compatibility level, that spelling still works with a deprecation warning, and a hook is
+also given `RULES_JULIA_DEPOT_BIN`.
 
 ## A depot layer for an image
 
@@ -39,11 +39,11 @@ $(location @julia_depot//julia:image_depot.sh) "$$(dirname $(location Manifest.t
 ```
 
 The tar unpacks at `opt/julia-depot` (`JULIA_DEPOT_IMAGE_PREFIX` to change it) and holds
-`artifacts/` only. That is right when a sysimage carries the code. For an image that loads
+`artifacts/` only, which suffices when a sysimage carries the code. For an image that loads
 packages from source, set `JULIA_DEPOT_CONTENTS=full` to ship `packages/` too. Set
-`JULIA_PKG_SERVER` in the command if your packages come from a private server; the script
+`JULIA_PKG_SERVER` in the command if your packages come from a private server. The script
 copies the source depot's registries and server credentials into the clean depot for the
-duration of the instantiate and never into the layer.
+instantiate only; they never reach the layer.
 
 Stack it with `rules_oci`: a base image, this layer, the Julia distribution as a layer,
 and your application, with the depot first in the image's `JULIA_DEPOT_PATH` and the
@@ -110,7 +110,7 @@ the environment matches the manifest by the time the script runs.
 Give the depot a `hook`: an executable run before instantiate with `JULIA_DEPOT_BIN` and
 `JULIA_DEPOT_PATH` set, plus any variables named in `hook_environ`, which also become
 inputs so a change refetches. The hook adds the registry and writes the package server
-credential into the depot; it is yours, and the module knows nothing about it.
+credential into the depot. You write the hook; the module knows nothing about what it does.
 
 ```python
 julia.depot(
@@ -139,18 +139,18 @@ julia.depot(
 
 `{HOME}` and `{USER}` expand from the fetch environment and are registered as inputs, so another
 user refetches rather than reusing a depot conformed for someone else. The directory is created
-before the hook runs, and `env.sh` exports it with a trailing separator so Julia's bundled depots
-stay on the path. Consumers that want a writable depot in front of it (a per-sandbox scratch
-depot, say) prepend to `JULIA_DEPOT_PATH` after sourcing `env.sh`; Julia writes to the first entry
-and reads packages, artifacts and compiled caches from all of them. Note that Pkg reads
+before the hook runs, and `env.sh` exports it with a trailing separator so Julia's bundled
+depots stay on the path. Consumers that want a writable depot in front of it (a per-sandbox
+scratch depot, say) prepend to `JULIA_DEPOT_PATH` after sourcing `env.sh`; Julia writes to the
+first entry and reads packages, artifacts and compiled caches from all of them. Pkg reads
 package-server credentials (`servers/<host>/auth.toml`) from the first depot only, so a front
 depot needs its own copy when the environment resolves through a private server.
 
 ## A shared depot behind a declared one
 
-When the host already has a depot that holds most of what the manifest needs, a host-wide
-one maintained by someone else, say, stack it behind `dir` rather than downloading and
-precompiling it all again for every user:
+When the host already has a depot that holds most of what the manifest needs, such as a
+host-wide one maintained by someone else, stack it behind `dir` so that each user does not
+download and precompile it all again:
 
 ```python
 julia.depot(
@@ -166,23 +166,22 @@ julia.depot(
 expand like `dir` and need it. Julia reads from every entry and writes only to the first, and
 Pkg installs nothing a later entry already has, so the per-user depot holds only what the
 shared one lacks. A host without the shared depot fetches into `dir` alone. Whether each
-read-only depot exists is an input, but not what is in it: if the shared depot is pruned of
+read-only depot exists is an input; its contents are not. If the shared depot is pruned of
 something the environment used, refetch with `bazel fetch --force @app_depot`. A refetch
-cannot repair a file damaged in place in the shared depot; that has to be fixed there.
+cannot repair a file damaged in place in the shared depot; it must be repaired there.
 
-This is deliberately not hermetic. Julia loads what the shared depot holds without checking it
-against the Manifest's hashes, so the shared depot is trusted code, and an
-`artifacts/Overrides.toml` in it redirects artifacts for every user; see
-[what is not hermetic](contract.md#What-is-not-hermetic).
+This is not hermetic. Julia loads what the shared depot holds without checking it against the
+Manifest's hashes, so the shared depot is trusted code, and an `artifacts/Overrides.toml` in it
+redirects artifacts for every user; see [what is not
+hermetic](contract.md#What-is-not-hermetic).
 
 ## Loading an image with podman on a host that also has docker
 
-Not Julia-specific, but it costs an afternoon the first time. `rules_oci`'s `oci_load` probes
-`command -v docker` first and falls back to podman only when that fails, so on a host where a
-docker CLI is installed but its socket is not reachable the probe wins and the load dies with
-"permission denied while trying to connect to the docker API". Name the loader instead of
-depending on which CLIs happen to be on PATH: a one-line script, exported as a file, because
-`loader` must be a single file and an `sh_binary` brings runfiles with it.
+This is not Julia-specific. `rules_oci`'s `oci_load` probes `command -v docker` first and
+falls back to podman only when that fails, so on a host where a docker CLI is installed but
+its socket is not reachable, the load fails with "permission denied while trying to connect
+to the docker API". Name the loader explicitly with a one-line script, exported as a file,
+because `loader` must be a single file and an `sh_binary` brings runfiles with it.
 
 ```bash
 #!/usr/bin/env bash

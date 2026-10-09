@@ -1,24 +1,22 @@
 #!/usr/bin/env bash
-# Refuse to publish anything that carries a private reference.
+# Fails if any file that would be published contains a private reference.
 #
-# This module was extracted from a closed repository, and everything that leaks out of
-# such an extraction is textual: an internal hostname left in an example, a package
-# server URL in a comment, an absolute path from the developer's machine in a committed
-# file. None of them break a build, which is exactly why a check has to look for them
-# rather than a test failing.
+# This module was extracted from a closed repository, and what leaks from such an extraction
+# is textual: an internal hostname in an example, a package server URL in a comment, an
+# absolute path from a developer's machine in a committed file. None of these breaks a build
+# or a test, so this check searches for them.
 #
-# THE PATTERNS ARE GENERIC, and they live in private_ref_patterns.txt beside this file.
-# A committed list of one organisation's hostnames would publish those hostnames, which
-# is the thing being prevented. Site-specific literals go in a file of your own, named
-# by PRIVATE_REF_PATTERNS_EXTRA, which is read if it is set and is never committed here.
+# Patterns: the committed ones, in private_ref_patterns.txt beside this file, are generic,
+# because a committed list of one organisation's hostnames would publish those hostnames.
+# Put site-specific literals in an uncommitted file of your own and name it in
+# PRIVATE_REF_PATTERNS_EXTRA, which is read when set.
 #
-# THE SCOPE is the tree as it would be published: files git tracks, plus files that are
-# untracked and not ignored, since those are one `git add` away. Whatever git ignores is
-# out of scope, which is what keeps bazel-out, a Julia depot and MODULE.bazel.lock from
-# being scanned. The pattern files themselves are excluded, since a pattern matches
-# itself.
+# Scope: the tree as it would be published, meaning files git tracks plus untracked files
+# that are not ignored, since those are one `git add` away. Ignored files are skipped, which
+# keeps bazel-out, a Julia depot and MODULE.bazel.lock out of the scan. The pattern files are
+# excluded because each pattern matches itself.
 #
-# Run it from anywhere in the repository. It exits non-zero listing every hit.
+# Run it from anywhere in the repository. It lists every hit and exits non-zero.
 set -euo pipefail
 
 cd "$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"

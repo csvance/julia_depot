@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # sysimage.sh installs its own PackageCompiler environment into a depot that lacks it.
 #
-# Every other sysimage test runs on a depot that a `julia.depot` over the module's
-# PackageCompiler environment has already filled, so none of them can tell whether
-# sysimage.sh would have worked without it. A consumer following docs/src/recipes.md declares
-# no such depot, and on a fresh one the script used to die inside `using PackageCompiler`.
+# Every other sysimage test runs on a depot already filled by a `julia.depot` over the module's
+# PackageCompiler environment, so none can tell whether sysimage.sh works without it. A consumer
+# following docs/src/recipes.md declares no such depot, and on a fresh depot the script used to
+# fail inside `using PackageCompiler`.
 #
-# THE DEPOT IS EMPTY AND OWNED BY THIS TEST: no fetched depot sits behind it, only the
-# distribution's bundled ones. Layering it over a shared depot would let PackageCompiler
-# be found there, and the test would pass without exercising anything. For the same
-# reason it asserts that the install line was printed and that PackageCompiler landed in
-# this depot, rather than inferring both from a successful build.
+# The depot is empty and owned by this test, with only the distribution's bundled depots behind
+# it. Layering it over a shared depot would let PackageCompiler be found there, and the test would
+# pass without exercising the install. For the same reason it asserts that the install line was
+# printed and that PackageCompiler is in this depot, instead of inferring both from a successful
+# build.
 #
 # Network: the project, the General registry and PackageCompiler are all downloaded.
 set -euo pipefail
@@ -25,8 +25,8 @@ depot="$TEST_TMPDIR/fresh-depot"
 mkdir -p "$depot"
 export JULIA_DEPOT_PATH="$depot:$(bundled_depots "$julia_bin")"
 
-# The project's own packages, as julia.depot would have put them there. PackageCompiler
-# is not among them, which is checked rather than assumed.
+# Install the project's own packages, as julia.depot would. Check that PackageCompiler is not
+# among them.
 "$julia_bin" --startup-file=no --project="$project" -e 'using Pkg; Pkg.instantiate()' \
     > "$TEST_TMPDIR/project.log" 2>&1 ||
     fail "could not instantiate the project into the fresh depot:
@@ -36,8 +36,9 @@ $(cat "$TEST_TMPDIR/project.log")"
 
 out="$TEST_TMPDIR/sysimage.so"
 log="$TEST_TMPDIR/sysimage.log"
-# generic, not sysimage.sh's portable default: this tests that the environment is installed, and
-# compiling four CPU clones per build ran a CI runner out of memory with the builds in parallel.
+# CPU target generic instead of sysimage.sh's portable default: this test is about installing the
+# environment, and compiling four CPU clones per build, with builds in parallel, ran a CI runner
+# out of memory.
 env JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
     JULIA_DEPOT_SYSIMAGE_CPU_TARGET="generic" \
     "$sysimage_sh" "$project" auto "$out" > "$log" 2>&1 ||

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # sysimage.sh refuses a PackageCompiler environment resolved under another Julia minor.
 #
-# PackageCompiler's compat bounds and its precompile cache are both keyed on the Julia
-# minor, so an environment pinned for one minor and used under another fails deep inside
-# PackageCompiler, minutes into a build, with a message about something else. The script
-# checks the pin up front instead. This drives the explicit-project branch, where the
-# consumer named the environment rather than saying `auto`, which is the case where
-# getting it wrong is possible at all.
+# PackageCompiler's compat bounds and its precompile cache are both keyed on the Julia minor, so an
+# environment pinned for one minor and used under another fails deep inside PackageCompiler,
+# minutes into a build, with an unrelated message. The script checks the pin up front. This test
+# drives the explicit-project branch, where the consumer names the environment instead of using
+# `auto`; only that branch can get the minor wrong.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -41,8 +40,7 @@ esac
 [ ! -e "$TEST_TMPDIR/sysimage.so" ] ||
     fail "sysimage.sh wrote an image despite refusing the environment"
 
-# The missing-packages variable is a separate guard, and it has to fire before any of
-# the slow work rather than after PackageCompiler has started.
+# The missing-packages guard is separate, and must fire before any slow work starts.
 rc=0
 output="$(
     env JULIA_DEPOT_BIN="$julia_bin" JULIA_DEPOT_PATH="$TEST_TMPDIR/depot" \
@@ -55,8 +53,8 @@ case "$output" in
 $output" ;;
 esac
 
-# The same run with only the pre-0.1.1 spellings, RULES_JULIA_DEPOT_*: still honoured, each
-# with a deprecation warning, and refused for the same reason.
+# The same run with only the pre-0.1.1 RULES_JULIA_DEPOT_* spellings: each is still honoured with
+# a deprecation warning, and the environment is refused for the same reason.
 rc=0
 output="$(
     env -u JULIA_DEPOT_BIN -u JULIA_DEPOT_SYSIMAGE_PACKAGES \

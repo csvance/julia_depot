@@ -1,13 +1,12 @@
-# A deliberately tiny environment for the end-to-end tests, resolved under Julia 1.13 and
-# pinned by the Manifest.toml beside this file. Two dependencies, chosen for what they
-# exercise rather than for what they do:
+# A minimal environment for the end-to-end tests, resolved under Julia 1.13 and pinned by
+# the Manifest.toml beside this file. Two dependencies, chosen for what they exercise:
 #
 #   Bzip2_jll  a JLL, so there is exactly one artifact to find in an image layer, to
 #              override, and to measure with artifact_paths.jl. Half a megabyte.
 #   Crayons    pure Julia with no dependencies of its own, so a sysimage of it builds
-#              in the time PackageCompiler needs and not a minute more.
+#              in PackageCompiler's minimum time.
 #
-# Resolved against the PUBLIC package server. The Testing section of the top-level
+# Resolved against the public package server. The Testing section of the top-level
 # README.md has the command that regenerates this and the Manifest beside it.
 [deps]
 Bzip2_jll = "6e34b625-4abd-537c-b88f-471c36dfa7a0"

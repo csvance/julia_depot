@@ -1,8 +1,8 @@
 name: julia 1.12
 
-# The end-to-end suite on Julia 1.12; the steps are in e2e.yml. One file per supported
-# version, so each has its own status badge in the README. Adding a version means copying
-# this file with the version and tag changed, and adding its badge.
+# The end-to-end suite on Julia 1.12. The steps are in e2e.yml. Each supported version has
+# its own file, and so its own status badge in the README. To add a version, copy this file,
+# change the version and tag, and add its badge.
 
 on:
   push:

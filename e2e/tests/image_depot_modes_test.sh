@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 # image_depot.sh builds a layer holding exactly what each mode promises.
 #
-# `artifacts` is for an image whose code comes from a sysimage, so the layer carries
-# native libraries and nothing else. `full` is for an image with no sysimage, which
-# loads its packages from source and therefore needs packages/ too. The difference
-# between them is the entire reason the switch exists, so both are listed and compared.
+# `artifacts` is for an image whose code comes from a sysimage, so the layer carries only native
+# libraries. `full` is for an image with no sysimage, which loads its packages from source and
+# needs packages/ too. Both modes are built and checked against that difference.
 #
-# The layer is also checked for what must never be in it. The script copies the source
-# depot's servers/ into its clean depot so a private package server resolves the way the
-# developer's does, and servers/ holds credentials. Those exist during the build and must
-# not leave it.
+# The layer must never carry servers/ or registries/. The script copies the source depot's
+# servers/ into its clean depot so a private package server resolves as it does for the developer,
+# and servers/ holds credentials that must not leave the build.
 #
-# Listings are searched as here-strings, never piped: under pipefail, `printf | grep -q`
-# fails whenever grep matches and exits before printf has written the rest, which a loaded
-# CI runner does often enough to fail a layer that is correct.
+# Listings are searched as here-strings: under pipefail, `printf | grep -q` fails whenever grep
+# matches and exits before printf has written the rest, which happens often enough on a loaded CI
+# runner to fail a correct layer.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -53,8 +51,8 @@ hash_dirs="$(printf '%s\n' "$artifacts_listing" |
     fail "no opt/julia-depot/artifacts/<hash>/ in the artifacts-mode layer:
 $artifacts_listing"
 
-# The one JLL in the project is Bzip2_jll, so its native library is what an image would
-# actually be missing if the artifact selection silently came up empty.
+# The project's one JLL is Bzip2_jll, so its native library is what an image would be missing if
+# the artifact selection came up empty.
 grep -qE '^opt/julia-depot/artifacts/[0-9a-f]{40}/.*libbz2' <<<"$artifacts_listing" ||
     fail "the artifact layer has no libbz2 under it:
 $artifacts_listing"

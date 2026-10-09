@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Prints the notes for one version from CHANGELOG.md, its `## <version>` section without the
-# heading, with the remaining headings raised one level so they sit at the top of a release
-# or a pull request body.
+# Prints one version's notes from CHANGELOG.md: its `## <version>` section without the
+# heading, with the remaining headings raised one level for the top of a release or pull
+# request body.
 #
 # Usage: release_notes.sh <version> [<changelog>]
 #
-# Fails when the section is missing or empty. It is the one source of the notes: release_prep.sh
-# puts them in the GitHub release, release.yaml puts them in the BCR pull request, and ci.yml
-# runs this on MODULE.bazel's version so a version bump without notes fails before it is tagged.
+# Fails when the section is missing or empty. This is the only source of the notes:
+# release_prep.sh puts them in the GitHub release and release.yaml, through bcr_notes.sh, in the
+# BCR pull request. ci.yml runs this on MODULE.bazel's version, so a version bump without notes
+# fails before it is tagged.
 
 set -o errexit -o nounset -o pipefail
 
 VERSION="${1:?usage: release_notes.sh <version> [<changelog>]}"
 CHANGELOG="${2:-CHANGELOG.md}"
 
-# Wrapped lines are joined: GitHub renders a newline in a release or pull request body as a
-# line break, so CHANGELOG.md's wrapping would show. A line continues the one before it unless
-# either is blank, it starts a heading, a list item, a table row or a quote, or it is inside a
-# code fence.
+# Join wrapped lines, because GitHub renders a newline in a release or pull request body as a
+# line break. A line continues the one before it unless either is blank, it starts a heading,
+# list item, table row or quote, or it is inside a code fence.
 notes="$(awk -v heading="## ${VERSION}" '
     function flush() { if (held != "") print held; held = "" }
     $0 == heading { inside = 1; next }

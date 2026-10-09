@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# The layers hold what each one promises, and every entry in them is normalised.
+# Each layer holds what it should, and every entry in it is normalised.
 #
 # Usage: image_layers_test.sh <dist.tar> <depot.tar> <compiled.tar> <image env> <minor>
 #
-# Normalised means: owned by 0:0 by number, mtime the epoch, and one of four modes (0755 for
-# directories and executables, 0644 for other files, and symlinks, which have no mode of their
-# own). A layer that leaks the builder's uid, a build-time mtime or a umask is a layer whose digest
-# depends on who built it and when, and a read-only file from Pkg would stay read-only in the image.
+# Normalised: owner 0:0 by number, mtime the epoch, and mode 0755 for directories and executables
+# or 0644 for other files (symlinks have no mode of their own). A layer that leaks the builder's
+# uid, a build-time mtime or a umask has a digest that depends on who built it and when, and a
+# read-only file from Pkg would stay read-only in the image.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../tests/common.sh"
 
@@ -16,8 +16,8 @@ compiled="$(abspath "$3")"
 image_env="$(abspath "$4")"
 minor="$5"
 
-# Listed once into a file, then searched: `tar | grep -q` under pipefail fails whenever grep
-# finds its match early and tar dies of the closed pipe.
+# List each tar once into a file and search the file: under pipefail, `tar | grep -q` fails
+# whenever grep matches early and tar fails on the closed pipe.
 listing() {
     local f="$TEST_TMPDIR/$(basename "$1").verbose"
     [ -f "$f" ] || tar --list --verbose --numeric-owner --full-time --file "$1" > "$f"
@@ -51,7 +51,7 @@ done
 # --- the distribution -----------------------------------------------------------------------
 grep -qE '^-rwxr-xr-x .* opt/julia/bin/julia$' <(listing "$dist") ||
     fail "the dist layer has no executable opt/julia/bin/julia"
-# The distribution's own relative links survive, rather than each becoming a second copy.
+# The distribution's relative symlinks are preserved as symlinks.
 grep -qE '^lrwxr-xr-x .* opt/julia/lib/libjulia\.so -> libjulia\.so\.' <(listing "$dist") ||
     fail "the dist layer lost the libjulia.so symlink"
 if grep -qE '^opt/julia/(BUILD\.bazel|REPO\.bazel|WORKSPACE)$' <(names "$dist"); then

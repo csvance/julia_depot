@@ -1,33 +1,32 @@
-# MEASUREMENT TOOL. Do NOT use this to define an image's artifact layer.
+# Measurement tool. Do not use it to define an image's artifact layer.
 #
 # Prints one absolute artifact directory per line for the packages in the active
 # manifest, by walking each package's Artifacts.toml.
 #
-# It is tempting to assume a static walk is a safe superset of what a process loads at
-# runtime. That is false, and it was measured to be false, which is why the warning
-# above exists (one server, 210-package manifest):
+# A static walk is not a superset of what a process loads at runtime. Measured on one
+# server with a 210-package manifest:
 #
 #   static walk, HostPlatform()      17 directories
 #   actually resolved at runtime      19 (18 artifacts + the Julia install dir)
 #
 # The gap is HDF5_jll. It ships `.pkg/platform_augmentation.jl` and tags its artifact
-# entries with `mpi`, so selection needs a platform *augmented* by the package's own
-# code. A plain HostPlatform() carries no `mpi` tag, matches nothing, and the artifact
-# is dropped with no error. Any package may do this, so no fixed platform makes the
-# walk trustworthy.
+# entries with `mpi`, so selection needs a platform augmented by the package's own
+# code. A plain HostPlatform() has no `mpi` tag, matches nothing, and the artifact is
+# dropped without an error. Any package may do this, so no fixed platform makes the
+# walk complete.
 #
 # The other difference is benign: the stdlib JLLs (OpenBLAS, LibCURL, Zlib and ten
-# more) resolve into the Julia installation directory rather than the depot, because
-# they ship inside the Julia distribution. The base image provides those, so they are
-# not layer content.
+# more) resolve into the Julia installation directory, not the depot, because they ship
+# inside the Julia distribution. The base image provides those, so they are not layer
+# content.
 #
-# THE CORRECT WAY TO BUILD THE LAYER is to instantiate the Manifest into a dedicated
-# empty depot and take that depot's artifacts/ wholesale. Pkg performs the augmented
-# platform selection itself, so the result is complete and minimal by construction,
-# with no enumeration heuristic to be wrong. A developer depot is large only because it
-# accumulates every project on the machine; a Manifest-scoped depot holds one project's.
+# To build the layer, instantiate the Manifest into a dedicated empty depot and take
+# that depot's artifacts/ whole. Pkg performs the augmented platform selection itself,
+# so the result is complete and minimal with no enumeration heuristic. A developer
+# depot is large only because it accumulates every project on the machine; a
+# Manifest-scoped depot holds one project's.
 #
-# What this script is still good for: measuring the expected size, and cross-checking a
+# This script is still useful for measuring the expected size, and for cross-checking a
 # built layer against the manifest to catch a depot that was never fully instantiated
 # (it reports hashes it could not resolve to a present directory).
 

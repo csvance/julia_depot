@@ -1,6 +1,5 @@
-# Build-time only, and deliberately an ENVIRONMENT rather than a package (no name or
-# uuid): PackageCompiler is a tool, not a dependency of the project, so it gets its own
-# pinned project rather than entering julia/Manifest.toml. Pinned the same way
-# everything else here is, by a committed Manifest.toml beside this file.
+# Build-time only. An environment, not a package (no name or uuid): PackageCompiler is a tool,
+# not a dependency of the project, so it has its own project and stays out of
+# julia/Manifest.toml. Pinned by the committed Manifest.toml beside this file.
 [deps]
 PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"

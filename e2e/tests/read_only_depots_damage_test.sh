@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# What a damaged read-only depot does to the environment stacked in front of it. The rule does not
-# watch a read-only depot's contents (docs/src/contract.md, "What is not hermetic"), so each case is
-# damage done AFTER the fetch, and the question is what loading the environment then does and
-# whether a refetch, which is instantiate.sh run again on the same path, repairs it.
+# What a read-only depot damaged after the fetch does to the environment stacked in front of it,
+# and whether a refetch (instantiate.sh run again on the same path) repairs it. The rule does not
+# watch a read-only depot's contents (docs/src/contract.md, "What is not hermetic"), so all damage
+# here is done after the fetch.
 #
-# Each case damages its own copy of the shared depot read_only_depots_1_12's hook seeded, behind an
-# empty `dir`, so nothing the fetch filled is touched. The outcomes, as Julia behaves today:
+# Each case damages its own copy of the shared depot that read_only_depots_1_12's hook seeded,
+# behind an empty `dir`, so nothing the fetch filled is touched. The outcomes with current Julia:
 #
 #   package removed            load fails; refetch installs it into `dir`
 #   artifact removed           load fails; refetch installs it into `dir`
-#   artifact library truncated load fails; refetch does NOT repair it, the directory is present
+#   artifact library truncated load fails; refetch does not repair it, the directory is present
 #   compiled cache corrupted   rejected and recompiled into `dir`; loads correctly
 #   package source modified    loads the modified code, silently; refetch does not notice
 #   Overrides.toml added       redirects the artifact, silently
 #
-# The last two are the trust the contract page describes, asserted so the page stays true: if
-# Julia starts verifying what it loads, they fail here, and the page should change with them.
+# The last two are the trust the contract page describes. They are asserted so the page stays
+# accurate: if Julia starts verifying what it loads, they fail here and the page must change.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -108,8 +108,8 @@ grep -qx "artifact=$case_dir/dir/artifacts/$bz2_hash" <<<"$output" ||
 $output"
 
 # --- artifact library truncated: an error, and a refetch does not repair it ---
-# Pkg takes an artifact directory that exists as installed, so the damage stays in front of the
-# fix: only whoever maintains the shared depot can repair it, or `dir` must stop stacking it.
+# Pkg treats an existing artifact directory as installed, so the refetch leaves the damaged one
+# in place. Only the shared depot's maintainer can repair it, or `dir` must stop stacking it.
 new_case artifact_truncated
 lib="$(find "$case_dir/shared/artifacts/$bz2_hash/lib" -name 'libbz2.so.*' -type f | head -n 1)"
 [ -n "$lib" ] || fail "no libbz2.so.* file in the artifact to truncate"

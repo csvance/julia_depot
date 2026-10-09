@@ -2,14 +2,14 @@
 # .github/workflows/Documenter.yml. This repository is a Bazel module, not a Julia
 # package, so there are no modules or docstrings to document: the site is the prose
 # in docs/src, rendered with MaterialDocs' Material3 writer and a DocumenterLandingPage
-# home page. DocumenterCodeBlocks is left out on purpose: its value is Julia highlighting
-# and docstring links, and the code here is Starlark and shell.
+# home page. DocumenterCodeBlocks is not used: it adds Julia highlighting and docstring
+# links, and the code here is Starlark and shell.
 using Documenter
 using DocumenterLandingPage
 using MaterialDocs
 
-# The version this build documents, from the module itself, so a versioned deploy never
-# claims another one. release_prep.sh refuses a tag that disagrees with it.
+# The version this build documents, read from MODULE.bazel so a versioned deploy always
+# names the module's own version. release_prep.sh refuses a tag that disagrees with it.
 const MODULE_VERSION = match(
     r"^\s*version\s*=\s*\"([^\"]+)\""m,
     read(joinpath(@__DIR__, "..", "MODULE.bazel"), String),
