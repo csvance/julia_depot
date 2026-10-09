@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recipes — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=b7602117">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=478853f4">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Recipes — julia_depot">
   <meta property="og:title" content="Recipes — julia_depot">
@@ -65,22 +65,19 @@
 
 julia_sysimage(
     name = &quot;app_sysimage&quot;,
-    project = &quot;Project.toml&quot;,
-    manifest = &quot;Manifest.toml&quot;,
-    srcs = glob([&quot;src/**&quot;]),
     depot = &quot;@my_depot&quot;,
-    julia = &quot;@julia_dist&quot;,
+    srcs = glob([&quot;src/**&quot;]),
     packages = [&quot;MyApp&quot;],
 )</code></pre>
 </div>
-<p><code class="md-code-inline">bazel build //:app_sysimage</code> writes <code class="md-code-inline">app_sysimage.so</code>; start Julia with <code class="md-code-inline">julia --sysimage &lt;file&gt;</code>. The packages come from the depot the fetch already instantiated, which the build only reads, so it runs sandboxed and is cached like any other action. <code class="md-code-inline">srcs</code> are the project&#39;s own files, staged at their paths relative to <code class="md-code-inline">Project.toml</code>; list everything the baked packages load, since a file left out is invisible to the build and a change to it does not rebuild the sysimage.</p>
+<p><code class="md-code-inline">bazel build //:app_sysimage</code> writes <code class="md-code-inline">app_sysimage.so</code>; start Julia with <code class="md-code-inline">julia --sysimage &lt;file&gt;</code>. The depot brings the rest: the Julia it was fetched with, and the <code class="md-code-inline">Project.toml</code> and Manifest it was instantiated for, so the sysimage cannot be built against a Manifest the depot does not hold. The build only reads the depot, so it runs sandboxed and is cached like any other action. <code class="md-code-inline">srcs</code> are the project&#39;s own files, staged at their paths relative to the directory the Manifest is in; list everything the baked packages load, since a file left out is invisible to the build and a change to it does not rebuild the sysimage.</p>
 <p>A build may need a file outside the project, such as a configuration file a package reads while it is compiled. Put it in <code class="md-code-inline">data</code> and pass its path through <code class="md-code-inline">env</code>: <code class="md-code-inline">$(execpath ...)</code> expands for <code class="md-code-inline">data</code>, and <code class="md-code-inline">{execroot}</code> to the absolute execution root.</p>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
 <pre><code class="language-python">    data = [&quot;//:config.toml&quot;],
     env = {&quot;MY_APP_CONFIG&quot;: &quot;{execroot}/$(execpath //:config.toml)&quot;},</code></pre>
 </div>
-<p>The default CPU target is the portable list for the target platform, which runs on any CPU of that architecture and makes the build slower; <code class="md-code-inline">cpu_target = &quot;generic&quot;</code> builds once, for a baseline CPU. The sysimage is linked by the module&#39;s pinned C compiler; see <a href="../contract/#The-compiler-that-links-it">the compiler that links it</a> for <code class="md-code-inline">cc</code> and <code class="md-code-inline">system_cc</code>. For an image, <code class="md-code-inline">julia_sysimage_layer</code> is the same build as a layer; see <a href="../images/">Images</a>.</p>
+<p>The default CPU target is the portable list for the target platform, which runs on any CPU of that architecture and makes the build slower; <code class="md-code-inline">cpu_target = &quot;generic&quot;</code> builds once, for a baseline CPU. The sysimage is linked by the module&#39;s pinned C compiler; see <a href="../contract/#The-compiler-that-links-it">the compiler that links it</a> for <code class="md-code-inline">cc</code> and <code class="md-code-inline">system_cc</code>. For an image, <code class="md-code-inline">julia_sysimage_layer(name = &quot;app_sysimage_layer&quot;, sysimage = &quot;:app_sysimage&quot;)</code> ships that same file as a layer, so the sysimage is compiled once; see <a href="../images/">Images</a>.</p>
 <p>Beside the sysimage the rule writes <code class="md-code-inline">app_sysimage.inputs.json</code>, its declared inputs by sha256. The sysimage&#39;s own bytes differ between builds, so compare this file instead to check that two sysimages were built from the same inputs; <code class="md-code-inline">--output_groups=inputs</code> builds it alone. See <a href="../contract/#The-inputs-file">the inputs file</a>.</p>
 <h2 id="A-depot-layer-for-an-image" class="md-heading">A depot layer for an image<a href="#A-depot-layer-for-an-image" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <div class="md-code-block">
@@ -89,13 +86,10 @@ julia_sysimage(
 
 julia_depot_layer(
     name = &quot;depot_layer&quot;,
-    project = &quot;Project.toml&quot;,
-    manifest = &quot;Manifest.toml&quot;,
     depot = &quot;@my_depot&quot;,
-    julia = &quot;@julia_dist&quot;,
 )</code></pre>
 </div>
-<p>The tar unpacks at <code class="md-code-inline">/opt/julia-depot</code> (<code class="md-code-inline">prefix</code> to change it) and holds <code class="md-code-inline">artifacts/</code> only, which suffices when a sysimage carries the code. For an image that loads packages from source, set <code class="md-code-inline">contents = &quot;full&quot;</code> to ship <code class="md-code-inline">packages/</code> too. With <code class="md-code-inline">depot</code>, the registries and package server credentials of that depot are copied into a clean depot for the instantiate only; they never reach the layer. Set <code class="md-code-inline">JULIA_PKG_SERVER</code> with <code class="md-code-inline">--action_env</code> if your packages come from a private server. See <a href="../images/">Images</a> for the rest of the image.</p>
+<p>The tar unpacks at <code class="md-code-inline">/opt/julia-depot</code> (<code class="md-code-inline">prefix</code> to change it) and holds <code class="md-code-inline">artifacts/</code> only, which suffices when a sysimage carries the code. For an image that loads packages from source, set <code class="md-code-inline">contents = &quot;full&quot;</code> to ship <code class="md-code-inline">packages/</code> too. The depot&#39;s registries and package server credentials are copied into the clean depot for the instantiate only, and never reach the layer; <code class="md-code-inline">fresh_registry = True</code> fetches the registry instead. Set <code class="md-code-inline">JULIA_PKG_SERVER</code> with <code class="md-code-inline">--action_env</code> if your packages come from a private server. See <a href="../images/">Images</a> for the rest of the image.</p>
 <h3 id="Substituting-a-locally-built-artifact" class="md-heading">Substituting a locally built artifact<a href="#Substituting-a-locally-built-artifact" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
 <p>When a JLL&#39;s registry artifact must be replaced, for instance by a library built from a patched source, ship the replacement in its own layer at a fixed path and give the depot layer two override files:</p>
 <div class="md-code-block">
@@ -187,6 +181,6 @@ oci_load(
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=b7602117"></script>
+  <script src="../assets/materialdocs.js?v=478853f4"></script>
 </body>
 </html>

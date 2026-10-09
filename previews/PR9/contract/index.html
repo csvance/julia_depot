@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>The contract — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=6921dd67">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=c7736b33">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="The contract — julia_depot">
   <meta property="og:title" content="The contract — julia_depot">
@@ -99,7 +99,7 @@
 <h3 id="The-compiler-that-links-it" class="md-heading">The compiler that links it<a href="#The-compiler-that-links-it" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
 <p>PackageCompiler links the sysimage with a C compiler. Left to itself it takes the first of g++, clang++, gcc and clang on the host&#39;s <code class="md-code-inline">PATH</code>, and the sysimage then depends on that compiler and on the host&#39;s C library, neither of which is an input of the action. Two hosts with different compilers would produce different sysimages under the same cache key, and a sysimage linked against a newer glibc than another host has would not load there. So the compiler is a declared input, chosen explicitly:</p>
 <ul class="md-list-tight">
-<li><p><strong>Pinned</strong>, the default for <code class="md-code-inline">julia_sysimage_layer</code>: a <code class="md-code-inline">julia.cc</code> repository, zig fetched by sha256 and run as <code class="md-code-inline">zig cc -target &lt;arch&gt;-linux-gnu.&lt;glibc&gt;</code>. One tarball holds the compiler, the linker and the glibc stubs, so every host links against the same C library. The module declares one itself, <code class="md-code-inline">@julia_depot_cc</code>, targeting glibc 2.17 like the official Julia builds; a sysimage linked for it loads on any glibc from 2.17 up. Declare your own with <code class="md-code-inline">julia.cc</code> for another zig or glibc. The generated <code class="md-code-inline">bin/cc</code> records the zig version, its sha256 and the target, so changing any of them changes its digest and with it the action key.</p>
+<li><p><strong>Pinned</strong>, the default for <code class="md-code-inline">julia_sysimage</code>: a <code class="md-code-inline">julia.cc</code> repository, zig fetched by sha256 and run as <code class="md-code-inline">zig cc -target &lt;arch&gt;-linux-gnu.&lt;glibc&gt;</code>. One tarball holds the compiler, the linker and the glibc stubs, so every host links against the same C library. The module declares one itself, <code class="md-code-inline">@julia_depot_cc</code>, targeting glibc 2.17 like the official Julia builds; a sysimage linked for it loads on any glibc from 2.17 up. Declare your own with <code class="md-code-inline">julia.cc</code> for another zig or glibc. The generated <code class="md-code-inline">bin/cc</code> records the zig version, its sha256 and the target, so changing any of them changes its digest and with it the action key.</p>
 </li>
 <li><p><strong>Your own</strong>: any executable target or file, as <code class="md-code-inline">cc</code>. It is an input of the action, so changing it rebuilds, and it is then yours to keep pinned.</p>
 </li>
@@ -109,7 +109,7 @@
 <p>Nothing falls back to the host&#39;s compiler silently.</p>
 <p>The pinned compiler only links: PackageCompiler compiles the code with Julia&#39;s own LLVM, so the compiler&#39;s part is the link and the C library the sysimage is linked against. That is what it pins. The precompile caches of <code class="md-code-inline">julia_compiled_layer</code> need no C compiler, since Julia links them with the <code class="md-code-inline">lld</code> it bundles.</p>
 <h3 id="The-inputs-file" class="md-heading">The inputs file<a href="#The-inputs-file" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
-<p>A sysimage is not reproducible: Julia stamps the code it compiles with a build id, and the build&#39;s paths are baked in. Two builds of the same commit therefore give different bytes, and a check that compares a rebuilt sysimage with a released one by digest fails. What does reproduce is what the sysimage was built from, so each sysimage rule also writes an inputs file, <code class="md-code-inline">&lt;name&gt;.inputs.json</code>, and <code class="md-code-inline">julia_sysimage_layer</code> ships it beside the sysimage (<code class="md-code-inline">/opt/julia-sysimage/sys.inputs.json</code> for the default <code class="md-code-inline">path</code>).</p>
+<p>A sysimage is not reproducible: Julia stamps the code it compiles with a build id, and the build&#39;s paths are baked in. Two builds of the same commit therefore give different bytes, and a check that compares a rebuilt sysimage with a released one by digest fails. What does reproduce is what the sysimage was built from, so each sysimage rule also writes an inputs file, <code class="md-code-inline">&lt;name&gt;.inputs.json</code>, and <code class="md-code-inline">julia_sysimage_layer</code> ships it beside the sysimage it packages (<code class="md-code-inline">/opt/julia-sysimage/sys.inputs.json</code> for the default <code class="md-code-inline">path</code>).</p>
 <p>It records everything the rule declares, and nothing that depends on the host:</p>
 <ul class="md-list-tight">
 <li><p><code class="md-code-inline">julia</code>: the version, platform and sha256 of the tarball the distribution was fetched from</p>
@@ -154,6 +154,6 @@
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=6921dd67"></script>
+  <script src="../assets/materialdocs.js?v=c7736b33"></script>
 </body>
 </html>

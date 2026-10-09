@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Testing — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=e2283325">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=3390ea22">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Testing — julia_depot">
   <meta property="og:title" content="Testing — julia_depot">
@@ -81,6 +81,7 @@ bazel test //...</code></pre>
 <p>The compiler that links a sysimage is checked from both sides. <code class="md-code-inline">sysimage.sh</code> is given a recording compiler that hands each call to the pinned one, and the test checks that it was called and that the sysimage was linked by zig&#39;s LLD, carries no GCC crt files, and requires no glibc symbol newer than 2.17. The image example&#39;s sysimage layer, which names no compiler, must pass the same link checks. The script must refuse to run with no compiler or with a path that is not executable. Analysis tests in <code class="md-code-inline">e2e/image/cc_test.bzl</code> check what the rule hands the script for the default compiler, a consumer&#39;s own <code class="md-code-inline">julia.cc</code>, a plain-file compiler and <code class="md-code-inline">system_cc</code>, and that the compiler is among the action&#39;s inputs.</p>
 <p><code class="md-code-inline">julia_sysimage</code> is built on 1.13 with a compiler that checks, inside the build, that <code class="md-code-inline">data</code> and <code class="md-code-inline">env</code> reached it with <code class="md-code-inline">$(execpath ...)</code> and <code class="md-code-inline">{execroot}</code> expanded, and then hands the link to the pinned compiler. The test starts Julia on the file it wrote and applies the link checks.</p>
 <p>The inputs file is tested on 1.13 against a twin of the image example&#39;s sysimage layer, a target with the same attributes under another name, whose file must be byte-identical, and two variants that change only the compiler or only <code class="md-code-inline">env</code>, whose files must differ in that entry alone. Only the twin&#39;s and variants&#39; inputs files are built. The test also checks the recorded Manifest digest and Julia tarball, and that the layer ships the file beside the sysimage.</p>
+<p><code class="md-code-inline">e2e/refetch_test.sh</code> covers what no test action can: Bazel refetching a depot between two builds. It appends a comment to the 1.13 project&#39;s <code class="md-code-inline">Project.toml</code>, builds only the sysimage&#39;s inputs file, and checks that the file records the edited <code class="md-code-inline">Project.toml</code>, which happens only if the depot refetched and recopied it; then it restores the file and checks that the record returns to the original. CI runs it in the 1.13 job after the tests, and it runs by hand from anywhere.</p>
 <p>The scripts the rules run are internal, but several tests drive them directly, because a failure path such as the wrong-minor refusal is cheaper to reach there than through a rule.</p>
 <h2 id="Before-pushing" class="md-heading">Before pushing<a href="#Before-pushing" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p><code class="md-code-inline">tools/check_no_private_refs.sh</code> greps everything git would publish for internal hostnames, machine paths and credentials. The patterns are generic and live in <code class="md-code-inline">tools/private_ref_patterns.txt</code>; site-specific literals go in a file of your own named by <code class="md-code-inline">PRIVATE_REF_PATTERNS_EXTRA</code>, so that list never has to be published to be enforced. CI runs it, along with <code class="md-code-inline">buildifier -mode=check -lint=warn -r .</code>.</p>
@@ -103,6 +104,6 @@ bazel test //...</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=e2283325"></script>
+  <script src="../assets/materialdocs.js?v=3390ea22"></script>
 </body>
 </html>
