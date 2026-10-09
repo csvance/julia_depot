@@ -201,7 +201,9 @@ sh_test(
         "@julia_depot//julia:sysimage_envs",
     ],
     env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
+    # Exclusive, like sysimage_auto: a sysimage built outside any rule action.
     tags = [
+        "exclusive",
         "julia1_13",
         "requires-network",
     ],

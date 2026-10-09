@@ -269,7 +269,13 @@ def _depot_attrs():
         "srcs": attr.label_list(allow_files = True, doc = "Further project files (the package's source, LocalPreferences.toml, workspace members), staged at their paths relative to the depot's Project.toml."),
     }
 
-def _layer_run(ctx, out, arguments, inputs, julia, env = {}, network = False, remote_cache = True, mnemonic = "JuliaLayer", message = None):
+def _sysimage_resources(_os, _inputs_size):
+    # A PackageCompiler build holds several gigabytes at its peak. Declared, so Bazel's local
+    # scheduler runs as many at once as the machine's memory allows instead of as many as it
+    # has cores; a CI runner that started four ran out.
+    return {"memory": 8192, "cpu": 2}
+
+def _layer_run(ctx, out, arguments, inputs, julia, env = {}, network = False, remote_cache = True, mnemonic = "JuliaLayer", message = None, resource_set = None):
     # No remote execution: the depot and sysimage layers read the depot a julia.depot fetch filled
     # on this host, and every layer reads the distribution through its real directory. Actions
     # that need no network are still not tagged block-network, because that sandbox needs a
@@ -290,6 +296,7 @@ def _layer_run(ctx, out, arguments, inputs, julia, env = {}, network = False, re
         execution_requirements = reqs,
         mnemonic = mnemonic,
         progress_message = message or "Writing Julia layer %{output}",
+        resource_set = resource_set,
     )
 
 # --- julia_dist_layer -----------------------------------------------------------------------
@@ -467,6 +474,7 @@ def _sysimage_run(ctx, out, cc):
         remote_cache = not ctx.attr.system_cc,
         mnemonic = "JuliaSysimage",
         message = "Building Julia sysimage %{output}",
+        resource_set = _sysimage_resources,
     )
 
 def _sysimage_attrs():

@@ -179,7 +179,9 @@ def julia_version_tests(
                 sysimage_depot_repo + "//:stamp.txt",
             ],
             env = _TEST_ENV,
-            tags = tags,
+            # Exclusive: it builds a sysimage outside any rule action, so the sysimage rule's
+            # declared memory cannot keep it from running beside others.
+            tags = tags + ["exclusive"],
         )
 
     sh_test(

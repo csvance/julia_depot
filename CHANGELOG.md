@@ -70,6 +70,8 @@ for 0.1.x through the transition.
   PackageCompiler environment, and each declared input by sha256, with no host paths.
   `bazel build --output_groups=inputs` writes it without building the sysimage, to check a
   rebuild against a release.
+- A sysimage build declares its memory to Bazel (8 GiB), so the local scheduler no longer starts
+  more PackageCompiler builds at once than the machine can hold.
 - `data` on `julia_sysimage`, for build inputs outside the project, and `$(execpath ...)` and
   `{execroot}` expansion in its `env`.
 

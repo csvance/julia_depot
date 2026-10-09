@@ -109,7 +109,10 @@ The depot layer and the sysimage build need the network (tagged `requires-networ
 `JULIA_PKG_SERVER` with `--action_env` to go through a mirror. Every action that runs Julia is
 `no-remote-exec`, since it reads the distribution through its real directory and, for the depot
 layer and the sysimage, the depot a fetch filled on this host. `julia_sysimage_layer` only
-packages a built sysimage, so it may run anywhere.
+packages a built sysimage, so it may run anywhere. A sysimage build declares 8 GiB of memory and
+2 CPUs to Bazel's local scheduler, which by default budgets two thirds of the machine's memory,
+so a 16 GB machine builds one sysimage at a time and a larger one builds several; adjust the
+budget with `--local_resources=memory=...`.
 
 ## The environment
 
