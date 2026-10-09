@@ -65,7 +65,12 @@ pkgimage `.so`, is reused when Julia's staleness check passes, which compares it
 dependencies and flags, not its bits. A depot on the path is therefore trusted the way any
 binary you run is: a shared depot's maintainer supplies code you load. What the arrangement
 does guarantee is that a missing package or artifact, because a shared depot was pruned,
-fails to load rather than resolving to some other version.
+fails to load rather than resolving to some other version, and a forced refetch installs it
+into `dir`. A damaged one is different: Pkg takes a directory that exists as installed, so a
+refetch leaves a truncated library or a modified source file in place, and only repairing the
+shared depot, or no longer stacking it, fixes the environment. A corrupted compiled cache is
+the exception, since Julia rejects it and compiles a fresh one into `dir`. The e2e suite checks
+each of these; see [Testing](testing.md).
 
 `artifacts/Overrides.toml` goes further. Julia reads it from every depot on the path, an
 earlier depot winning over a later one, and an override can point an artifact at any

@@ -147,6 +147,36 @@ sh_test(
     ],
 )
 
+# A damaged read-only depot, after the fetch: what loading the environment does and whether a
+# refetch repairs it, for a removed package or artifact, a truncated library, corrupted compiled
+# caches, modified package source and an added Overrides.toml. On copies of the seeded shared
+# depot, so the fetch's own depots are never touched.
+sh_test(
+    name = "read_only_depots_damage_1_12_test",
+    size = "large",
+    srcs = ["read_only_depots_damage_test.sh"],
+    args = [
+        "$(rootpath @read_only_depots_1_12//:stamp.txt)",
+        "$(rootpath @julia_depot//julia:instantiate.sh)",
+        "$(rootpath @julia_1_12//:bin/julia)",
+        "$(rootpath //projects/v1.12:Manifest.toml)",
+    ],
+    data = [
+        "common.sh",
+        "//projects/v1.12:Manifest.toml",
+        "//projects/v1.12:Project.toml",
+        "@julia_1_12//:bin/julia",
+        "@julia_1_12//:dist",
+        "@julia_depot//julia:instantiate.sh",
+        "@read_only_depots_1_12//:stamp.txt",
+    ],
+    env = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"},
+    tags = [
+        "julia1_12",
+        "requires-network",
+    ],
+)
+
 # sysimage.sh on a depot with no PackageCompiler in it, which is what a consumer following
 # docs/src/recipes.md has: the matrix's sysimage tests all run over a depot that already holds
 # it. The install step is version-independent, so 1.13 alone covers it.
