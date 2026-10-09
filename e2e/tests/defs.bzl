@@ -1,19 +1,19 @@
 """The end-to-end test matrix, as one macro per axis.
 
-`julia_version_tests` is everything that is true of a single Julia version, and it is
-called once per version in the matrix. `version_mismatch_test` is the one case that
-needs two, and it is called once per ordered pair.
+`julia_version_tests` declares every test of a single Julia version and is called once
+per version in the matrix. `version_mismatch_test` is the one case that needs two versions,
+and is called once per ordered pair.
 
-Every test is tagged `julia<minor>` for the Julia it RUNS, so CI can shard the matrix
-across runners. A cross-version test runs one Julia against the other's Manifest, which
-is a source file rather than a fetched repository, so it belongs to one shard: tagging
-it for both would make each runner instantiate both versions to test one.
+Every test is tagged `julia<minor>` for the Julia it runs, so CI can shard the matrix across
+runners. A cross-version test runs one Julia against the other's Manifest, which is a source
+file, not a fetched repository, so the test belongs to one shard. Tagging it for both would
+make each runner instantiate both versions to test one.
 """
 
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
-# Test actions inherit nothing from the developer's shell, which is the point: these
-# resolve against the PUBLIC package server on a workstation and on a CI runner alike.
+# Test actions do not inherit the developer's shell environment, so with this pin they
+# resolve against the public package server on a workstation and on a CI runner alike.
 # The matching pin for repository rules is in .bazelrc.
 _TEST_ENV = {"JULIA_PKG_SERVER": "https://pkg.julialang.org"}
 
@@ -39,11 +39,11 @@ def julia_version_tests(
       julia_repo: the distribution repository, e.g. "@julia_1_12".
       depot_repo: the depot over projects/v<minor>, e.g. "@depot_1_12".
       project: the project package, e.g. "//projects/v1.12".
-      other_minor: a minor that is NOT this one, for the sysimage pin check.
+      other_minor: a different minor, for the sysimage pin check.
       sysimage_depot_repo: the depot over the module's PackageCompiler environment. None for
         a minor the module ships no environment for, which skips the sysimage build.
       hook_depot_repo: the depot whose fetch runs hooks/marker_hook.sh. None skips the hook
-        test, which is version-independent, for a version run with the reduced set.
+        test; it is version-independent, so a version run with the reduced set omits it.
     """
     tag = _tag(minor)
     tags = ["julia" + tag]
@@ -83,7 +83,7 @@ def julia_version_tests(
         tags = tags,
     )
 
-    # Only with a hook depot: the hook is version-independent.
+    # The hook is version-independent, so not every version declares a hook depot.
     if hook_depot_repo:
         sh_test(
             name = "hook_{}_test".format(tag),
@@ -148,8 +148,8 @@ def julia_version_tests(
         tags = tags + ["requires-network"],
     )
 
-    # Minutes, not seconds: PackageCompiler rebuilds the whole system image.
-    # Only where the module ships a PackageCompiler environment for this minor.
+    # Takes minutes: PackageCompiler rebuilds the whole system image. Declared only where the
+    # module ships a PackageCompiler environment for this minor.
     if sysimage_depot_repo:
         sh_test(
             name = "sysimage_auto_{}_test".format(tag),
@@ -203,22 +203,23 @@ def julia_version_tests(
     )
 
 def version_mismatch_test(julia_repo, running_minor, running_patch, depot_repo, project, manifest_minor, manifest_patch):
-    """Declares the refusal test for one (running Julia, foreign Manifest) pair.
+    """Declares the version mismatch test for one (running Julia, foreign Manifest) pair.
 
     Args:
-      julia_repo: the distribution that RUNS, e.g. "@julia_1_12".
+      julia_repo: the distribution that runs, e.g. "@julia_1_12".
       running_minor: its minor, for the target name.
       running_patch: its full version, which the error message must name.
       depot_repo: a depot instantiated under the running Julia, used only as a read
         cache so the test does not precompile Pkg from nothing.
-      project: the project whose Manifest is the WRONG one, e.g. "//projects/v1.13".
+      project: the project whose Manifest was resolved under the other Julia, e.g.
+        "//projects/v1.13".
       manifest_minor: that Manifest's minor, for the target name.
       manifest_patch: that Manifest's julia_version, which the error message must name.
     """
     sh_test(
         name = "version_mismatch_{}_manifest_on_{}_test".format(_tag(manifest_minor), _tag(running_minor)),
-        # medium, not small: on a cold CI runner a fresh depot pays Pkg's first-load cost
-        # before the version check can fire, and that alone exceeded small's 60 s.
+        # Medium: on a cold CI runner a fresh depot pays Pkg's first-load cost before the
+        # version check runs, and that alone exceeded the 60 s limit of small.
         size = "medium",
         srcs = ["version_mismatch_test.sh"],
         args = [

@@ -9,30 +9,30 @@
         "julia_precompile_test",
     )
 
-Each layer rule writes ONE deterministic tar, ready for rules_oci's `oci_image(tars = [...])`:
-entries sorted, mtimes zeroed, owned by uid and gid 0, permissions normalised to 0755 or 0644.
-This module does not depend on rules_oci and never will; the consumer wires the tars and the
-environment file into its own `oci_image`. See docs/src/images.md for the whole recipe.
+Each layer rule writes one deterministic tar for rules_oci's `oci_image(tars = [...])`: entries
+sorted, mtimes zeroed, owned by uid and gid 0, permissions normalised to 0755 or 0644. This module
+does not depend on rules_oci and will not; the consumer wires the tars and the environment file
+into its own `oci_image`. See docs/src/images.md for the whole recipe.
 
-THE LAYOUT IS DECLARED ONCE, by `julia_image_env`: where Julia, the depot and any other depots
-live in the image, their search order, the CPU targets the caches are compiled for, and the
-active project. It writes the image's environment as a KEY=VALUE file, which `oci_image(env =
-...)` takes as is, and carries the same facts to `julia_compiled_layer` and
-`julia_precompile_test` through `JuliaImageEnvInfo`, so the caches are built for, and checked
-against, exactly the environment the image runs with. `julia_image_env_vars` returns the same
-variables as a dict, for a BUILD file that wants to merge them with its own.
+`julia_image_env` declares the layout once: where Julia, the depot and any other depots live in
+the image, their search order, the CPU targets the caches are compiled for, and the active
+project. It writes the image's environment as a KEY=VALUE file, which `oci_image(env = ...)`
+takes as is. It passes the same facts to `julia_compiled_layer` and `julia_precompile_test`
+through `JuliaImageEnvInfo`, so the caches are built for, and checked against, the environment
+the image runs with. `julia_image_env_vars` returns the same variables as a dict, for a BUILD
+file that merges them with its own.
 
-The rules shell out to image_layers.sh, which wraps image_depot.sh and sysimage.sh; what those
-scripts decide is not repeated here.
+The rules call image_layers.sh, which wraps image_depot.sh and sysimage.sh. What those scripts
+decide is documented there.
 """
 
 # The CPU targets of the official Julia builds, from JuliaCI's julia-buildkite
 # (utilities/build_envs.sh). For x86_64, a generic baseline plus clones for Sandy Bridge, Haswell
 # and x86-64-v4; for Linux aarch64, a generic baseline plus Cortex-A57, ThunderX2, Carmel, Apple M1
-# and Neoverse V1/V2. A cache compiled for the list loads on any host of that architecture,
-# picking the best clone for the CPU it lands on. Compiled for the build machine's CPU instead
-# (Julia's default, "native"), a cache is rejected on any host whose CPU differs and the package
-# is recompiled at startup, which is the cost a compiled layer exists to remove.
+# and Neoverse V1/V2. A cache compiled for the list loads on any host of that architecture and
+# uses the best clone for its CPU. A cache compiled for the build machine's CPU (Julia's default,
+# "native") is rejected on any host whose CPU differs, and the package is recompiled at startup:
+# the cost a compiled layer exists to remove.
 #
 # The rules default to the list for the target platform's CPU. sysimage.sh carries the same two
 # strings as its default, chosen by the running Julia's architecture; change them together.
@@ -75,14 +75,13 @@ def _check_absolute(what, path):
     return path.rstrip("/") or "/"
 
 def _depot_path(julia_prefix, depot_prefix, extra_depots):
-    # The image's depot first: it is the one Julia writes to, so a cache that is stale at run time
-    # (a mounted, edited package) is rebuilt there. Then any other depot, typically the
-    # application's own root, listed so its packages are recorded relative to it in the caches and
-    # stay valid when the tree moves (see image_layers.sh, unpack_image). Then the two depots the
-    # distribution ships inside itself, which hold the stdlib caches; leaving them out makes Julia
-    # recompile the stdlib it needs into the first depot. Named rather than left to a trailing
-    # separator, which expands to the same two, so the image's environment file says exactly what
-    # the path is.
+    # The image's depot comes first because Julia writes to it, so a cache that is stale at run
+    # time (a mounted, edited package) is rebuilt there. Next come any other depots, typically the
+    # application's own root, so its packages are recorded relative to it in the caches and stay
+    # valid when the tree moves (see image_layers.sh, unpack_image). Last come the two depots
+    # inside the distribution, which hold the stdlib caches; without them Julia recompiles the
+    # stdlib it needs into the first depot. They are named instead of left to a trailing separator
+    # (which expands to the same two) so the environment file shows the whole path.
     return [depot_prefix] + extra_depots + [julia_prefix + "/local/share/julia", julia_prefix + "/share/julia"]
 
 def julia_image_env_vars(
@@ -108,10 +107,10 @@ def julia_image_env_vars(
         it holds packages of its own that the compiled layer caches.
       project: JULIA_PROJECT, the project Julia starts in. Unset when None.
       load_path: JULIA_LOAD_PATH entries. Unset when None, which leaves Julia's default.
-      cpu_target: JULIA_CPU_TARGET. Must match the compiled layer's, which julia_image_env
-        guarantees by handing this value to it. A plain value, not chosen by platform, because
-        oci_image takes `env` only as a dict or a label: the x86_64 list by default, and
-        PORTABLE_AARCH64_CPU_TARGET passed explicitly for an aarch64 image.
+      cpu_target: JULIA_CPU_TARGET. Must match the compiled layer's; julia_image_env ensures this
+        by passing it the same value. Defaults to the x86_64 list; pass
+        PORTABLE_AARCH64_CPU_TARGET for an aarch64 image. This function cannot choose by
+        platform, because oci_image takes `env` only as a dict or a label.
       offline: JULIA_PKG_OFFLINE=true, so Pkg in the image never reaches for the network.
       path: prepend Julia's bin/ to the base image's PATH, as `<julia>/bin:$PATH`, which rules_oci
         expands against the base image's own PATH.
@@ -124,10 +123,10 @@ def julia_image_env_vars(
     extra_depots = [_check_absolute("extra_depots", d) for d in extra_depots]
     env = {
         "JULIA_DEPOT_PATH": ":".join(_depot_path(julia_prefix, depot_prefix, extra_depots)),
-        # Set at run time too, not only when the caches are built. Julia does not need it to
-        # accept a cache (it matches the host CPU against the clones the cache carries), but
-        # anything compiled at run time, a package precompiled into the depot because a mounted
-        # volume changed its source, is then portable in the same way as the baked caches.
+        # Also set at run time. Julia does not need it to accept a cache (it matches the host CPU
+        # against the cache's clones), but it makes anything compiled at run time, such as a
+        # package recompiled because a mounted volume changed its source, as portable as the
+        # baked caches.
         "JULIA_CPU_TARGET": cpu_target,
     }
     if offline:
@@ -253,10 +252,10 @@ def _project_attrs():
     }
 
 def _layer_run(ctx, out, arguments, inputs, env = {}, network = False, remote_cache = True, mnemonic = "JuliaLayer", message = None):
-    # Never remotely: the depot and sysimage layers read the depot a julia.depot fetch filled on
-    # this host, and every layer reads the distribution through its real directory. Not
-    # block-network on the others, though they need none: a sandbox that blocks the network needs
-    # a network namespace, which fails outright on hosts that do not allow one.
+    # No remote execution: the depot and sysimage layers read the depot a julia.depot fetch filled
+    # on this host, and every layer reads the distribution through its real directory. Actions
+    # that need no network are still not tagged block-network, because that sandbox needs a
+    # network namespace, which fails on hosts that do not allow one.
     reqs = {"no-remote-exec": "1"}
     if network:
         reqs["requires-network"] = "1"
@@ -284,8 +283,8 @@ def _julia_dist_layer_impl(ctx):
         out,
         ["dist", _julia_bin(ctx).path, _check_absolute("prefix", ctx.attr.prefix), out.path],
         [],
-        # A gigabyte that a copy rebuilds in seconds from the distribution repository, which is
-        # already local: not worth a round trip through a remote or disk cache.
+        # About a gigabyte, which a copy from the local distribution repository rebuilds in
+        # seconds, faster than a round trip through a remote or disk cache.
         remote_cache = False,
         mnemonic = "JuliaDistLayer",
     )
@@ -348,7 +347,7 @@ julia_compiled_layer needs. Fetches from the package server: set JULIA_PKG_SERVE
         "julia": attr.label(mandatory = True, allow_files = True, doc = _JULIA_DOC),
         "contents": attr.string(default = "artifacts", values = ["artifacts", "full"], doc = "artifacts: artifacts/ only. full: packages/ as well."),
         "prefix": attr.string(default = "/opt/julia-depot", doc = "Where the image keeps the depot. Match julia_image_env's `depot_prefix`."),
-        "min_artifacts": attr.int(default = 1, doc = "Fail below this many artifact directories, a floor against a selection that silently came up empty."),
+        "min_artifacts": attr.int(default = 1, doc = "Fail below this many artifact directories, to catch a selection that came up empty without an error."),
         "depot": attr.label(allow_files = True, doc = "Optional julia.depot repository, e.g. `@my_depot`. Its registries and package-server credentials are used for the instantiate (never shipped). Without it the registry is fetched fresh."),
         "overrides_build": attr.label(allow_single_file = True, doc = "artifacts/Overrides.toml naming build-host directories; see docs/src/recipes.md."),
         "overrides_image": attr.label(allow_single_file = True, doc = "The artifacts/Overrides.toml that ships, naming in-image paths. Required with overrides_build."),
@@ -375,7 +374,7 @@ def _julia_sysimage_layer_impl(ctx):
         ["sysimage", _julia_bin(ctx).path, out.path, stamp.path, _check_absolute("path", ctx.attr.path)] + stage,
         files + [stamp],
         env = env,
-        # Only when the depot lacks PackageCompiler, which sysimage.sh then installs.
+        # Used only when the depot lacks PackageCompiler and sysimage.sh installs it.
         network = True,
         mnemonic = "JuliaSysimageLayer",
         message = "Building Julia sysimage layer %{output}",
@@ -415,8 +414,8 @@ def _image_args(ctx):
     if ctx.attr.sysimage:
         args += ["--sysimage", _check_absolute("sysimage", ctx.attr.sysimage)]
 
-    # As flags rather than the action's environment: `{root}` is only known once the script has
-    # unpacked the layers, so the script sets them, after expanding it.
+    # Passed as flags because `{root}` is known only after the script unpacks the layers. The
+    # script expands it and sets the variables.
     for k in sorted(ctx.attr.env.keys()):
         args += ["--env", "{}={}".format(k, ctx.attr.env[k])]
     return info, args
@@ -451,15 +450,14 @@ julia_compiled_layer = rule(
 
 The layers are unpacked into one tree with the image's layout and each entry project is
 precompiled there, against the image's depot path rooted in that tree, for the image's
-JULIA_CPU_TARGET. The caches land in the first depot's compiled/, which is all the layer holds,
-and load unchanged in the image. Precompiling is also the first time the whole stack is loaded,
-so a package that cannot load fails the build rather than a container.
+JULIA_CPU_TARGET. The caches are written to the first depot's compiled/, which is all the layer
+holds, and load unchanged in the image. Precompiling also loads the whole stack for the first
+time, so a package that cannot load fails the build instead of a container.
 
-The tar is normalised like every other layer, but it is not bit-for-bit reproducible: Julia
-stamps each cache with a build id, and names each cache file with a hash over the paths of the
-build, which live in a fresh temporary tree. The same packages get caches every time, with the
-same modes, owners and mtimes; Bazel caches the action, so the digest is stable for as long as
-the inputs are.
+The tar is normalised like every other layer but is not bit-for-bit reproducible: Julia stamps
+each cache with a build id and names each cache file with a hash over the build's paths, which
+are in a fresh temporary tree. The same packages get caches every time, with the same modes,
+owners and mtimes. Bazel caches the action, so the digest is stable while the inputs are.
 """,
     attrs = _tool_attrs() | _image_attrs(),
 )
@@ -494,12 +492,12 @@ def _shell_quote(s):
 julia_precompile_test = rule(
     implementation = _julia_precompile_test_impl,
     test = True,
-    doc = """A test that the image starts without precompiling, run against its layers, no container.
+    doc = """Tests that the image starts without precompiling, using its layers and no container.
 
 Unpacks the layers into one tree with the image's layout and, in each entry project, loads its
 modules with Julia's loading debug output on. Fails when any cache is rejected or any package is
-compiled, which is what a container would otherwise do at its first start. Runs the image's own
-Julia when a julia_dist_layer is among the layers, and the distribution's otherwise.
+compiled, as a container would do at its first start. Runs the image's own Julia when a
+julia_dist_layer is among the layers, and the distribution's otherwise.
 """,
     attrs = _tool_attrs() | _image_attrs() | {
         "modules": attr.string_list(doc = "What to load in every entry project. Default: each project's direct dependencies, and the project itself when it is a package."),

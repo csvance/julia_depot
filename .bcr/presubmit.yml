@@ -2,17 +2,18 @@
 # already a consumer of this one: BCR extracts the release archive and runs bazel in
 # e2e/, where the local_path_override to ".." lands on the archive's own root.
 #
-# A smoke subset rather than //...: the full suite downloads two Julias, builds
-# PackageCompiler sysimages and pulls a container base image, which is CI's job (see
-# .github/workflows/e2e.yml), not the registry's. These targets cover the consumer seam:
-# the distribution, a depot fetch, a hook, and a declared depot.
+# A smoke subset: the full suite downloads a Julia per supported version, builds PackageCompiler sysimages and
+# pulls a container base image, and runs in CI (see .github/workflows/e2e.yml). These targets
+# cover the consumer seam: the distribution, a depot fetch, a hook, and a declared depot.
 #
-# Linux x86_64 only: it is the supported platform. julia.dist refuses macOS and Windows, and
-# its aarch64 path is untested and not supported.
+# Linux x86_64 only, the supported platform. julia.dist rejects macOS and Windows, and its
+# aarch64 path is untested and unsupported.
+#
 # Bazel 9 only, because e2e/MODULE.bazel needs it (see the aspect_bazel_lib note there).
-# The anonymous module test: a module with nothing but bazel_dep(julia_depot) builds
-# the targets this module exposes to its dependents, which checks it works as a non-root
-# dependency. Neither needs Julia.
+#
+# verify_targets is the anonymous module test: a module with nothing but
+# bazel_dep(julia_depot) builds the targets this module exposes to its dependents, which checks
+# that it works as a non-root dependency. Neither target needs Julia.
 matrix:
   platform: ["debian13", "ubuntu2404"]
   bazel: ["9.*"]

@@ -1,54 +1,49 @@
 """A Julia environment pinned to a Manifest, as a repository rule.
 
-THE CONTRACT. The declared input is Manifest.toml. Everything about the environment
-follows from it: every registered package by git tree hash, every JLL artifact by tree
-hash from its Artifacts.toml, and path entries that are the consumer's own source and
-therefore srcs rather than depot content. A Manifest with no git-sourced entries
-therefore determines the closure, which is what makes it legitimate to treat the depot
-as a keyed side effect rather than a declared output. Check your manifest for
-`repo-url` entries before relying on that.
+Contract: the declared input is Manifest.toml, and the environment follows from it. It pins
+every registered package by git tree hash and every JLL artifact by the tree hash in its
+Artifacts.toml. Path entries are the consumer's own source, so they are srcs, not depot
+content. A Manifest with no git-sourced entries therefore determines the closure, which is
+what allows the depot to be treated as a keyed side effect instead of a declared output.
+Check your manifest for `repo-url` entries before relying on that.
 
-A REPOSITORY RULE, not a genrule, for two reasons. Fetch time is where hitting the
-network is legitimate, and a repository rule can be made to refetch when the Manifest
-changes, which is what `_watch` below is for. A build-time genrule doing the same work
-would need no-sandbox plus requires-network and would be lying to Bazel about its
-inputs.
+A repository rule, because fetching may use the network and `_watch` below refetches when
+the Manifest changes. A genrule doing this would need no-sandbox and requires-network, and
+could not declare the depot as an output.
 
-WHAT IT PRODUCES. `env.sh`, a shell fragment consumers source before running julia,
-which always exports JULIA_DEPOT_PATH, and `stamp.txt`, the resolved facts (manifest
-sha256, Julia version, host triplet, depot). Julia itself is not in env.sh: consumers
-take it as a label from the distribution they passed as `julia` (`@julia_dist//:bin/julia`)
-via $(location ...). The depot path is the one thing in env.sh, and it is per user by nature.
+Outputs: `env.sh`, a shell fragment consumers source before running julia, which always
+exports JULIA_DEPOT_PATH; and `stamp.txt`, the resolved facts (manifest sha256, Julia
+version, host triplet, depot). Julia itself is not in env.sh: consumers take it as a label
+from the distribution they passed as `julia` (`@julia_dist//:bin/julia`) via $(location
+...). The depot path, the only thing in env.sh, is per user.
 
-WHAT REFETCHES IT. The manifest, the hook and instantiate.sh, by content; the Julia
-version, through the distribution's version header; the declared `dir` and
-`read_only_depots`, and whether each read-only depot exists; and HOME, JULIA_PKG_SERVER,
-every `hook_environ` variable and, when no `dir` is declared, JULIA_DEPOT_PATH. NOT the
-contents of a read-only depot: see READ-ONLY DEPOTS.
+What refetches it: the manifest, the hook and instantiate.sh, by content; the Julia version,
+through the distribution's version header; the declared `dir` and `read_only_depots`, and
+whether each read-only depot exists; and HOME, JULIA_PKG_SERVER, every `hook_environ`
+variable and, when no `dir` is declared, JULIA_DEPOT_PATH. The contents of a read-only depot
+do not; see below.
 
-READ-ONLY DEPOTS. A host often has a shared depot, maintained by someone else, that already
+Read-only depots: a host often has a shared depot, maintained by someone else, that already
 holds most of what a Manifest needs. `read_only_depots` stacks such depots after `dir`, so
 the path becomes `<dir>:<ro1>:<ro2>:...:`. Julia reads packages, artifacts and compiled
-caches from every entry and writes only to the first, and Pkg installs nothing that some
-entry already has, so `dir` ends up holding only what the shared depots lack. Nothing here
-writes to them either: they are never created, and a missing one is left on the path, where
-Julia ignores it, so a host without the shared depot still fetches, into `dir` alone.
-Whether each exists is an input, so one appearing or disappearing refetches; what is IN one
-is not, since watching a depot's whole tree would cost more than the fetch it guards. A
-shared depot that loses something `dir` relied on therefore needs a forced refetch
-(`bazel fetch --force @<name>`). They need `dir`: without it the depot is the ambient
-JULIA_DEPOT_PATH, which can already list as many depots as it likes, and appending to it
-would make the first entry, the one written to, depend on the shell.
+caches from every entry and writes only to the first, and Pkg installs nothing that an entry
+already has, so `dir` holds only what the shared depots lack. This rule never writes to or
+creates them. A missing one stays on the path, where Julia ignores it, so a host without the
+shared depot fetches into `dir` alone. Whether each exists is an input, so one appearing or
+disappearing refetches. Its contents are not, since watching a depot's whole tree would cost
+more than the fetch it guards; a shared depot that loses something `dir` relied on needs
+`bazel fetch --force @<name>`. They require `dir`. Without it the depot is the ambient
+JULIA_DEPOT_PATH, which can already list any number of depots, and appending to it would
+make the first entry, the one written to, depend on the shell.
 
-THE HOOK. Environments that resolve through a private registry or package server need
-that registry in the depot BEFORE Pkg.instantiate, and fetch time is the only place
-that can guarantee it. `hook` is an executable run first, with JULIA_DEPOT_BIN and
-JULIA_DEPOT_PATH set, the latter to the same value env.sh exports, and with
-RULES_JULIA_DEPOT_BIN, the deprecated pre-0.1.1 name for JULIA_DEPOT_BIN. `hook_environ`
-names the variables it reads, so a change to any of them refetches. The hook is the consumer's: this module knows nothing about any
-particular registry. With read-only depots the path has several entries, and a hook that
-writes must write to the first, as Pkg does; it may find what it would have added already
-present in a later one.
+The hook: an environment that resolves through a private registry or package server needs
+that registry in the depot before Pkg.instantiate, and only fetch time can guarantee that.
+`hook` is an executable run first, with JULIA_DEPOT_BIN set, JULIA_DEPOT_PATH set to the
+value env.sh exports, and RULES_JULIA_DEPOT_BIN, the deprecated pre-0.1.1 name for
+JULIA_DEPOT_BIN. `hook_environ` names the variables it reads, so a change to any of them
+refetches. The hook belongs to the consumer; this module knows no particular registry. With
+read-only depots the path has several entries: a hook that writes must write to the first,
+as Pkg does, and may find what it would add already present in a later one.
 """
 
 load(":dist.bzl", "host_platform")
@@ -60,14 +55,13 @@ def _env_value(rctx, name):
 def _watch(rctx, path):
     """Registers a dependency on a file, so that changing it refetches this repository.
 
-    rctx.path() resolves a label to a path and does NOTHING ELSE: it does not watch the
-    file. Registering the dependency has to be explicit, and reading the file is how it
-    is done, since watch = "auto" watches when watching that path is legal and stays
-    quiet when it is not (a label pointing into another module's directory, say).
+    rctx.path() resolves a label to a path but does not watch the file, so the dependency
+    is registered by reading it. watch = "auto" watches when watching that path is allowed
+    and does nothing when it is not (a label into another module's directory, for example).
 
-    Without this the repository stays pinned to whatever the Manifest said the first time
-    it was fetched, and a changed Manifest silently reuses a depot conformed to the old
-    one, which is the exact failure this module exists to prevent.
+    Without this the repository keeps the Manifest it was first fetched with, and a changed
+    Manifest reuses a depot conformed to the old one without any error. Preventing that is
+    the purpose of this module.
 
     Args:
       rctx: the repository context.
@@ -102,13 +96,13 @@ def _julia_depot_impl(rctx):
     project_dir = str(manifest.dirname)
 
     # Julia comes from a pinned distribution (julia.dist, or any repository holding an
-    # official Julia tree), NOT from PATH. PATH made Julia a property of whoever set the
-    # machine up, and a juliaup launcher needs $HOME, which a fetch has none of.
+    # official Julia tree). Taking it from PATH would make Julia depend on how the machine was
+    # set up, and a juliaup launcher needs $HOME, which a fetch does not have.
     #
-    # The attribute names the distribution, and the files are found beside it. The
-    # version header is READ, so the Julia version is a key: bin/julia is a small
-    # launcher that can be identical between releases, so watching it alone would let a
-    # version bump reuse a depot instantiated under the old Julia.
+    # The attribute names the distribution, and the files are found beside it. The version
+    # header is read so that the Julia version is a key. bin/julia is a small launcher that
+    # can be identical between releases, so watching it alone would let a version bump reuse
+    # a depot instantiated under the old Julia.
     julia = rctx.path(rctx.attr.julia.same_package_label("bin/julia"))
     if not julia.exists:
         fail("julia_depot: {} has no bin/julia; pass the distribution, e.g. @julia_dist".format(rctx.attr.julia))
@@ -138,24 +132,24 @@ def _julia_depot_impl(rctx):
         if value != None:
             env[name] = value
 
-    # Julia reads an empty JULIA_DEPOT_PATH as NO depots, which nothing can instantiate
-    # into. Treat it as unset, so Julia's default is resolved below instead.
+    # Julia reads an empty JULIA_DEPOT_PATH as no depots, which nothing can instantiate
+    # into. Treat it as unset, so Julia's default is resolved below.
     if env.get("JULIA_DEPOT_PATH") == "":
         env.pop("JULIA_DEPOT_PATH")
 
-    # A declared depot beats the ambient one. The attribute is a template, because the
-    # right place for a depot is per user on a local disk and a committed file cannot
-    # carry a username: {HOME} and {USER} expand from the fetch environment (and register
-    # as inputs, so a different user refetches). The trailing separator keeps Julia's
-    # bundled depots on the path, and (since Julia 1.10) leaves the user depot ~/.julia
-    # OFF it; without the separator Pkg is recompiled into the fresh depot, see
-    # instantiate.sh. The directory is created here so a hook can write into it.
+    # A declared depot overrides the ambient one. The attribute is a template because a depot
+    # belongs per user on a local disk and a committed file cannot carry a username: {HOME}
+    # and {USER} expand from the fetch environment and register as inputs, so a different
+    # user refetches. The trailing separator keeps Julia's bundled depots on the path and
+    # (since Julia 1.10) leaves the user depot ~/.julia off it. Without the separator Pkg is
+    # recompiled into the fresh depot; see image_depot.sh. The directory is created here so
+    # a hook can write into it.
     #
-    # Read-only depots go between `dir` and the separator, so `dir` stays the one Julia and Pkg
-    # write to and the bundled depots stay last. They are not created, and a missing one stays
-    # on the path, where Julia skips it; watch() registers whether each exists (a directory's
-    # existence, not its contents), so the depot is re-conformed when one comes or goes. See
-    # READ-ONLY DEPOTS above.
+    # Read-only depots go between `dir` and the separator, so `dir` stays the only entry Julia
+    # and Pkg write to and the bundled depots stay last. They are not created, and a missing
+    # one stays on the path, where Julia skips it. watch() registers whether each directory
+    # exists (not its contents), so the depot is re-conformed when one appears or disappears.
+    # See "Read-only depots" in the module docstring.
     if rctx.attr.read_only_depots and not rctx.attr.dir:
         fail("julia_depot: read_only_depots needs `dir`, the depot written to in front of them; " +
              "without it the ambient JULIA_DEPOT_PATH is used as it is, and can list them itself")
@@ -177,10 +171,10 @@ def _julia_depot_impl(rctx):
         if res.return_code != 0:
             fail("julia_depot: cannot create depot {}:\n{}".format(depot_dir, res.stderr))
 
-    # Neither declared nor ambient: Julia's own default, made explicit, so the hook,
-    # instantiate and every consumer of env.sh agree on one depot. Julia is asked rather
-    # than $HOME/.julia assumed, because that is what Julia would do. The trailing
-    # separator restores the bundled depots behind it, exactly as the default has them.
+    # Neither declared nor ambient: use Julia's default, made explicit, so the hook,
+    # instantiate and every consumer of env.sh agree on one depot. Ask Julia for it instead
+    # of assuming $HOME/.julia. The trailing separator restores the bundled depots behind
+    # it, as in the default path.
     if "JULIA_DEPOT_PATH" not in env:
         res = rctx.execute(
             [str(julia), "--startup-file=no", "-e", "print(first(DEPOT_PATH))"],
@@ -195,15 +189,15 @@ def _julia_depot_impl(rctx):
         hook = rctx.path(rctx.attr.hook)
         _watch(rctx, hook)
 
-        # RULES_JULIA_DEPOT_BIN is the name before 0.1.1, still given so an existing hook keeps
-        # working; it will be removed in a release that raises the compatibility_level.
+        # RULES_JULIA_DEPOT_BIN is the pre-0.1.1 name, still set so existing hooks work. It goes
+        # in the release that next raises compatibility_level.
         hook_env = env | {"RULES_JULIA_DEPOT_BIN": env["JULIA_DEPOT_BIN"]}
         res = rctx.execute([str(hook)], environment = hook_env, timeout = 600, quiet = False)
         if res.return_code != 0:
             fail("julia_depot: hook {} failed:\n{}\n{}".format(rctx.attr.hook, res.stdout, res.stderr))
 
-    # Materialise the depot: instantiate and precompile, failing loudly if the
-    # Manifest's julia_version disagrees with this Julia.
+    # Instantiate and precompile the depot. instantiate.sh fails if the Manifest's
+    # julia_version differs from this Julia.
     script = rctx.path(rctx.attr._instantiate)
     _watch(rctx, script)
     res = rctx.execute(
@@ -216,9 +210,8 @@ def _julia_depot_impl(rctx):
         fail("julia_depot: instantiating {} failed:\n{}\n{}".format(project_dir, res.stdout, res.stderr))
 
     # env.sh is the whole consumer interface: the depot the environment was instantiated
-    # into, always set. The path is genuinely environmental and therefore the one thing
-    # that legitimately varies between machines. Single-quoted, so nothing in the path
-    # is expanded when the file is sourced.
+    # into, always set. That path is the only thing that varies between machines. It is
+    # single-quoted, so nothing in it is expanded when the file is sourced.
     rctx.file("env.sh", """# Generated by julia_depot. Source before running julia.
 # Julia itself is NOT here: take it from the distribution, @<dist>//:bin/julia.
 export JULIA_DEPOT_PATH={depot}
@@ -255,7 +248,7 @@ julia_depot = repository_rule(
         "julia": attr.label(
             mandatory = True,
             doc = "The Julia distribution to instantiate with, e.g. @julia_dist from julia.dist. Any " +
-                  "target in the distribution's root package works; bin/julia and the version header " +
+                  "target in the distribution's root package works: bin/julia and the version header " +
                   "are found beside it.",
         ),
         "dir": attr.string(
@@ -277,12 +270,12 @@ julia_depot = repository_rule(
         ),
         "timeout": attr.int(
             default = 3600,
-            doc = "Seconds. A cold instantiate of a large environment is minutes, not seconds.",
+            doc = "Seconds. A cold instantiate of a large environment takes minutes.",
         ),
         "_instantiate": attr.label(
             default = "//julia:instantiate.sh",
             allow_single_file = True,
         ),
     },
-    doc = "Instantiates and precompiles a Julia project into the declared or ambient depot, failing loudly on a version mismatch.",
+    doc = "Instantiates and precompiles a Julia project into the declared or ambient depot, failing on a Julia version mismatch.",
 )

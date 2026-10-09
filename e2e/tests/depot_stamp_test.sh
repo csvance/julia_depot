@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# julia.depot fetched successfully and produced the two files that ARE its output.
+# julia.depot fetched and produced its two output files, env.sh and stamp.txt.
 #
-# The depot itself is a keyed side effect on a directory Bazel does not track, so
-# env.sh and stamp.txt are the only evidence a consumer or a human gets. This checks
-# that they say what the fetch actually did: the Julia that ran, the Manifest that was
-# pinned, the host, and the depot it landed in. It also checks what env.sh must NOT
-# contain, since a julia path baked into it would put a machine-specific absolute path
-# into every downstream action key.
+# The depot is a keyed side effect on a directory Bazel does not track, so env.sh and stamp.txt are
+# the only evidence a consumer or a person gets. This checks that they record what the fetch did:
+# the Julia that ran, the pinned Manifest, the host, and the depot. It also checks that env.sh
+# names no julia binary, which would put a machine-specific absolute path into every downstream
+# action key.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -17,8 +16,8 @@ want_version="$4"
 
 [ -s "$stamp" ] || fail "stamp.txt is empty or missing"
 
-# env.sh is sourced by consumers, so it has to be valid shell even when it is nearly
-# empty, which is the case whenever the launching environment set no JULIA_DEPOT_PATH.
+# Consumers source env.sh, so it must be valid shell even when nearly empty, as it is whenever
+# the launching environment set no JULIA_DEPOT_PATH.
 (
     set -euo pipefail
     # shellcheck disable=SC1090
@@ -50,8 +49,8 @@ depot="$(first_depot "$(stamp_value "$stamp" depot)")"
 [ -d "$depot/packages" ] ||
     fail "$depot has no packages/; the fetch cannot have instantiated anything"
 
-# When the fetch saw a JULIA_DEPOT_PATH, env.sh has to hand the same one back, or a
-# consumer sourcing it would run against a different depot than the one just filled.
+# env.sh must export the depot path the stamp records, or a consumer sourcing it would use a
+# different depot than the one the fetch filled.
 exported="$(
     # shellcheck disable=SC1090
     . "$env_sh"

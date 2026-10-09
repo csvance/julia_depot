@@ -3,14 +3,15 @@
 #
 # Usage: bcr_notes.sh <tag>      (with GH_TOKEN, or a logged-in gh, that can edit the pull request)
 #
-# publish-to-bcr opens the pull request with a fixed body, a link to the release and nothing
-# else, and has no input to change it. Registry maintainers review from that pull request, so
-# release.yaml runs this after publish; run it by hand, from a checkout of the tag, if that job
-# fails. The pull request is found by the branch publish-to-bcr pushes, <module>-<tag> on the
-# fork. Idempotent: a body that already has the notes is left alone.
+# publish-to-bcr opens the pull request with a fixed body (a link to the release) and has no
+# input to change it. Registry maintainers review from that pull request. release.yaml runs this
+# after publish; if that job fails, run it by hand from a checkout of the tag. The pull request
+# is found by the branch publish-to-bcr pushes to the fork, <module>-<tag>. A body that already
+# has the notes is left alone.
 #
-# REST only: GraphQL, which `gh pr list` and `gh pr edit` use, needs read:org for fields they
-# query, and the publish token has `repo` and `workflow`, which is all publish-to-bcr needs.
+# Uses the REST API only. `gh pr list` and `gh pr edit` use GraphQL, which needs read:org for
+# fields they query; the publish token has only `repo` and `workflow`, which is all
+# publish-to-bcr needs.
 
 set -o errexit -o nounset -o pipefail
 

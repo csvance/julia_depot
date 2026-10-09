@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# instantiate.sh must refuse when Julia would instantiate from a different manifest than
-# the one the rule pins. A versioned Manifest-v<major>.<minor>.toml beside Manifest.toml
-# wins in Julia, so pinning Manifest.toml there would watch and stamp one file while Pkg
-# installed from the other.
+# instantiate.sh refuses when Julia would instantiate from a different manifest than the one the
+# rule pins. A versioned Manifest-v<major>.<minor>.toml beside Manifest.toml takes precedence in
+# Julia, so pinning Manifest.toml there would watch and stamp one file while Pkg installed from
+# the other.
 #
-# Then the other way round: pinning the versioned file itself is accepted, which is how a
-# project carries one manifest per Julia version.
+# Pinning the versioned file itself is accepted; that is how a project carries one manifest per
+# Julia version.
 #
-# Last, a manifest with no julia_version (the pre-1.7 format) is refused, since there is
-# nothing to check the running Julia against.
+# A manifest with no julia_version (the pre-1.7 format) is refused, since there is nothing to
+# check the running Julia against.
 #
 # Usage: manifest_choice_test.sh <instantiate.sh> <julia> <Manifest.toml> <depot stamp.txt> <minor>
 set -euo pipefail

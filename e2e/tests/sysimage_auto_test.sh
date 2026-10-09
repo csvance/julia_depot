@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
-# sysimage.sh `auto` picks the PackageCompiler environment for the running Julia, and
-# the sysimage it builds actually loads.
+# sysimage.sh `auto` picks the PackageCompiler environment for the running Julia, and the
+# sysimage it builds loads.
 #
-# `auto` is what makes the module's sysimage support version-agnostic: the consumer's
-# genrule names no version, and the script selects julia/sysimage/v<major>.<minor>/ from
-# the Julia that is running. Selecting the WRONG one is not a silent failure, because
-# the script then compares that environment's julia_version against the running Julia
-# and exits, which is exactly what sysimage_wrong_minor_test.sh checks. So a clean
-# build here proves the selection was right, and the two tests together cover both
-# branches.
+# `auto` makes the module's sysimage support version-agnostic: the consumer's genrule names no
+# version, and the script selects julia/sysimage/v<major>.<minor>/ from the running Julia. A wrong
+# selection fails, because the script compares that environment's julia_version against the
+# running Julia and exits; sysimage_wrong_minor_test.sh checks that branch. So a clean build here
+# proves the selection was right.
 #
-# Building is not enough on its own. A sysimage that compiles and then cannot be loaded
-# is the failure that costs a deployment, so the image is started and asked to use the
-# package that was baked into it.
+# A sysimage that compiles but cannot be loaded would fail a deployment, so the test starts Julia
+# on the image and uses the package baked into it.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -26,10 +23,9 @@ want_minor="$6"
 project="$(copy_project "$manifest" "$TEST_TMPDIR/project")"
 src_depot="$(first_depot "$(stamp_value "$stamp" depot)")"
 
-# Both depots instantiate into the ambient depot, so the PackageCompiler environment for
-# this minor is in the same tree the project is. If that ever stops being true, `auto`
-# would find the environment's files and not its packages, so it is asserted rather
-# than assumed.
+# Both depots instantiate into the ambient depot, so the PackageCompiler environment for this
+# minor is in the same tree as the project. If that stopped being true, `auto` would find the
+# environment's files but not its packages, so it is asserted here.
 [ "$(first_depot "$(stamp_value "$sysimage_stamp" depot)")" = "$src_depot" ] ||
     fail "the PackageCompiler environment was instantiated into a different depot than the project"
 [ "$(stamp_value "$sysimage_stamp" julia_version)" = "$(stamp_value "$stamp" julia_version)" ] ||
@@ -38,8 +34,9 @@ src_depot="$(first_depot "$(stamp_value "$stamp" depot)")"
 out="$TEST_TMPDIR/sysimage.so"
 log="$TEST_TMPDIR/sysimage.log"
 
-# generic, not sysimage.sh's portable default: this tests which environment is chosen, and
-# compiling four CPU clones per build ran a CI runner out of memory with the builds in parallel.
+# CPU target generic instead of sysimage.sh's portable default: this test is about environment
+# selection, and compiling four CPU clones per build, with builds in parallel, ran a CI runner
+# out of memory.
 env JULIA_DEPOT_BIN="$julia_bin" \
     JULIA_DEPOT_PATH="$(overlay_depot "$src_depot" "$julia_bin")" \
     JULIA_DEPOT_SYSIMAGE_PACKAGES="Crayons" \
@@ -48,8 +45,8 @@ env JULIA_DEPOT_BIN="$julia_bin" \
     fail "sysimage.sh auto failed under julia $want_minor:
 $(cat "$log")"
 
-# The selection messages are failure paths. Seeing one on a successful run would mean
-# the script fell through to a different environment than the assertions below assume.
+# The selection messages appear only on failure paths. One on a successful run would mean the
+# script used a different environment than the assertions below assume.
 if grep -qE 'no PackageCompiler environment|was resolved under Julia' "$log"; then
     fail "sysimage.sh auto complained about environment selection:
 $(cat "$log")"
@@ -60,7 +57,7 @@ size="$(stat -c %s "$out")"
 [ "$size" -gt 10000000 ] ||
     fail "the sysimage is only $size bytes, which is not an incremental Julia image"
 
-# The real assertion: start Julia on it and use the package that was baked in.
+# Start Julia on the sysimage and use the package baked into it.
 loaded="$(
     env JULIA_DEPOT_PATH="$(overlay_depot "$src_depot" "$julia_bin")" \
         "$julia_bin" --startup-file=no --sysimage "$out" --project="$project" \

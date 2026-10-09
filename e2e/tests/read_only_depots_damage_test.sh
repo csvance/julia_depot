@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# What a damaged read-only depot does to the environment stacked in front of it. The rule does not
-# watch a read-only depot's contents (docs/src/contract.md, "What is not hermetic"), so each case is
-# damage done AFTER the fetch, and the question is what loading the environment then does and
-# whether a refetch, which is instantiate.sh run again on the same path, repairs it.
+# What a read-only depot damaged after the fetch does to the environment stacked in front of it,
+# and whether a refetch (instantiate.sh run again on the same path) repairs it. The rule does not
+# watch a read-only depot's contents (docs/src/contract.md, "What is not hermetic"), so all damage
+# here is done after the fetch.
 #
-# Each case damages its own copy of the shared depot read_only_depots_1_12's hook seeded, behind an
-# empty `dir`, so nothing the fetch filled is touched. The outcomes, as Julia behaves today:
+# Each case damages its own copy of the shared depot that read_only_depots_1_12's hook seeded,
+# behind an empty `dir`, so nothing the fetch filled is touched. The outcomes with current Julia:
 #
 #   package removed            load fails; refetch installs it into `dir`
 #   artifact removed           load fails; refetch installs it into `dir`
-#   artifact library truncated load fails; refetch does NOT repair it, the directory is present
+#   artifact library truncated load fails; refetch does not repair it, the directory is present
 #   compiled cache corrupted   rejected and recompiled into `dir`; loads correctly
 #   package source modified    loads the modified code, silently; refetch does not notice
 #   Overrides.toml added       redirects the artifact, silently
 #
-# The last two are the trust the contract page describes, asserted so the page stays true: if
-# Julia starts verifying what it loads, they fail here, and the page should change with them.
+# The last two are the trust the contract page describes. They are asserted so the page stays
+# accurate: if Julia starts verifying what it loads, they fail here and the page must change.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -108,15 +108,15 @@ grep -qx "artifact=$case_dir/dir/artifacts/$bz2_hash" <<<"$output" ||
 $output"
 
 # --- artifact library truncated: an error, and a refetch does not repair it ---
-# Pkg takes an artifact directory that exists as installed, so the damage stays in front of the
-# fix: only whoever maintains the shared depot can repair it, or `dir` must stop stacking it.
+# Pkg treats an existing artifact directory as installed, so the refetch leaves the damaged one
+# in place. Only the shared depot's maintainer can repair it, or `dir` must stop stacking it.
 new_case artifact_truncated
 lib="$(find "$case_dir/shared/artifacts/$bz2_hash/lib" -name 'libbz2.so.*' -type f | head -n 1)"
 [ -n "$lib" ] || fail "no libbz2.so.* file in the artifact to truncate"
 : >"$lib"
 expect_load_fails "artifact library truncated" "could not load library"
 refetch
-[ ! -d "$case_dir/dir/artifacts/$bz2_hash" ] || fail "artifact library truncated: the refetch installed the artifact into dir after all, so the docs that say it cannot repair this are wrong:
+[ ! -d "$case_dir/dir/artifacts/$bz2_hash" ] || fail "artifact library truncated: the refetch repaired it; update docs/src/contract.md:
 $output"
 expect_load_fails "artifact library truncated, after the refetch" "could not load library"
 
@@ -141,11 +141,11 @@ src="$(echo "$case_dir"/shared/packages/Crayons/*/src/Crayons.jl)"
 sed -i 's/^module Crayons$/module Crayons\nconst DAMAGED = true/' "$src"
 grep -q 'const DAMAGED' "$src" || fail "could not modify $src"
 expect_loads "package source modified"
-grep -qx modified=true <<<"$output" || fail "package source modified: the modified code was not loaded, so Julia now checks package sources and docs/src/contract.md should say so:
+grep -qx modified=true <<<"$output" || fail "package source modified: the modified code was not loaded; update docs/src/contract.md:
 $output"
 refetch
 expect_loads "package source modified, after the refetch"
-grep -qx modified=true <<<"$output" || fail "package source modified: the refetch repaired it, so docs/src/contract.md should say so:
+grep -qx modified=true <<<"$output" || fail "package source modified: the refetch repaired it; update docs/src/contract.md:
 $output"
 
 # --- Overrides.toml added: the artifact is redirected, silently ---
@@ -153,7 +153,7 @@ new_case overrides_added
 cp -a "$case_dir/shared/artifacts/$bz2_hash" "$case_dir/elsewhere"
 printf '%s = "%s"\n' "$bz2_hash" "$case_dir/elsewhere" >"$case_dir/shared/artifacts/Overrides.toml"
 expect_loads "Overrides.toml added"
-grep -qx "artifact=$case_dir/elsewhere" <<<"$output" || fail "Overrides.toml added: the artifact was not redirected, so Julia no longer reads overrides from every depot and docs/src/contract.md should say so:
+grep -qx "artifact=$case_dir/elsewhere" <<<"$output" || fail "Overrides.toml added: the artifact was not redirected; update docs/src/contract.md:
 $output"
 
 echo "PASS: damaged read-only depots behave as docs/src/contract.md says"

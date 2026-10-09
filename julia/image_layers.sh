@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The actions behind julia/image.bzl: one subcommand per layer rule, plus the precompile check.
-# INTERNAL: its subcommands and arguments are not part of the module's interface.
+# Internal: its subcommands and arguments are not part of the module's interface.
 #
 #   image_layers.sh dist      <julia> <prefix> <out.tar>
 #   image_layers.sh depot     <julia> <out.tar> <source stamp|-> [<rel> <file>]...
@@ -19,15 +19,15 @@
 #   --sysimage <path>      the sysimage the image starts Julia with, if not Julia's own
 #   --env <KEY=VALUE>      a variable for Julia, with {root} expanded to the unpacked tree (repeatable)
 #
-# This is a script rather than inline Starlark so the rules stay small and the logic stays in one
-# place with the scripts it wraps: `depot` is image_depot.sh and `sysimage` is sysimage.sh, each
-# staged and tarred, and nothing they decide is repeated here.
+# A script keeps the rules small and the logic beside the scripts it wraps: `depot` is
+# image_depot.sh and `sysimage` is sysimage.sh, each staged and tarred. What they decide is
+# documented there.
 #
-# EVERY LAYER IS A DETERMINISTIC TAR, written by write_layer below: entries sorted by name, mtimes
+# write_layer below writes every layer as a deterministic tar: entries sorted by name, mtimes
 # zeroed, owned by uid and gid 0 by number, permissions normalised to 0755 for directories and
-# executables and 0644 for everything else, GNU format, and the stage's children named in sorted
-# order (tar sorts what it reads from a directory, not the order of its arguments). The same inputs
-# give the same bytes, so a layer's digest only moves when its content does.
+# executables and 0644 for everything else, GNU format. The stage's children are passed in sorted
+# order, because tar sorts what it reads from a directory but not its arguments. The same inputs
+# give the same bytes, so a layer's digest changes only when its content does.
 set -euo pipefail
 
 cmd="${1:?usage: image_layers.sh dist|depot|sysimage|compiled|check ...}"
@@ -71,10 +71,10 @@ julia_root() {
     cd "$(dirname "$(readlink -f "$1")")/.." && pwd
 }
 
-# The depot path a julia_depot stamp.txt records: the one the fetch ran with, every entry of it,
-# since a package or artifact the fetch found already present may live in any of them. Without a
-# trailing separator, which would hand back the bundled depots of whichever Julia reads it;
-# callers that want the bundled depots append them by name.
+# The full depot path a julia_depot stamp.txt records, the one the fetch ran with, since a package
+# or artifact the fetch found already present may be in any entry. The trailing separator is
+# stripped, because it would add the bundled depots of whichever Julia reads the path; callers that
+# want them append them by name.
 stamp_depot() {
     local d
     d="$(sed -n 's/^depot=//p' "$1")"
@@ -86,9 +86,9 @@ stamp_depot() {
     printf '%s\n' "${d#:}"
 }
 
-# stage_project <dir> [<rel> <file>]...: copies each file to <dir>/<rel>. -L because Bazel stages
-# inputs as symlinks, and Pkg resolves a project by its real path, so a symlinked Project.toml
-# would find the Manifest.toml beside the original instead of the one staged here.
+# stage_project <dir> [<rel> <file>]...: copies each file to <dir>/<rel>. cp -L, because Bazel
+# stages inputs as symlinks and Pkg resolves a project by its real path, so a symlinked
+# Project.toml would find the Manifest.toml beside the original, not the one staged here.
 stage_project() {
     local dir="$1"
     shift
@@ -141,8 +141,8 @@ parse_image_flags() {
     }
 }
 
-# unpack_image <root> <toolchain julia>: the layers, unpacked into <root> in order, the way an
-# overlay filesystem would stack them. Then sets, for that tree:
+# unpack_image <root> <toolchain julia>: unpacks the layers into <root> in order, as an overlay
+# filesystem would stack them. Then sets, for that tree:
 #
 #   image_julia       the image's own Julia when a dist layer put one there, else the toolchain's
 #   image_depot_path  the image's JULIA_DEPOT_PATH with <root> in front of every entry
@@ -150,11 +150,11 @@ parse_image_flags() {
 # A depot under the Julia prefix (the distribution's bundled depots) is taken from the toolchain
 # when no dist layer supplied Julia, since the toolchain is the same distribution.
 #
-# This is the whole trick that lets caches built here load in the image. Julia records a cached
-# package's sources relative to the depot that holds them ("@depot/packages/..."), and checks them
-# by content, so a cache compiled against <root>/opt/julia-depot is valid at /opt/julia-depot as
-# long as the depot path has the same SHAPE. Sources outside every depot are recorded by absolute
-# path, which is why an application's own packages need their directory listed as a depot too.
+# This is what lets caches built here load in the image. Julia records a cached package's sources
+# relative to the depot that holds them ("@depot/packages/...") and checks them by content, so a
+# cache compiled against <root>/opt/julia-depot is valid at /opt/julia-depot as long as the depot
+# path has the same shape. Sources outside every depot are recorded by absolute path, so an
+# application's own packages need their directory listed as a depot too.
 unpack_image() {
     local root="$1" toolchain="$2" layer d
     mkdir -p "$root"
@@ -179,13 +179,13 @@ unpack_image() {
         esac
         image_depot_path="${image_depot_path:+$image_depot_path:}$d"
     done
-    # The rule's variables, set only now that <root> exists: a value may name a file in a layer
-    # that the image never ships, such as a driver stub that lets a package load on a build host
-    # with no driver.
+    # The rule's variables are set only now that <root> exists, because a value may name a file in
+    # a layer the image does not ship, such as a driver stub that lets a package load on a build
+    # host with no driver.
     local e v
     for e in ${envs[@]+"${envs[@]}"}; do
         v="${e#*=}"
-        # The replacement quoted, so bash 5.2 does not read an & in the path as the match.
+        # The replacement is quoted so bash 5.2 does not read an & in the path as the match.
         export "${e%%=*}=${v//\{root\}/"$root"}"
     done
     image_julia_args=(--startup-file=no)
@@ -199,11 +199,11 @@ unpack_image() {
 }
 
 # --- dist: the distribution at a prefix ----------------------------------------------------
-# Copied from the distribution's real directory rather than from the files Bazel staged, because
-# staging dereferences symlinks: the distribution's own relative links (libjulia.so ->
-# libjulia.so.1.12.7 and about eighty more) would each become a second copy of the library. The
-# files are the same ones the rule declares as inputs; only the links survive this way. A link that
-# points outside the distribution would not survive the move into an image, so it fails the build.
+# Copied from the distribution's real directory, because Bazel's staging dereferences symlinks and
+# the distribution's own relative links (libjulia.so -> libjulia.so.1.12.7 and about eighty more)
+# would each become a second copy of the library. The files are the ones the rule declares as
+# inputs; copying this way also keeps the links. An absolute link would dangle in an image, so it
+# fails the build.
 cmd_dist() {
     local julia="$1" prefix="${2#/}" out="$3"
     local src stage
@@ -212,7 +212,7 @@ cmd_dist() {
     mkdir -p "$stage/$(dirname "$prefix")"
     cp -a "$src" "$stage/$prefix"
     chmod -R u+w "$stage/$prefix"
-    # The repository's own files, which are Bazel's and not Julia's.
+    # Drop the files Bazel added to the repository.
     rm -f "$stage/$prefix/BUILD.bazel" "$stage/$prefix/WORKSPACE" "$stage/$prefix/REPO.bazel"
     local bad
     bad="$(find "$stage/$prefix" -type l -lname '/*' | head -5)"
@@ -229,11 +229,11 @@ cmd_dist() {
 }
 
 # --- depot: image_depot.sh on a staged project ---------------------------------------------
-# image_depot.sh reads its options from the environment (JULIA_DEPOT_CONTENTS and friends), and the
-# rule sets them; this only supplies what it needs from the build: Julia, the staged project, and
-# a source depot for registries and server credentials. With no stamp the source depot is EMPTY, so
-# the registry is fetched into the clean depot rather than copied from whatever this host has; the
-# manifest pins every package by tree hash, so the registry's state cannot change what is installed.
+# image_depot.sh reads its options (JULIA_DEPOT_CONTENTS and the rest) from the environment, which
+# the rule sets. This supplies what it needs from the build: Julia, the staged project, and a
+# source depot for registries and server credentials. With no stamp the source depot is empty, so
+# the registry is fetched into the clean depot instead of copied from this host. The manifest pins
+# every package by tree hash, so the registry's state cannot change what is installed.
 cmd_depot() {
     local julia="$1" out="$2" stamp="$3"
     shift 3
@@ -251,9 +251,9 @@ cmd_depot() {
 
 # --- sysimage: sysimage.sh on a staged project, at a path in the image ---------------------
 # The project's packages come from the depot path the stamp names, which julia.depot has already
-# instantiated. It is read, never written: a scratch depot sits in front for anything PackageCompiler
-# writes (its own environment, when the depot lacks it, and the caches of the build), and the
-# distribution's bundled depots sit behind for the stdlib.
+# instantiated. That path is only read. A scratch depot in front takes anything PackageCompiler
+# writes (its own environment, when the depot lacks it, and the build's caches), and the
+# distribution's bundled depots behind supply the stdlib.
 cmd_sysimage() {
     local julia="$1" out="$2" stamp="$3" path="${4#/}"
     shift 4
@@ -270,17 +270,17 @@ cmd_sysimage() {
 # --- compiled: the precompile caches for the entry projects --------------------------------
 # The layers are unpacked into one tree with the image's layout and every entry project is
 # precompiled in it, with the image's depot path rooted in that tree. Only <first depot>/compiled
-# leaves: that is where Julia writes caches, and the rest of the tree is other layers' content.
+# goes into the layer: Julia writes caches there, and the rest of the tree is other layers' content.
 #
-# One precompile per project, not one for all of them, because a cache depends on the active
-# project's preferences (a LocalPreferences.toml can change what a package compiles to), so each
-# entry point needs the caches its own environment selects. JULIA_CPU_TARGET comes from the rule,
-# and makes every cache multi-versioned for that target list, so it loads on any CPU the list
-# covers rather than only on CPUs like the build machine's. Offline, since every package is
-# already in the tree; strict, so a package that fails to precompile fails the build instead of a
-# container at its first start. already_instantiated, because otherwise Pkg.precompile runs
-# instantiate first, which finds no registry in the tree and quietly downloads General into it,
-# JULIA_PKG_OFFLINE notwithstanding: a network fetch in an action that declares none.
+# Each project is precompiled separately because a cache depends on the active project's
+# preferences (a LocalPreferences.toml can change what a package compiles to), so each entry point
+# needs the caches its own environment selects. JULIA_CPU_TARGET comes from the rule and makes
+# every cache multi-versioned for that target list, so it loads on any CPU the list covers.
+# Offline, since every package is already in the tree. Strict, so a package that fails to
+# precompile fails the build instead of a container at its first start. already_instantiated,
+# because otherwise Pkg.precompile runs instantiate first, which finds no registry in the tree and
+# downloads General into it despite JULIA_PKG_OFFLINE: a network fetch in an action that declares
+# none.
 cmd_compiled() {
     local julia="$1" out="$2"
     shift 2
@@ -306,15 +306,15 @@ cmd_compiled() {
 }
 
 # --- check: the image starts without precompiling ------------------------------------------
-# Unpacks the layers the way cmd_compiled does and, in each entry project, loads its modules with
-# loading debug output on. Julia logs every cache it rejects and every package it compiles, so a
-# clean run is one where neither appears. The modules are the project's direct dependencies, and
-# the project itself when it is a package, unless --modules names them.
+# Unpacks the layers as cmd_compiled does and, in each entry project, loads its modules with
+# loading debug output on. Julia logs every cache it rejects and every package it compiles; a clean
+# run logs neither. The modules are the project's direct dependencies, plus the project itself when
+# it is a package, unless --modules names them.
 #
-# One rejection is benign and filtered: Julia's bundled stdlib caches include a variant built with
-# other compiler flags beside the one that loads, and passing over it is logged "since the flags
-# are mismatched". Anything else rejected means a cache was stale, and anything compiled means one
-# was missing.
+# One rejection is benign and filtered out: Julia's bundled stdlib caches include a variant built
+# with other compiler flags beside the one that loads, and skipping it is logged "since the flags
+# are mismatched". Any other rejection means a cache was stale, and any compile means one was
+# missing.
 cmd_check() {
     local julia="$1"
     shift

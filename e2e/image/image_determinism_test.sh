@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Two independent builds of a layer are the same bytes.
+# Two independent builds of a layer produce the same bytes.
 #
 # Usage: image_determinism_test.sh <dist> <dist again> <depot> <depot again> <compiled> <compiled again>
 #
-# Each pair is two targets with identical attributes, so Bazel ran two separate actions, in
-# separate sandboxes and temporary directories, at different times. A layer whose digest moves
-# between them would move on every rebuild, and nothing downstream (a registry, a cache, a
-# reviewer comparing digests) could tell a real change from noise.
+# Each pair is two targets with identical attributes, so Bazel ran two separate actions in
+# separate sandboxes and temporary directories at different times. A digest that differs between
+# them would differ on every rebuild, and nothing downstream (a registry, a cache, a reviewer
+# comparing digests) could tell a real change from noise.
 #
-# The compiled layer is the exception the docs admit to. Julia stamps every cache with a build id,
-# so its bytes differ, and names each cache file with a hash over the paths of the build (the
-# project, the Julia binary), which live in a fresh temporary tree each time. Its STRUCTURE must
-# not differ: the same caches for the same packages, with the same modes, owners and mtimes.
+# The compiled layer is the documented exception. Julia stamps every cache with a build id, so its
+# bytes differ, and names each cache file with a hash over the build's paths (the project, the
+# Julia binary), which are in a fresh temporary tree each time. Its structure must match: the same
+# caches for the same packages, with the same modes, owners and mtimes.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../tests/common.sh"
 
@@ -27,7 +27,7 @@ $(diff <(tar -tvf "$1" --numeric-owner --full-time) <(tar -tvf "$2" --numeric-ow
 same_bytes "$1" "$2"
 same_bytes "$3" "$4"
 
-# Names up to the path hash, modes, owners and mtimes; not sizes, which the build id can change.
+# Names up to the path hash, modes, owners and mtimes. Not sizes, which the build id can change.
 shape() {
     tar --list --verbose --numeric-owner --full-time --file "$(abspath "$1")" |
         awk '{ $3 = ""; print }' | sed -E 's/_[A-Za-z0-9]{5}\.(ji|so)$/_<hash>.\1/'

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# instantiate.sh REFUSES a Manifest resolved under a different Julia.
+# instantiate.sh refuses a Manifest resolved under a different Julia.
 #
-# This is the guarantee the whole module is built around, and it is the one failure that
-# is invisible if it does not fire: a Manifest resolved under another Julia instantiates
-# happily and then behaves differently at run time. So the test runs the script directly,
-# with a real Julia and a real Manifest that disagree, and insists on three things: a
-# non-zero exit, the message that names both versions, and no stamp file, since a stamp
-# is the module's claim that an environment is good.
+# This is the module's central guarantee, and its failure is invisible if the check does not
+# fire: a Manifest resolved under another Julia instantiates without error and then behaves
+# differently at run time. The test runs the script directly with a real Julia and a real
+# Manifest that disagree, and requires a non-zero exit, a message naming both versions, and no
+# stamp file, since a stamp is the module's claim that an environment is good.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -20,8 +19,8 @@ running_version="$6"
 project="$(copy_project "$manifest" "$TEST_TMPDIR/project")"
 stamp_out="$TEST_TMPDIR/stamp.out"
 
-# A depot behind a writable overlay, only so Julia has somewhere to find an already
-# precompiled Pkg instead of building one for a test that fails three lines in.
+# A writable overlay over the fetched depot, so Julia finds an already precompiled Pkg instead
+# of building one for a test that fails early.
 depot="$(overlay_depot "$(first_depot "$(stamp_value "$stamp" depot)")" "$julia_bin")"
 
 rc=0

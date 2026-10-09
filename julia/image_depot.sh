@@ -5,7 +5,7 @@
 #
 # Environment:
 #   JULIA_DEPOT_BIN               required, the julia to instantiate with
-#   JULIA_DEPOT_PATH              required, the SOURCE depot path: the registries/ of its
+#   JULIA_DEPOT_PATH              required, the source depot path: the registries/ of its
 #                                 entries and the servers/ (package-server credentials) of
 #                                 its first are copied into the clean depot so instantiate
 #                                 resolves the way the developer does
@@ -20,43 +20,43 @@
 # JULIA_DEPOT_PATH is Julia's own; the others are this script's, and before 0.1.1 were spelled
 # RULES_JULIA_DEPOT_*. The old spelling still works, with a deprecation warning.
 #
-# WHY A SECOND DEPOT. depot.bzl conforms the developer's ambient depot to the Manifest,
-# which is right for building fast on a workstation and wrong for an image: that tree
-# holds every project on the machine, of which this one needs a sliver. So the image gets
-# its own depot, instantiated from the Manifest into an empty directory.
+# Why a second depot: depot.bzl conforms the developer's existing depot to the Manifest,
+# which suits a workstation build but not an image. That depot holds every project on the
+# machine, and this one needs a small part of it. The image gets its own depot, instantiated
+# from the Manifest into an empty directory.
 #
-# WHY NOT ENUMERATE THE ARTIFACTS INSTEAD. Because it silently under-counts. A static walk
-# of every Artifacts.toml with HostPlatform() misses packages that augment the platform
-# with their own code (HDF5_jll ships .pkg/platform_augmentation.jl and tags its entries
-# with `mpi`); a plain HostPlatform() matches nothing, drops the artifact with no error,
-# and the failure lands in production as a missing native library at first use. Letting
-# Pkg instantiate means Pkg performs the augmented selection, so the set is complete and
-# minimal by construction. See artifact_paths.jl, which exists to measure, not to decide.
+# Why Pkg selects the artifacts: a static walk of every Artifacts.toml with HostPlatform()
+# misses packages that augment the platform with their own code (HDF5_jll ships
+# .pkg/platform_augmentation.jl and tags its entries with `mpi`). A plain HostPlatform()
+# matches none of those entries and drops the artifact without an error, and the image fails
+# with a missing native library at first use. Pkg.instantiate performs the augmented
+# selection, so the set is complete and minimal. artifact_paths.jl measures the set; it does
+# not choose it.
 #
-# WHY A SYSIMAGE DOES NOT MAKE THIS REDUNDANT. A sysimage carries compiled code, not
-# native libraries. JLLWrappers resolves artifact directories in __init__, at startup,
-# which is also why the artifacts can live at a different path in the image than they did
-# at build time. Pointed at an empty depot, startup dies in the first JLL's __init__.
+# Why a sysimage does not replace this: a sysimage carries compiled code, not native
+# libraries. JLLWrappers resolves artifact directories in __init__ at startup, which is also
+# why the artifacts can be at a different path in the image than at build time. With an
+# empty depot, startup fails in the first JLL's __init__.
 #
-# NO PRECOMPILATION, in either mode. A cache built against this temporary depot, which
-# has none of the image's layout around it, is not one the image can trust. A full-mode
-# image either pays its precompilation once at first start, or ships the caches of
-# julia_compiled_layer (image.bzl), which precompiles in a tree laid out like the image.
+# No precompilation in either mode. A cache built against this temporary depot, without the
+# image's layout around it, cannot be trusted by the image. A full-mode image either
+# precompiles once at first start, or ships the caches of julia_compiled_layer (image.bzl),
+# which precompiles in a tree laid out like the image.
 #
-# ARTIFACT OVERRIDES substitute a locally built artifact for a registry one. Two files,
-# because the path differs between build and image: the build-time file names a directory
-# on this host and is consulted by Pkg.instantiate, which skips downloading any artifact
-# whose HASH is overridden to an existing directory (only hash-keyed overrides have that
-# effect; UUID/name overrides are honoured at load time, not at download time); the image
-# file names the in-image path and is what ships, and is therefore required whenever the
-# build one is set. The build fails if an overridden hash was downloaded anyway, since
-# the image would then carry both and load the registry one. Hash keys are read in either
-# TOML spelling, bare or quoted.
+# Artifact overrides substitute a locally built artifact for a registry one. There are two
+# files because the path differs between build and image:
+#   - The build-time file names a directory on this host. Pkg.instantiate reads it and skips
+#     downloading any artifact whose hash is overridden to an existing directory. Only
+#     hash-keyed overrides do this; UUID and name overrides apply at load time.
+#   - The image file names the in-image path and is what ships, so it is required whenever
+#     the build one is set.
+# The build fails if an overridden hash was downloaded anyway, since the image would then
+# carry both and load the registry one. Hash keys are read bare or quoted.
 set -euo pipefail
 
-# DEPRECATED SPELLINGS. Before 0.1.1 these variables were named RULES_JULIA_DEPOT_<name>. The old
-# spelling is still read, with a warning, when the new one is unset; it will be removed in a
-# release that raises the module's compatibility_level.
+# Deprecated spellings: before 0.1.1 these variables were named RULES_JULIA_DEPOT_<name>. The
+# old name is read, with a warning, when the new one is unset. It goes in the release that
+# next raises the module's compatibility_level.
 for _name in BIN CONTENTS IMAGE_PREFIX MIN_ARTIFACTS OVERRIDES_BUILD OVERRIDES_IMAGE; do
     _old="RULES_JULIA_DEPOT_$_name" _new="JULIA_DEPOT_$_name"
     if [ -z "${!_new+set}" ] && [ -n "${!_old+set}" ]; then
@@ -71,11 +71,11 @@ out="${2:?usage: image_depot.sh <project dir> <output tar>}"
 : "${JULIA_DEPOT_BIN:?JULIA_DEPOT_BIN must be set to the pinned julia}"
 : "${JULIA_DEPOT_PATH:?JULIA_DEPOT_PATH must be set; source the depot rule env.sh first}"
 
-# The two override files are a PAIR. A build-time override with no image-time one would
-# ship the build file itself, which names a directory on this host: the image would then
-# carry neither the registry artifact (the override stopped its download) nor a valid
-# path to a replacement, and would die in the first JLL's __init__ with a path that does
-# not exist. Refusing here costs a build; the alternative costs a deployment.
+# The two override files go together. A build-time override with no image-time one would
+# ship the build file, which names a directory on this host. The image would carry neither
+# the registry artifact (the override stopped its download) nor a valid path to a
+# replacement, and would fail in the first JLL's __init__ on a path that does not exist.
+# Failing here costs a build; shipping it would cost a deployment.
 if [ -n "${JULIA_DEPOT_OVERRIDES_BUILD:-}" ] && [ -z "${JULIA_DEPOT_OVERRIDES_IMAGE:-}" ]; then
     echo "FAILED: JULIA_DEPOT_OVERRIDES_BUILD is set without JULIA_DEPOT_OVERRIDES_IMAGE," >&2
     echo "        which would ship this host's paths in the image. Set both." >&2
@@ -93,22 +93,22 @@ fresh="$(mktemp -d)"
 stage="$(mktemp -d)"
 trap 'rm -rf "$fresh" "$stage"' EXIT
 
-# Package-server credentials, copied BY PATH from the source depot so a private server
-# resolves the way it does for the developer. Never echoed, exported or passed as an
-# argument, and never part of the layer: only artifacts/, packages/ and compiled/ leave
-# the clean depot.
+# Package-server credentials, copied by path from the source depot so a private server
+# resolves as it does for the developer. They are never echoed, exported or passed as an
+# argument, and never enter the layer: only artifacts/, packages/ and compiled/ leave the
+# clean depot.
 if [ -d "$src_depot/servers" ]; then
     cp -a "$src_depot/servers" "$fresh/servers"
     chmod -R go-rwx "$fresh/servers"
 fi
 
-# The registries, copied rather than re-cloned. Cheap, and it keeps this action from
-# depending on git reachability as well as the package server. From EVERY entry of the
-# source path, as Julia reads them: with read-only depots behind the written one (julia.depot's
-# read_only_depots), a registry a shared depot already had was never installed into the first,
-# and without it here a private registry's packages would not resolve. A registry is a
-# directory or a <name>.toml with its tarball, so the first entry to have a name keeps it, the
-# way Julia's search order would. Credentials stay first-entry only: that is where Pkg reads them.
+# Copy the registries instead of cloning them, so the action needs only the package server,
+# not git access. Copy from every entry of the source path, as Julia reads them: with
+# read-only depots behind the written one (julia.depot's read_only_depots), a registry a
+# shared depot already had was never installed into the first entry, and without it a private
+# registry's packages would not resolve. A registry is a directory or a <name>.toml with its
+# tarball; the first entry that has a name wins, matching Julia's search order. Credentials
+# come from the first entry only, where Pkg reads them.
 declare -A registry_from=()
 IFS=: read -r -a src_entries <<<"$JULIA_DEPOT_PATH"
 for i in "${!src_entries[@]}"; do
@@ -132,25 +132,25 @@ if [ -n "${JULIA_DEPOT_OVERRIDES_BUILD:-}" ]; then
 fi
 
 echo "==> instantiating the Manifest into a clean depot"
-# WEAK DEPENDENCIES ARE NOT OPTIONAL IN A SOURCE-LOADED IMAGE. Pkg.instantiate() skips
-# them: they are in the manifest but their sources are never downloaded. That is fine when
-# a sysimage carries the code, and fatal without one, because Julia's precompilation walks
-# the manifest's extensions and needs the PARENT package's source to exist
-# ("failed to find source of parent package"). download_source fills them in.
+# A source-loaded image needs the sources of weak dependencies. Pkg.instantiate() skips
+# them: they are in the manifest but never downloaded. That is fine when a sysimage carries
+# the code. Without one, Julia's precompilation walks the manifest's extensions and needs
+# the parent package's source ("failed to find source of parent package").
+# download_source fetches them.
 instantiate='using Pkg; Pkg.instantiate()'
 if [ "$contents" = "full" ]; then
     instantiate="$instantiate; Pkg.Operations.download_source(Pkg.Types.Context())"
 fi
 
-# THE BUNDLED DEPOTS STAY ON THE PATH. Setting JULIA_DEPOT_PATH to the fresh directory
-# alone drops Julia's default entries, including <julia>/share/julia, where the
-# distribution ships the stdlib precompile caches. Without it, `using Pkg` recompiles Pkg
-# into the fresh depot, serially, before instantiate can start: 77 s on a fast machine,
-# 200 to 290 s on a CI runner, per invocation. Appending the two bundled depots keeps the
-# fresh depot the sole writable entry while the caches shipped with Julia are found. They
-# are named rather than left to a trailing colon, which expands to the same two (Julia
-# 1.10 and later leave ~/.julia out of it), so the path says exactly what it is. The layer is unaffected: only artifacts/,
-# packages/ and compiled/ of the fresh depot leave here.
+# Keep the bundled depots on the path. JULIA_DEPOT_PATH set to the fresh directory alone
+# drops Julia's default entries, including <julia>/share/julia, where the distribution ships
+# the stdlib precompile caches. Without it, `using Pkg` recompiles Pkg into the fresh depot,
+# serially, before instantiate starts: 77 s on a fast machine, 200 to 290 s on a CI runner,
+# per invocation. Appending the two bundled depots keeps the fresh depot the only writable
+# entry while Julia's shipped caches are found. They are named explicitly so the path shows
+# what it holds; a trailing colon would expand to the same two (Julia 1.10 and later leave
+# ~/.julia out). The layer is unaffected: only artifacts/, packages/ and compiled/ of the
+# fresh depot leave here.
 julia_prefix="$(cd "$(dirname "$(readlink -f "$JULIA_DEPOT_BIN")")/.." && pwd)"
 depot_path="$fresh:$julia_prefix/local/share/julia:$julia_prefix/share/julia"
 
@@ -174,13 +174,12 @@ if [ "$n" -lt "$min_artifacts" ]; then
 fi
 
 if [ -n "${JULIA_DEPOT_OVERRIDES_BUILD:-}" ]; then
-    # Hash-keyed entries only: those are the ones Pkg honours at DOWNLOAD time, and so
-    # the only ones whose presence in artifacts/ means the override did not take. A TOML
-    # key may be bare or quoted, and both spellings have to be recognised, because an
-    # unrecognised one skips the check silently and the image then carries two copies of
-    # the artifact and loads the registry one. A file with no hash-keyed entries at all
-    # is legitimate (UUID and name overrides are resolved at load time), so a match is
-    # not required, only checked.
+    # Hash-keyed entries only: Pkg honours those at download time, so only their presence
+    # in artifacts/ means the override did not take effect. Both TOML key spellings, bare and
+    # quoted, must match: a missed one skips the check silently, and the image then carries
+    # two copies of the artifact and loads the registry one. A file with no hash-keyed
+    # entries is valid (UUID and name overrides are resolved at load time), so a match is
+    # checked but not required.
     for h in $(sed -nE 's/^[[:space:]]*"?([0-9a-f]{40})"?[[:space:]]*=.*/\1/p' "$JULIA_DEPOT_OVERRIDES_BUILD"); do
         if [ -d "$fresh/artifacts/$h" ]; then
             echo "FAILED: artifact $h was downloaded despite the override" >&2
@@ -195,10 +194,10 @@ if [ -n "${JULIA_DEPOT_OVERRIDES_IMAGE:-}" ]; then
     cp "$JULIA_DEPOT_OVERRIDES_IMAGE" "$stage/$depot_prefix/artifacts/Overrides.toml"
 fi
 
-# WHAT ELSE GOES IN. Default is artifacts only, which is right when a sysimage carries
-# the code: packages/ would then be dead weight the image never reads. `full` also ships
-# packages/ (and compiled/, if anything produced it), for an image that has NO sysimage
-# and therefore loads its packages from source at startup.
+# Layer contents: the default is artifacts only, for an image whose sysimage carries the
+# code and would never read packages/. `full` also ships packages/ (and compiled/, if
+# anything produced it), for an image with no sysimage that loads packages from source at
+# startup.
 case "$contents" in
     artifacts) ;;
     full)
@@ -220,10 +219,10 @@ esac
 
 # Deterministic tar: sorted, epoch mtimes, root-owned by number, permissions normalised
 # (0755 for directories and executables, 0644 otherwise, whatever Pkg and the umask left).
-# Without these the layer digest changes on every build and nothing downstream can be
-# cached or compared. The prefix's top directory is what is archived, so its parents are
-# entries too, with the same normalised modes, rather than whatever a container runtime
-# invents for them. These are the flags of write_layer in image_layers.sh.
+# Without these the layer digest changes on every build and nothing downstream can be cached
+# or compared. The prefix's top directory is archived, so its parents are entries too, with
+# the same normalised modes, and a container runtime does not choose modes for them. These
+# are the flags of write_layer in image_layers.sh.
 echo "==> writing $out"
 LC_ALL=C tar --create --file "$out" \
     --format=gnu \

@@ -3,7 +3,7 @@
 #
 # Usage: JULIA_DEPOT_SYSIMAGE_PACKAGES="Pkg1 Pkg2" sysimage.sh <project dir> <build project> <out.so>
 #
-#   <project dir>    the project whose packages are baked (a COPY; see below)
+#   <project dir>    the project whose packages are baked (a copy; see below)
 #   <build project>  the PackageCompiler environment, or `auto` to use the one shipped
 #                    beside this script for the running Julia's minor version
 #                    (sysimage/v1.12, sysimage/v1.13, ...). Under Bazel, `auto` needs
@@ -23,21 +23,20 @@
 # Before 0.1.1 these were spelled RULES_JULIA_DEPOT_*. The old spelling still works, with a
 # deprecation warning.
 #
-# WHAT IT COSTS. Code baked into a sysimage cannot be revised. Use the sysimage when the
-# baked packages are fixed underneath you, and an ordinary Revise loop when they are not.
+# Cost: code baked into a sysimage cannot be revised. Use the sysimage when the baked
+# packages do not change while you work, and an ordinary Revise loop when they do.
 #
-# WHAT IS NOT IN IT. No precompile trace: `create_sysimage` alone bakes the module code
-# and type system, which is the bulk of load time. Method specialisations from a
-# --trace-compile run are a further win and need a representative workload.
+# No precompile trace is used. `create_sysimage` alone bakes the module code and type
+# system, which is most of load time. Method specialisations from a --trace-compile run
+# would help further but need a representative workload.
 #
-# PASS A COPY of the project directory when running under Bazel: srcs are staged as
-# symlinks to the real files, so anything that wrote to the project would corrupt the
-# actual Manifest.toml.
+# Under Bazel, pass a copy of the project directory: srcs are staged as symlinks to the
+# real files, so a write to the project would corrupt the real Manifest.toml.
 set -euo pipefail
 
-# DEPRECATED SPELLINGS. Before 0.1.1 these variables were named RULES_JULIA_DEPOT_<name>. The old
-# spelling is still read, with a warning, when the new one is unset; it will be removed in a
-# release that raises the module's compatibility_level.
+# Deprecated spellings: before 0.1.1 these variables were named RULES_JULIA_DEPOT_<name>. The
+# old name is read, with a warning, when the new one is unset. It goes in the release that
+# next raises the module's compatibility_level.
 for _name in BIN SYSIMAGE_PACKAGES SYSIMAGE_CPU_TARGET; do
     _old="RULES_JULIA_DEPOT_$_name" _new="JULIA_DEPOT_$_name"
     if [ -z "${!_new+set}" ] && [ -n "${!_old+set}" ]; then
@@ -52,10 +51,10 @@ OUT="$3"
 : "${JULIA_DEPOT_SYSIMAGE_PACKAGES:?set JULIA_DEPOT_SYSIMAGE_PACKAGES to the space-separated packages to bake}"
 JULIA="${JULIA_DEPOT_BIN:-julia}"
 
-# The PackageCompiler environment must have been resolved under the SAME Julia minor as
-# the one building the sysimage: PackageCompiler's own compat and its precompile cache
-# are both keyed on it. `auto` selects by the running Julia; an explicit project is
-# checked the same way, so a stale pin fails here rather than deep inside PackageCompiler.
+# The PackageCompiler environment must have been resolved under the same Julia minor as
+# the one building the sysimage, since PackageCompiler's compat and its precompile cache
+# are both keyed on it. `auto` selects by the running Julia. An explicit project is checked
+# the same way, so a stale pin fails here and not deep inside PackageCompiler.
 minor="$("$JULIA" --startup-file=no -e 'print(VERSION.major, ".", VERSION.minor)')"
 if [ "$BUILD_PROJECT" = "auto" ]; then
     here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -73,12 +72,11 @@ if [ -n "$want" ] && [ "$want" != "$minor" ]; then
     exit 2
 fi
 
-# The environment being right does not mean its packages are in the depot: nothing else
-# instantiates it, so a fresh depot has the Manifest but not PackageCompiler. Probe for
-# every pinned package without loading any, and instantiate only when one is missing, so
-# a warm depot stays silent and offline. Instantiate from a COPY: under Bazel the
-# environment is staged read-only from the external tree, and only the depot should
-# change. The registry is whatever the depot already has; none is added here.
+# Nothing else instantiates this environment, so a fresh depot may lack PackageCompiler
+# and its dependencies. Probe for every pinned package without loading any, and instantiate
+# only when one is missing, so a warm depot stays quiet and offline. Instantiate from a copy:
+# under Bazel the environment is staged read-only from the external tree, and only the
+# depot should change. It uses the registries the depot already has and adds none.
 missing="$("$JULIA" --startup-file=no --project="$BUILD_PROJECT" -e '
 manifest = Base.parsed_toml(joinpath(dirname(Base.active_project()), "Manifest.toml"))
 for (name, entries) in manifest["deps"], entry in entries

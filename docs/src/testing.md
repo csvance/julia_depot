@@ -1,25 +1,23 @@
 # Testing
 
 The tests live in `e2e/`, a separate Bazel module that depends on this one through
-`local_path_override`. That is deliberate: what is being tested is the consumer
-interface, so the tests consume it the way a consumer does, through `bazel_dep`, the
-extension, and the repositories it produces.
+`local_path_override`. The suite tests the consumer interface, so it uses the module the
+way a consumer does: through `bazel_dep`, the extension, and the repositories it produces.
 
 ```bash
 cd e2e
 bazel test //...
 ```
 
-Nothing else is needed. The Julia distributions are fetched and pinned by the module
-itself, so no Julia has to be installed to run the suite. It resolves against the public
-package server, pinned in `e2e/.bazelrc`, so a shell pointing `JULIA_PKG_SERVER` at a
-private mirror does not change what the tests fetch.
+No Julia has to be installed: the module fetches and pins the distributions itself. It
+resolves against the public package server, pinned in `e2e/.bazelrc`, so a shell pointing
+`JULIA_PKG_SERVER` at a private mirror does not change what the tests fetch.
 
-The suite assumes `JULIA_DEPOT_PATH` is unset or names a single depot, which is what CI
-runs with. A few tests look for what the fetch installed in the first depot only, so with a
+The suite assumes `JULIA_DEPOT_PATH` is unset or names a single depot, which is what CI runs
+with. A few tests look for what the fetch installed in the first depot only, so with a
 multi-entry path, where packages and artifacts may already live in a later entry, they fail
-without anything being wrong with the rules. To run the suite from such a shell, clear the
-variable for the fetch:
+even though the rules work. To run the suite from such a shell, clear the variable for the
+fetch:
 
 ```bash
 bazel test //... --repo_env=JULIA_DEPOT_PATH=
@@ -27,7 +25,7 @@ bazel test //... --repo_env=JULIA_DEPOT_PATH=
 
 That instantiates into Julia's default depot, `~/.julia`.
 
-Expect a few minutes cold, most of it downloading the two Julia distributions and
+Expect a few minutes cold, most of it downloading the Julia distributions and
 building two sysimages per version (one for the sysimage tests, one portable one for the image
 example); warm, the whole matrix takes a few minutes.
 
@@ -43,17 +41,17 @@ and depot:
 bazel test $(bazel query "attr(tags, 'julia1_13', tests(//...))")
 ```
 
-For each version: the distribution is a Julia of that version that can load its own
-stdlib; a depot over a manifest resolved under it stamps the right version, manifest hash
-and depot, and its `env.sh` exports that same depot and names no Julia binary; a hook runs before instantiate and
-sees its `hook_environ`; `image_depot.sh` ships artifacts and no packages in `artifacts`
-mode and both in `full`, honours the image prefix and the artifact floor, and never ships
-depot credentials; artifact overrides are honoured, and a broken one fails the build
-instead of producing an image with two copies of a library; and `sysimage.sh auto`
-selects that version's PackageCompiler environment, builds an image, and that image
-starts and loads what was baked into it. Across versions, a manifest resolved under one
-Julia is refused by the other in both directions, and a PackageCompiler environment
-pinned to the wrong minor is refused before any work starts.
+For each version: the distribution is a Julia of that version that can load its own stdlib;
+a depot over a manifest resolved under it stamps the right version, manifest hash and depot,
+and its `env.sh` exports that same depot and names no Julia binary; a hook runs before
+instantiate and sees its `hook_environ`; `image_depot.sh` ships artifacts and no packages in
+`artifacts` mode and both in `full`, honours the image prefix and the artifact floor, and
+never ships depot credentials; artifact overrides are honoured, and a broken one fails the
+build instead of producing an image with two copies of a library; and `sysimage.sh auto`
+selects that version's PackageCompiler environment, builds an image, and that image starts
+and loads what was baked into it. Across versions, a manifest resolved under one Julia is
+refused by the other in both directions, and a PackageCompiler environment pinned to the
+wrong minor is refused before any work starts.
 
 The long-term support release runs a reduced set: the distribution, the depot stamp, both
 `image_depot.sh` modes, artifact overrides and the wrong-minor refusal. It has no sysimage build,
@@ -61,17 +59,18 @@ since the module ships no PackageCompiler environment for it, no hook test, whic
 every version, and no image example, which builds a sysimage layer. A `julia_version_tests()`
 call without `sysimage_depot_repo` and `hook_depot_repo` is that reduced set.
 
-Each version in the full set also builds the image example in `e2e/image`: the dist, full depot, compiled and
-application layers from `julia/image.bzl`, the image environment, and an `oci_image` assembled
-from them with `rules_oci` on a digest-pinned Debian base. `rules_oci` is a dependency of the e2e
-module only. Every layer entry must be normalised (uid and gid 0, epoch mtime, 0755 or 0644),
-the dist and depot layers must come out byte-identical from two separate actions, the compiled
-layer the same entries up to the cache file hash, and `rules_oci`'s config must carry the
-environment file and the layers in order. `julia_precompile_test` must pass on the image's layers
-and must fail, naming what it compiled, on the same layers without the compiled layer. A
-sysimage layer over an artifacts-only depot, whose registry is fetched fresh, must start without
-precompiling too. The layers are large: the distribution alone is about a gigabyte per copy, and
-the determinism test builds it twice.
+Each version in the full set also builds the image example in `e2e/image`: the dist, full
+depot, compiled and application layers from `julia/image.bzl`, the image environment, and an
+`oci_image` assembled from them with `rules_oci` on a digest-pinned Debian base. `rules_oci`
+is a dependency of the e2e module only. Every layer entry must be normalised (uid and gid 0,
+epoch mtime, 0755 or 0644), the dist and depot layers must come out byte-identical from two
+separate actions, the compiled layer the same entries up to the cache file hash, and
+`rules_oci`'s config must carry the environment file and the layers in order.
+`julia_precompile_test` must pass on the image's layers and must fail, naming what it
+compiled, on the same layers without the compiled layer. A sysimage layer over an
+artifacts-only depot, whose registry is fetched fresh, must start without precompiling too.
+The layers are large: the distribution alone is about a gigabyte per copy, and the
+determinism test builds it twice.
 
 The depot attributes that do not depend on the Julia version are tested on 1.12 alone: `dir`,
 and `read_only_depots`, whose depot has a hook seed a shared depot behind `dir` before

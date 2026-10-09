@@ -5,7 +5,7 @@ layout: home
 hero:
   name: julia_depot
   text: Reproducible Julia environments with Bazel
-  tagline: Depots, sysimages and container images pinned to the Manifest.toml you already commit. The rules never re-resolve, never model packages themselves, and never invent a second lockfile.
+  tagline: Depots, sysimages and container images pinned to the Manifest.toml you already commit. The rules never re-resolve, never model packages themselves, and never add a second lockfile.
   actions:
     - theme: brand
       text: Get started
@@ -44,23 +44,23 @@ features:
 
 ## Why these rules
 
-They work with Julia's package manager rather than against it. The unit of pinning is
-Pkg's own: a resolved `Manifest.toml`, which already names every package by tree hash
-and every artifact by content hash. The rules never re-resolve, never model packages
-themselves, and never invent a second lockfile. They hand Pkg your project and make the
-result a Bazel input, so everything Pkg understands keeps working unchanged: path
-sources, artifact overrides, private registries and package servers, and the workspaces
-Julia 1.12 introduced, where several packages share one manifest.
+The rules build on Julia's package manager. The unit of pinning is Pkg's own: a resolved
+`Manifest.toml`, which already names every package by tree hash and every artifact by
+content hash. The rules never re-resolve, never model packages themselves, and never add a
+second lockfile. They hand Pkg your project and make the result a Bazel input, so everything
+Pkg understands keeps working unchanged: path sources, artifact overrides, private
+registries and package servers, and the workspaces Julia 1.12 introduced, where several
+packages share one manifest.
 
-That makes them simple, and simple turns out to be enough for a lot: a developer REPL
-on a pinned environment, a sysimage that removes load time, a container image whose
-depot holds exactly the closure and nothing else, and a build that refuses to proceed
-when the Julia and the manifest disagree instead of producing something subtly wrong.
+That keeps them simple, and simple covers a lot: a developer REPL on a pinned environment,
+a sysimage that removes load time, a container image whose depot holds exactly the closure,
+and a build that fails when the Julia and the manifest disagree instead of producing
+something subtly wrong.
 
-This is not a Julia language ruleset. [`rules_julia`](https://github.com/periareon/rules_julia)
-models Julia code as Bazel targets (`julia_library`, `julia_binary`, `julia_test`) with a Bazel
-toolchain; this module instead pins whole environments to the `Manifest.toml` Pkg already
-writes, and packages them into images. The two answer different questions.
+This module pins whole environments to the `Manifest.toml` Pkg already writes and packages
+them into images. It is not a Julia language ruleset:
+[`rules_julia`](https://github.com/periareon/rules_julia) models Julia code as Bazel targets
+(`julia_library`, `julia_binary`, `julia_test`) with a Bazel toolchain.
 
 ## The core workflow
 
@@ -68,7 +68,7 @@ writes, and packages them into images. The two answer different questions.
 2. Declare a Julia and a depot in `MODULE.bazel`:
 
 ```python
-bazel_dep(name = "julia_depot", version = "0.1.0")
+bazel_dep(name = "julia_depot", version = "0.1.1")
 julia = use_extension("@julia_depot//julia:extensions.bzl", "julia")
 julia.dist(name = "julia_dist", version = "1.12.7")
 julia.depot(
@@ -92,9 +92,10 @@ use_repo(julia, "julia_dist", "my_depot")
    and a test that the image starts without compiling anything. You assemble the image with
    `rules_oci` (or anything else that takes tars); this module does not depend on it.
 
-Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing
-else. Private registries plug in through the depot's `hook`. A host-wide shared depot can sit
-read-only behind a per-user one; see [a shared depot](recipes.md#A-shared-depot-behind-a-declared-one).
+Moving to a new Julia takes a new distribution version and a re-resolved manifest. Private
+registries plug in through the depot's `hook`. A host-wide shared depot can sit read-only
+behind a per-user one, so each user's depot holds only what it lacks; see
+[a shared depot](recipes.md#A-shared-depot-behind-a-declared-one).
 
 ## What is in the box
 

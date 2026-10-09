@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# julia.depot with `depot = "{HOME}/..."` instantiates into THAT directory, not the ambient
-# depot: env.sh exports the expanded path with a trailing separator (Julia's bundled depots
-# stay on the path), the stamp names the same depot, and the packages landed there.
+# julia.depot with `depot = "{HOME}/..."` instantiates into that directory instead of the ambient
+# depot. env.sh exports the expanded path with a trailing separator (so Julia's bundled depots stay
+# on the path), the stamp names the same depot, and the packages are there.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -9,10 +9,10 @@ env_sh="$(abspath "$1")"
 stamp="$(abspath "$2")"
 rel="$3"
 
-# {HOME} expanded at FETCH time, in the fetching user's environment, which is not the test's
-# sandboxed HOME. So the test checks the shape of what was exported (absolute, the template's
-# tail, the trailing separator, no placeholder left) and that the stamp and the directory agree
-# with it, rather than recomputing the path from its own HOME.
+# {HOME} is expanded at fetch time in the fetching user's environment, which is not the test's
+# sandboxed HOME. So the test checks the shape of the exported path (absolute, ending in the
+# template's tail and a trailing separator, no placeholder left) and that the stamp and the
+# directory agree with it, instead of recomputing the path from its own HOME.
 exported="$(
     # shellcheck disable=SC1090
     . "$env_sh"

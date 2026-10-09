@@ -1,12 +1,12 @@
 # Builds the documentation site on every push and PR, and deploys it to GitHub Pages on
-# main and on tags. `deploydocs(push_preview = true)` in docs/make.jl makes PR builds land
-# on a preview URL instead of the live site, so a PR can be reviewed with its docs rendered
-# before it merges. The build is pure Julia: Documenter with MaterialDocs' Material3 writer
-# and the DocumenterLandingPage plugin. It needs nothing from Bazel.
+# main and on tags. `deploydocs(push_preview = true)` in docs/make.jl deploys PR builds to a
+# preview URL, so a PR's rendered docs can be reviewed before it merges. The build is Julia
+# only (Documenter with MaterialDocs' Material3 writer and the DocumenterLandingPage plugin)
+# and needs nothing from Bazel.
 #
-# A `changes` job gates the build on doc-relevant changes: docs/ and this workflow. Tag
-# pushes always deploy: a release must publish its versioned docs regardless of what the
-# filter sees. A skipped docs job counts as success for required-check gating.
+# A `changes` job runs the build only when docs/ or this workflow changed. Tag pushes always
+# deploy, because a release must publish its versioned docs. A skipped docs job counts as
+# success for required-check gating.
 name: docs
 
 on:
@@ -26,13 +26,13 @@ permissions:
   actions: write
 
 env:
-  # As in ci.yml: the runner has no private network and must never be asked to look for one.
+  # As in ci.yml: the runner has no private network, so pin the public package server.
   JULIA_PKG_SERVER: https://pkg.julialang.org
 
 jobs:
   changes:
-    # Tag pushes skip the filter entirely: the docs job below runs them unconditionally,
-    # and dorny/paths-filter has no sensible base commit to diff a new tag against.
+    # Skipped on tag pushes: the docs job below always runs for them, and
+    # dorny/paths-filter has no base commit to diff a new tag against.
     if: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
     runs-on: ubuntu-latest
     permissions:
@@ -52,9 +52,8 @@ jobs:
 
   docs:
     needs: changes
-    # !cancelled() is required: without a status function, a job whose `needs` was
-    # skipped (as `changes` is on tag pushes) is itself skipped before this condition is
-    # ever evaluated.
+    # !cancelled() is required. Without a status function, a job whose `needs` was skipped
+    # (as `changes` is on tag pushes) is skipped without evaluating this condition.
     if: ${{ !cancelled() && needs.changes.result != 'failure' && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || needs.changes.outputs.docs == 'true') }}
     runs-on: ubuntu-latest
     steps:

@@ -3,14 +3,14 @@
 ## Supported versions
 
 `julia_depot` supports the long-term support release and the two most recent releases. When the
-LTS is one of those two, that is two versions rather than three. Each supported version has an
-end-to-end workflow, `.github/workflows/julia-<minor>.yml`, and its badge in the README; the
-workflows are the list. The LTS runs a reduced set, without a sysimage build; see
+LTS is one of those two, that is two versions. Each supported version has an end-to-end
+workflow, `.github/workflows/julia-<minor>.yml`, and its badge in the README; the workflows are
+the authoritative list. The LTS runs a reduced set, without a sysimage build; see
 [Testing](testing.md#The-matrix).
 
 ## Fetching any version
 
-Nothing here requires one Julia version. `julia.dist` fetches any: the sha256 is
+The module does not require a particular Julia version. `julia.dist` fetches any: the sha256 is
 looked up for the versions the module knows, listed in `_KNOWN_SHA256` in
 [`julia/dist.bzl`](https://github.com/csvance/julia_depot/blob/main/julia/dist.bzl), and passed
 explicitly otherwise, per platform, from
@@ -26,12 +26,12 @@ julia.dist(
     },
 )
 ```
-The depot rule pins nothing itself; it enforces that YOUR manifest was resolved under the
-Julia you fetched. Moving to a new Julia is therefore one change in two places, the
-distribution version and a re-resolved manifest, and a mismatch fails at fetch time with a
-message rather than producing a subtly different depot.
+The depot rule pins no version itself; it checks that your manifest was resolved under the
+Julia you fetched. Moving to a new Julia therefore takes two changes, the distribution version
+and a re-resolved manifest, and a mismatch fails at fetch time with a message instead of
+producing a subtly different depot.
 
-The one version-specific thing the module ships is the PackageCompiler environment a
+The only version-specific thing the module ships is the PackageCompiler environment a
 sysimage is built with, because PackageCompiler's compat and precompile cache are keyed
 on the Julia minor. There is one per minor under `julia/sysimage/v<major>.<minor>/`, and
 `sysimage.sh auto` picks the one matching the running Julia, failing with the list of
@@ -45,13 +45,13 @@ environment added as described below.
 
 Linux `x86_64` is the supported platform. `julia.dist` downloads the official build for the
 host, detected when the distribution is fetched. Linux aarch64 is mapped to its official build
-too, with its own CPU target list below, but it is untested and not supported: it may work, and
-your mileage may vary. macOS, Windows and other architectures fail with a message saying they
-are not supported yet, because the scripts need GNU tar, coreutils and a Linux Julia; the check runs only when a Julia repository is actually fetched, so a host that
-never builds a Julia target is unaffected. `url` and `strip_prefix` are templates, so one
-declaration serves both architectures, and a mirror too: `{version}` (1.12.7), `{minor}`
-(1.12), `{platform}` (`linux-x86_64`) and `{arch_dir}` (`x64`, the directory julialang-s3
-files the build under) expand.
+too, with its own CPU target list below, but it is untested and unsupported, though it may
+work. macOS, Windows and other architectures fail with a message saying they are not supported,
+because the scripts need GNU tar, coreutils and a Linux Julia. The check runs only when a
+Julia repository is fetched, so a host that never builds a Julia target is unaffected. `url`
+and `strip_prefix` are templates, so one declaration serves both architectures, and a mirror
+too: `{version}` (1.12.7), `{minor}` (1.12), `{platform}` (`linux-x86_64`) and `{arch_dir}`
+(`x64`, the directory julialang-s3 files the build under) expand.
 
 The CPU targets follow the architecture: the image rules and `sysimage.sh` default to the
 official build's list for it, `PORTABLE_X86_64_CPU_TARGET` or `PORTABLE_AARCH64_CPU_TARGET`;
@@ -60,7 +60,7 @@ see [Images](images.md#CPU-targets). The end-to-end suite runs on Linux `x86_64`
 ## Adding a Julia version
 
 The steps below use 1.14 as the example. The first two need that Julia installed locally
-(juliaup is the easy way); the rest do not.
+(juliaup is the simplest way); the rest do not.
 
 ### 1. The PackageCompiler environment
 
@@ -74,9 +74,9 @@ julia +1.14 --project=julia/sysimage/v1.14 -e 'using Pkg; Pkg.instantiate()'
 
 ### 2. The test project
 
-Resolve it under that exact Julia, against the public package server.
-`env -u JULIA_PKG_SERVER` matters: a manifest resolved through a private mirror is not one this
-repository can publish. Then update the version named in the copied `Project.toml`'s comment.
+Resolve it under that exact Julia, against the public package server. `env -u JULIA_PKG_SERVER`
+is required, because this repository cannot publish a manifest resolved through a private
+mirror. Then update the version named in the copied `Project.toml`'s comment.
 
 ```bash
 mkdir -p e2e/projects/v1.14

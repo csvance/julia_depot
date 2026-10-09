@@ -1,6 +1,6 @@
 # Images
 
-`julia/image.bzl` owns what is Julia-specific about putting a depot into an OCI image: the
+`julia/image.bzl` covers the Julia-specific parts of putting a depot into an OCI image: the
 layers, the environment the image runs with, and a test that it starts without compiling
 anything. It does not depend on `rules_oci`. Each layer rule writes one tar for `oci_image(tars =
 [...])`, the environment is a file for `oci_image(env = ...)`, and the image itself is yours:
@@ -56,7 +56,7 @@ oci_image(
     tars = [":julia_layer", ":depot_layer", ":compiled_layer", ":app_layer"],
 )
 
-# The image starts warm, checked on its layers without a container.
+# Checks on the layers, without a container, that the image starts without compiling.
 julia_precompile_test(
     name = "image_precompile_test",
     image_env = ":image_env",
@@ -67,7 +67,7 @@ julia_precompile_test(
 ```
 
 `:app_layer` is your own: the project's `Project.toml` and `Manifest.toml` at `/opt/app`, and
-your code. `e2e/image/` builds exactly this for every Julia version in the test matrix.
+your code. `e2e/image/` builds this for every Julia version in the test matrix.
 
 ## The rules
 
@@ -87,15 +87,16 @@ variables as a dict, for a BUILD file that merges them with its own.
 
 `julia_precompile_test` is a test, with the compiled layer's attributes plus `modules`.
 
-`project` and `manifest` are labels to the two files; the manifest is staged beside the project
-wherever it lives, so a production lock kept apart from the development one works. `srcs` are
-further project files (a `LocalPreferences.toml`, workspace members) staged at their paths
-relative to the `Project.toml`. `depot` is a julia.depot repository, e.g. `@my_depot`: the depot layer
-copies its registries and package-server credentials for the instantiate and ships neither, and
-without it fetches the registry fresh; the sysimage layer reads the packages that depot already
-holds. Both take the whole depot path the stamp records, so a depot with `read_only_depots`
-works unchanged: registries come from every entry, credentials from the first. `env` passes variables to the build, such as what a package's platform augmentation reads
-to select an artifact.
+`project` and `manifest` are labels to the two files. The manifest is staged beside the
+project wherever it lives, so a production lock kept apart from the development one works.
+`srcs` are further project files (a `LocalPreferences.toml`, workspace members), staged at
+their paths relative to the `Project.toml`. `depot` is a `julia.depot` repository, e.g.
+`@my_depot`. The depot layer copies its registries and package-server credentials for the
+instantiate and ships neither; without `depot` it fetches the registry fresh. The sysimage
+layer reads the packages that depot already holds. Both take the whole depot path the stamp
+records, so a depot with `read_only_depots` works unchanged: registries come from every entry,
+credentials from the first. `env` passes variables to the build, such as what a package's
+platform augmentation reads to select an artifact.
 
 The depot and sysimage layers need the network (tagged `requires-network`); set
 `JULIA_PKG_SERVER` with `--action_env` to go through a mirror. Every layer action is
@@ -115,11 +116,11 @@ PATH=/opt/julia/bin:$PATH
 ```
 
 The depot path is in search order. The image's depot comes first, because Julia writes to the
-first entry and a cache that turns out stale at run time is rebuilt there. Then `extra_depots`.
-Then the two depots the distribution ships inside itself, which hold the stdlib caches; without
-them Julia recompiles the stdlib into the first depot. They are named rather than left to a
-trailing `:`, which expands to the same two, so the file says exactly what the path is. `$PATH` is expanded by `rules_oci` against the base
-image's own PATH. Variables of your own go in `env`, and are written to the same file.
+first entry and rebuilds there any cache that is stale at run time. Then `extra_depots`. Then
+the two depots the distribution ships inside itself, which hold the stdlib caches; without them
+Julia recompiles the stdlib into the first depot. A trailing `:` would expand to the same two,
+but naming them makes the file show the whole path. `rules_oci` expands `$PATH` against the
+base image's own PATH. Variables of your own go in `env` and are written to the same file.
 
 ## Caches that survive the move
 
@@ -133,8 +134,8 @@ Sources outside every depot are recorded by absolute path and would be stale in 
 the application has packages of its own (a workspace, or a path dependency), list its root in
 `extra_depots` so they are recorded relative to it too.
 
-A cache depends on the active project's preferences, which is why `projects` lists every project
-the image starts Julia in, the entrypoint, a worker, a healthcheck, and each is precompiled in its
+A cache depends on the active project's preferences, so `projects` lists every project the
+image starts Julia in (the entrypoint, a worker, a healthcheck), and each is precompiled in its
 own environment. If the image starts Julia with a sysimage of its own, pass its in-image path as
 `sysimage`: caches are only valid against the sysimage they were built with.
 
@@ -143,33 +144,34 @@ own environment. If the image starts Julia with a sysimage of its own, pass its 
 `JULIA_CPU_TARGET` defaults to the official Julia build's list for the target platform's CPU:
 `PORTABLE_X86_64_CPU_TARGET` on `x86_64`, `PORTABLE_AARCH64_CPU_TARGET` on aarch64 (untested,
 see [Julia versions](julia-versions.md#Platforms)), both exported from `image.bzl`. A cache
-compiled for it carries a clone per target, and Julia picks the best one for the CPU it lands on, so the caches load on any host of that architecture. Compiled for
-the build machine's own CPU, Julia's default, they would be rejected on any host whose CPU
-differs and recompiled at the first start, the cost the layer exists to remove. The same value
-is in the image's environment, so anything compiled at run time is portable too. The sysimage
-layer's `cpu_target` has the same default. `julia_image_env_vars` returns a plain dict, because
+compiled for it carries a clone per target, and Julia picks the best one for the CPU it runs
+on, so the caches load on any host of that architecture. Compiled for the build machine's own
+CPU, Julia's default, they would be rejected on any host whose CPU differs and recompiled at
+first start, which is the cost the layer exists to remove. The same value is in the image's
+environment, so anything compiled at run time is portable too. The sysimage layer's
+`cpu_target` has the same default. `julia_image_env_vars` returns a plain dict, because
 `oci_image` takes `env` only as a dict or a label, so its `cpu_target` defaults to the `x86_64`
-list; pass `PORTABLE_AARCH64_CPU_TARGET` for an aarch64 image.
+list. Pass `PORTABLE_AARCH64_CPU_TARGET` for an aarch64 image.
 
 ## The test
 
 `julia_precompile_test` unpacks the layers the way the compiled layer does and, in each entry
 project, loads its direct dependencies (and the project itself, when it is a package; `modules`
 overrides both) with `JULIA_DEBUG=loading`. It fails when Julia rejects a cache or compiles a
-package, which is exactly what a container would otherwise do at its first start. It runs no
-container, so it needs no podman or docker, and it can fail: `e2e/image` runs it on an image
-without its compiled layer and requires the failure.
+package, which is what a container would otherwise do at first start. It runs no container, so
+it needs no podman or docker. To show that it can fail, `e2e/image` runs it on an image without
+its compiled layer and requires the failure.
 
-A container is still a different place: a package whose `__init__` needs a device, a driver or a
-mounted file the test does not have fails there and not here. Give the test what it needs with
-`env`, or check the loaded image itself.
+A container can still differ from the test: a package whose `__init__` needs a device, a driver
+or a mounted file the test lacks passes the test and fails in the container. Give the test what
+it needs with `env`, or check the loaded image itself.
 
 ## Build-time layers and `{root}`
 
-`env` on `julia_compiled_layer` and `julia_precompile_test` may write `{root}`, which becomes the
-directory the layers are unpacked into. Together with a layer that is passed to these rules but
-not to `oci_image`, that lets a package load on a build host that lacks something the image's
-runtime provides. The case it was made for is a CUDA build of a library that lists
+`env` on `julia_compiled_layer` and `julia_precompile_test` may write `{root}`, which becomes
+the directory the layers are unpacked into. Together with a layer that is passed to these rules
+but not to `oci_image`, that lets a package load on a build host that lacks something the
+image's runtime provides. The motivating case is a CUDA build of a library that lists
 `libcuda.so.1` as a dependency, so loading it fails without a driver: ship the driver stub in a
 build-time layer and point the loader at it.
 
@@ -189,9 +191,9 @@ The stub then never reaches the image, where the container runtime supplies the 
 
 ## Reproducibility
 
-The dist and depot layers are byte-for-byte reproducible: `e2e/image` builds each
-twice in separate actions and compares the digests. The compiled layer is normalised the same way
-but its bytes are not reproducible: Julia stamps every cache with a build id and names each cache
-file with a hash over the paths of the build. Its entries, modes, owners and mtimes are the same
-every time, and Bazel caches the action, so its digest only moves when an input does. A sysimage
-is not reproducible either, for the same reason.
+The dist and depot layers are byte-for-byte reproducible: `e2e/image` builds each twice in
+separate actions and compares the digests. The compiled layer is normalised the same way but its
+bytes are not reproducible: Julia stamps every cache with a build id and names each cache file
+with a hash over the paths of the build. Its entries, modes, owners and mtimes are the same
+every time, and Bazel caches the action, so its digest changes only when an input does. A
+sysimage is not reproducible either, for the same reason.

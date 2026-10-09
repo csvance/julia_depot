@@ -2,15 +2,14 @@
 # release, publishes it to the Bazel Central Registry, then finalizes the release.
 #
 # The same tag push also runs docs.yml, which deploys the versioned docs site
-# (/<tag>/, and /stable/ for the newest). That is why the tag has to be pushed from a
-# clone rather than created by a workflow: a tag created with GITHUB_TOKEN triggers no
-# further workflows, so the docs would never build.
+# (/<tag>/, and /stable/ for the newest). Push the tag from a clone: a tag a workflow
+# creates with GITHUB_TOKEN triggers no further workflows, so the docs would not build.
 #
 #   git tag v0.1.0 && git push origin v0.1.0
 #
 # MODULE.bazel's version must already say 0.1.0, and CHANGELOG.md must have a "## 0.1.0"
-# section; release_prep.sh refuses otherwise. That section is the release notes, here and in
-# the BCR pull request.
+# section, or release_prep.sh fails. That section is the release notes in both the GitHub
+# release and the BCR pull request.
 name: release
 
 on:
@@ -48,9 +47,9 @@ jobs:
     secrets:
       publish_token: ${{ secrets.BCR_PUBLISH_TOKEN }}
 
-  # Puts the CHANGELOG.md notes at the top of the BCR pull request publish opened, which has
-  # a fixed body otherwise; see bcr_notes.sh. A failure here leaves the release and the pull
-  # request as they are: run bcr_notes.sh by hand.
+  # Puts the CHANGELOG.md notes at the top of the BCR pull request that publish opened (see
+  # bcr_notes.sh). A failure here leaves the release and the pull request unchanged; run
+  # bcr_notes.sh by hand.
   bcr_notes:
     needs: publish
     runs-on: ubuntu-latest

@@ -4,8 +4,8 @@
 #
 # The archive's prefix matches what GitHub generates for source archives, so
 # .bcr/source.template.json's strip_prefix is the same either way. Both are named after the
-# REPOSITORY ({REPO} in that template), which is not the module's name (julia_depot), so
-# take it from the checkout rather than spelling it here.
+# repository ({REPO} in that template), which differs from the module name (julia_depot), so
+# the name comes from the checkout.
 
 set -o errexit -o nounset -o pipefail
 
@@ -24,8 +24,8 @@ if [[ "${declared}" != "${VERSION}" ]]; then
   exit 1
 fi
 
-# The notes come first and must exist: a release is not cut without them. Taken from the tag,
-# like the version above, and checked before the archive is built.
+# A release needs notes. Read them from the tag, like the version above, and check them before
+# building the archive.
 changelog="$(mktemp)"
 git show "${TAG}:CHANGELOG.md" > "${changelog}"
 notes="$("$(dirname "$0")/release_notes.sh" "${VERSION}" "${changelog}")"

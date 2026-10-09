@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# What rules_oci wrote: the image's config carries the environment file and the layers, in order.
+# The OCI layout rules_oci produced: the image config carries the environment file and the layers.
 #
 # Usage: image_config_test.sh <oci layout> <image env> <layer.tar>...
 #
-# The module stops at a tar and an environment file; this is where they meet rules_oci, so the
-# check is made on the OCI layout it produced. Every variable in the environment file is in the
-# config, PATH with the base image's own PATH expanded into it rather than a literal $PATH, and the
-# image's last layers are these tars, in this order, by the digest of their uncompressed bytes
-# (the config's diff_ids), whatever compression the registry copy uses.
+# The module produces a tar and an environment file, and this is where they meet rules_oci. Every
+# variable in the environment file must be in the config, with PATH holding the base image's PATH
+# expanded (no literal $PATH). The image's last layers must be these tars, in this order, matched
+# by the digest of their uncompressed bytes (the config's diff_ids), so the compression of the
+# registry copy does not matter.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../tests/common.sh"
 

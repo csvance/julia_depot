@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# A julia_depot `hook` that stands in for a host's shared depot, as a test fixture.
+# A julia_depot `hook` used as a test fixture: it stands in for a host's shared depot.
 #
-# read_only_depots exists for a depot someone else maintains: a host-wide one that already
-# holds most of what a Manifest needs. The e2e suite has no such host, so this hook makes
-# one before the rule instantiates: it instantiates the same project into the SECOND entry of
-# the path it is given, the first read-only depot, through a path of its own on which that
-# depot is the first entry. Seeding from the hook rather than from another repository is
-# what orders it before the fetch under test; Bazel gives two repositories no order.
+# `read_only_depots` is for a depot someone else maintains, such as a host-wide one that already
+# holds most of what a Manifest needs. The e2e suite has no such host, so this hook makes one
+# before the rule instantiates. It instantiates the same project into the second entry of its
+# path (the first read-only depot), using a path of its own on which that depot is first. Seeding
+# from the hook orders it before the fetch under test; seeding from another repository would not,
+# because Bazel does not order two repositories.
 #
-# Then it records a listing of the shared depot in the first entry, the one the rule writes
-# to. tests/read_only_depots_test.sh lists it again with the same list_depot and compares, so
-# anything the rule's own instantiate wrote into a read-only depot fails the test, and checks
-# that the packages the shared depot holds were not installed into `dir` a second time.
+# It then records a listing of the shared depot in the first entry, the one the rule writes to.
+# tests/read_only_depots_test.sh lists the shared depot again with the same list_depot and
+# compares, so anything the rule's instantiate wrote into a read-only depot fails the test. That
+# test also checks that packages the shared depot holds were not installed into `dir` again.
 set -euo pipefail
 
-# Every entry by path, type and size, then every file's content hash, without timestamps: Julia
-# touches a cache file it loads, in whichever depot holds it, to try it first next time (and
-# ignores the failure where it may not), so an mtime changes on a plain read.
+# Every entry by path, type and size, then every file's content hash. Timestamps are left out:
+# Julia touches a cache file it loads, in whichever depot holds it, so it is tried first next time
+# (and ignores the failure where the depot is not writable), so a plain read changes an mtime.
 list_depot() {
     (cd "$1" && find . -printf '%P\t%y\t%s\n' | LC_ALL=C sort &&
         find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
@@ -25,8 +25,8 @@ list_depot() {
 : "${JULIA_DEPOT_BIN:?julia_depot must run the hook with JULIA_DEPOT_BIN set}"
 : "${JULIA_DEPOT_PATH:?julia_depot must run the hook with JULIA_DEPOT_PATH set}"
 
-# <dir>:<shared>:<absent>: is what the depot declares; anything else is a regression in how
-# the rule builds the path, and fails the fetch here.
+# The depot declares <dir>:<shared>:<absent>:. Any other path is a regression in how the rule
+# builds it, and fails the fetch here.
 IFS=: read -r -a entries <<<"$JULIA_DEPOT_PATH"
 case "$JULIA_DEPOT_PATH" in
     *:) ;;
@@ -38,7 +38,7 @@ esac
 }
 dir="${entries[0]}" shared="${entries[1]}"
 
-# The project beside this fixture, copied because Pkg writes to the project it is given.
+# Copy the project beside this fixture, because Pkg writes to the project it is given.
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project="$(mktemp -d)"
 trap 'rm -rf "$project"' EXIT

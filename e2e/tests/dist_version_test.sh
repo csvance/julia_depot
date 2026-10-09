@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# julia.dist fetched a Julia that RUNS, and it is the version that was asked for.
+# julia.dist fetched a Julia that runs and is the requested version.
 #
-# The sha256 pin already guarantees the bytes. What it does not guarantee is that the
-# archive was unpacked with the right strip_prefix, that bin/julia came out executable,
-# or that the rest of the distribution came with it: Julia finds its bundled stdlib
-# relative to Sys.BINDIR, so a distribution reduced to the binary alone starts and then
-# fails on the first `using`. Asking Julia to load a stdlib proves the whole tree.
+# The sha256 pin guarantees the bytes, but not that the archive was unpacked with the right
+# strip_prefix, that bin/julia is executable, or that the rest of the distribution is present.
+# Julia finds its bundled stdlib relative to Sys.BINDIR, so a distribution reduced to the binary
+# starts and then fails on the first `using`. Loading a stdlib checks the whole tree.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 

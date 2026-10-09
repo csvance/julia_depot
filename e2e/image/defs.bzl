@@ -2,10 +2,11 @@
 
 `julia_image_tests` builds, for one version in the matrix, what a consumer of julia/image.bzl
 builds: the distribution, depot, compiled and application layers, the image environment, and an
-oci_image assembled from them with rules_oci. Then it tests them: the layers hold what they
-promise and are normalised, two independent builds of a layer are byte-identical, the image
-starts without precompiling (and the check notices when it would not), a sysimage layer serves
-the same purpose without any caches, and the environment and layers reach the image's config.
+oci_image assembled from them with rules_oci. The tests check that the layers hold what they
+should and are normalised, that two independent builds of a layer are byte-identical, that the
+image starts without precompiling (and that the check fails when it would precompile), that a
+sysimage layer does the same without any caches, and that the environment and layers reach the
+image's config.
 
 Every test is tagged `julia<minor>`, like tests/defs.bzl, so a CI shard runs one version.
 """
@@ -24,13 +25,13 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 
 _HELPERS = ["//tests:common.sh"]
 
-# The application's project, in the image. A Project.toml and its Manifest.toml and nothing else:
-# the e2e project is an environment, not a package, so its code is all in the depot.
+# The application's project in the image: only a Project.toml and its Manifest.toml. The e2e
+# project is an environment, not a package, so all its code is in the depot.
 _APP = "/opt/app"
 
-# The application layer: what a consumer ships of its own, here just the project files. Written
-# with the same tar flags as the module's layers, which is what any layer meant to be reproducible
-# needs; a consumer would more likely use rules_oci's ecosystem (aspect_bazel_lib's `tar`).
+# The application layer: what a consumer ships of its own, here the project files. Written with
+# the same tar flags as the module's layers, which any reproducible layer needs. A consumer would
+# more likely use rules_oci's ecosystem (aspect_bazel_lib's `tar`).
 _APP_LAYER_CMD = """
 set -euo pipefail
 stage="$$(mktemp -d)"
@@ -41,7 +42,8 @@ LC_ALL=C tar --create --file "$@" --format=gnu --sort=name --mtime=@0 \\
     --owner=0 --group=0 --numeric-owner --mode='u=rwX,go=rX' --directory "$$stage" opt
 """
 
-# Named by `minor`, like the macros in tests/defs.bzl; the genrule is what makes buildifier ask.
+# Named by `minor`, like the macros in tests/defs.bzl. buildifier asks for `name` because of the
+# genrule.
 # buildifier: disable=unnamed-macro
 def julia_image_tests(minor, julia_repo, depot_repo, project):
     """Declares the image example and its tests for one Julia version.
@@ -70,8 +72,8 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         julia = julia,
     )
 
-    # FULL, because the image loads its packages from source with the compiled layer's caches.
-    # The ambient depot's registry is reused through `depot`, rather than fetched again.
+    # `full`, because the image loads its packages from source with the compiled layer's caches.
+    # `depot` reuses the ambient depot's registry instead of fetching it again.
     julia_depot_layer(
         name = n("depot_layer"),
         contents = "full",
@@ -141,8 +143,8 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         tags = tags,
     )
 
-    # The image's config carries the environment file and the layers, in order. This is the seam
-    # between this module and rules_oci, so it is checked on what rules_oci actually wrote.
+    # The image's config carries the environment file and the layers, in order. This is the
+    # interface between this module and rules_oci, so the test reads what rules_oci wrote.
     sh_test(
         name = n("image_config") + "_test",
         size = "small",
@@ -168,7 +170,7 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
 
     # --- determinism ----------------------------------------------------------------------
     # The same layers again under other names: separate actions with the same inputs, so Bazel
-    # builds each twice rather than reusing one result, and the test compares the bytes.
+    # builds each layer twice and the test compares the bytes.
     julia_dist_layer(
         name = n("dist_layer_again"),
         julia = julia,
@@ -253,8 +255,8 @@ def julia_image_tests(minor, julia_repo, depot_repo, project):
         tags = tags,
     )
 
-    # The same check on the image WITHOUT its compiled layer, which must fail: a check that cannot
-    # fail proves nothing. Run by precompile_check_catches_<minor>_test, never on its own.
+    # The same check on the image without its compiled layer, which must fail, to show the check
+    # can fail. Tagged manual; run only by precompile_check_catches_<minor>_test.
     julia_precompile_test(
         name = n("precompile_check_without_caches"),
         image_env = n("image_env"),
