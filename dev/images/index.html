@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Images — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=3829c407">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=ff056006">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Images — julia_depot">
   <meta property="og:title" content="Images — julia_depot">
@@ -86,9 +86,6 @@ julia_depot_layer(
     name = &quot;depot_layer&quot;,
     contents = &quot;full&quot;,
     depot = &quot;@my_depot&quot;,
-    julia = &quot;@julia_dist&quot;,
-    manifest = &quot;Manifest.toml&quot;,
-    project = &quot;Project.toml&quot;,
 )
 
 # The caches for every project the image starts Julia in.
@@ -126,37 +123,39 @@ julia_precompile_test(
 <tr>
 <th style="text-align:right">rule</th>
 <th style="text-align:right">what the tar holds</th>
-<th style="text-align:right">attributes beyond <code class="md-code-inline">julia</code></th>
+<th style="text-align:right">attributes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align:right"><code class="md-code-inline">julia_dist_layer</code></td>
 <td style="text-align:right">the distribution at <code class="md-code-inline">prefix</code>, its own relative symlinks kept</td>
-<td style="text-align:right"><code class="md-code-inline">prefix</code> (<code class="md-code-inline">/opt/julia</code>)</td>
+<td style="text-align:right"><code class="md-code-inline">julia</code>, <code class="md-code-inline">prefix</code> (<code class="md-code-inline">/opt/julia</code>)</td>
 </tr>
 <tr>
 <td style="text-align:right"><code class="md-code-inline">julia_depot_layer</code></td>
-<td style="text-align:right">a clean depot for the project at <code class="md-code-inline">prefix</code>: <code class="md-code-inline">image_depot.sh</code> as a rule</td>
-<td style="text-align:right"><code class="md-code-inline">project</code>, <code class="md-code-inline">manifest</code>, <code class="md-code-inline">srcs</code>, <code class="md-code-inline">contents</code> (<code class="md-code-inline">artifacts</code> or <code class="md-code-inline">full</code>), <code class="md-code-inline">prefix</code> (<code class="md-code-inline">/opt/julia-depot</code>), <code class="md-code-inline">depot</code>, <code class="md-code-inline">min_artifacts</code>, <code class="md-code-inline">overrides_build</code>, <code class="md-code-inline">overrides_image</code>, <code class="md-code-inline">env</code></td>
+<td style="text-align:right">a clean depot for the depot&#39;s project at <code class="md-code-inline">prefix</code></td>
+<td style="text-align:right"><code class="md-code-inline">depot</code>, <code class="md-code-inline">srcs</code>, <code class="md-code-inline">contents</code> (<code class="md-code-inline">artifacts</code> or <code class="md-code-inline">full</code>), <code class="md-code-inline">prefix</code> (<code class="md-code-inline">/opt/julia-depot</code>), <code class="md-code-inline">fresh_registry</code>, <code class="md-code-inline">min_artifacts</code>, <code class="md-code-inline">overrides_build</code>, <code class="md-code-inline">overrides_image</code>, <code class="md-code-inline">env</code></td>
 </tr>
 <tr>
 <td style="text-align:right"><code class="md-code-inline">julia_sysimage_layer</code></td>
-<td style="text-align:right">a PackageCompiler sysimage at <code class="md-code-inline">path</code>: <code class="md-code-inline">sysimage.sh</code> as a rule</td>
-<td style="text-align:right"><code class="md-code-inline">project</code>, <code class="md-code-inline">manifest</code>, <code class="md-code-inline">srcs</code>, <code class="md-code-inline">depot</code> (required), <code class="md-code-inline">packages</code>, <code class="md-code-inline">cpu_target</code>, <code class="md-code-inline">path</code> (<code class="md-code-inline">/opt/julia-sysimage/sys.so</code>), <code class="md-code-inline">env</code></td>
+<td style="text-align:right">a <code class="md-code-inline">julia_sysimage</code> at <code class="md-code-inline">path</code>, its inputs file beside it; ships that build, so the sysimage is compiled once</td>
+<td style="text-align:right"><code class="md-code-inline">sysimage</code>, <code class="md-code-inline">path</code> (<code class="md-code-inline">/opt/julia-sysimage/sys.so</code>)</td>
 </tr>
 <tr>
 <td style="text-align:right"><code class="md-code-inline">julia_compiled_layer</code></td>
 <td style="text-align:right">the depot&#39;s <code class="md-code-inline">compiled/</code>, for the entry projects</td>
-<td style="text-align:right"><code class="md-code-inline">image_env</code>, <code class="md-code-inline">layers</code>, <code class="md-code-inline">projects</code>, <code class="md-code-inline">sysimage</code>, <code class="md-code-inline">env</code> (<code class="md-code-inline">{root}</code> expands to the unpacked tree)</td>
+<td style="text-align:right"><code class="md-code-inline">julia</code>, <code class="md-code-inline">image_env</code>, <code class="md-code-inline">layers</code>, <code class="md-code-inline">projects</code>, <code class="md-code-inline">sysimage</code>, <code class="md-code-inline">env</code> (<code class="md-code-inline">{root}</code> expands to the unpacked tree)</td>
 </tr>
 </tbody>
 </table>
 </div>
+<p><code class="md-code-inline">julia_sysimage</code> builds the sysimage itself: <code class="md-code-inline">depot</code>, <code class="md-code-inline">srcs</code>, <code class="md-code-inline">packages</code>, <code class="md-code-inline">cpu_target</code>, <code class="md-code-inline">data</code>, <code class="md-code-inline">env</code> (<code class="md-code-inline">$(execpath)</code> and <code class="md-code-inline">{execroot}</code> expand), <code class="md-code-inline">cc</code> (<code class="md-code-inline">@julia_depot_cc</code>) and <code class="md-code-inline">system_cc</code>; see <a href="../recipes/#A-sysimage">Recipes</a>.</p>
+<p>Both sysimage rules also write an inputs file, the sysimage&#39;s declared inputs by sha256, in the <code class="md-code-inline">inputs</code> output group; the layer ships it beside the sysimage. A sysimage is not reproducible, so this file is how a rebuild is checked against a release; see <a href="../contract/#The-inputs-file">the inputs file</a>.</p>
 <p><code class="md-code-inline">julia_image_env</code> writes <code class="md-code-inline">&lt;name&gt;.env</code> and provides <code class="md-code-inline">JuliaImageEnvInfo</code>. Its attributes are <code class="md-code-inline">julia_prefix</code>, <code class="md-code-inline">depot_prefix</code>, <code class="md-code-inline">extra_depots</code>, <code class="md-code-inline">project</code>, <code class="md-code-inline">load_path</code>, <code class="md-code-inline">cpu_target</code>, <code class="md-code-inline">offline</code> (default true), <code class="md-code-inline">path</code> (default true) and <code class="md-code-inline">env</code>. <code class="md-code-inline">julia_image_env_vars(...)</code> returns the same variables as a dict, for a BUILD file that merges them with its own.</p>
 <p><code class="md-code-inline">julia_precompile_test</code> is a test, with the compiled layer&#39;s attributes plus <code class="md-code-inline">modules</code>.</p>
-<p><code class="md-code-inline">project</code> and <code class="md-code-inline">manifest</code> are labels to the two files. The manifest is staged beside the project wherever it lives, so a production lock kept apart from the development one works. <code class="md-code-inline">srcs</code> are further project files (a <code class="md-code-inline">LocalPreferences.toml</code>, workspace members), staged at their paths relative to the <code class="md-code-inline">Project.toml</code>. <code class="md-code-inline">depot</code> is a <code class="md-code-inline">julia.depot</code> repository, e.g. <code class="md-code-inline">@my_depot</code>. The depot layer copies its registries and package-server credentials for the instantiate and ships neither; without <code class="md-code-inline">depot</code> it fetches the registry fresh. The sysimage layer reads the packages that depot already holds. Both take the whole depot path the stamp records, so a depot with <code class="md-code-inline">read_only_depots</code> works unchanged: registries come from every entry, credentials from the first. <code class="md-code-inline">env</code> passes variables to the build, such as what a package&#39;s platform augmentation reads to select an artifact.</p>
-<p>The depot and sysimage layers need the network (tagged <code class="md-code-inline">requires-network</code>); set <code class="md-code-inline">JULIA_PKG_SERVER</code> with <code class="md-code-inline">--action_env</code> to go through a mirror. Every layer action is <code class="md-code-inline">no-remote-exec</code>, since they read the distribution through its real directory and, for the depot and sysimage layers, the depot a fetch filled on this host.</p>
+<p><code class="md-code-inline">depot</code> is a <code class="md-code-inline">julia.depot</code> repository, e.g. <code class="md-code-inline">@my_depot</code>. It brings the Julia it was fetched with and the <code class="md-code-inline">Project.toml</code> and Manifest it was instantiated for, so a rule cannot be given a Julia or a Manifest its depot does not match. A project with a second lock, a production one say, declares a second <code class="md-code-inline">julia.depot</code> over it. <code class="md-code-inline">srcs</code> are further project files (the package&#39;s source, a <code class="md-code-inline">LocalPreferences.toml</code>, workspace members), staged at their paths relative to the directory the Manifest is in. The depot layer copies the depot&#39;s registries and package-server credentials for the instantiate and ships neither; <code class="md-code-inline">fresh_registry = True</code> fetches the registry instead. The sysimage layer reads the packages that depot already holds. Both take the whole depot path the stamp records, so a depot with <code class="md-code-inline">read_only_depots</code> works unchanged: registries come from every entry, credentials from the first. <code class="md-code-inline">env</code> passes variables to the build, such as what a package&#39;s platform augmentation reads to select an artifact.</p>
+<p>The depot layer and the sysimage build need the network (tagged <code class="md-code-inline">requires-network</code>); set <code class="md-code-inline">JULIA_PKG_SERVER</code> with <code class="md-code-inline">--action_env</code> to go through a mirror. Every action that runs Julia is <code class="md-code-inline">no-remote-exec</code>, since it reads the distribution through its real directory and, for the depot layer and the sysimage, the depot a fetch filled on this host. <code class="md-code-inline">julia_sysimage_layer</code> only packages a built sysimage, so it may run anywhere. A sysimage build declares 8 GiB of memory and 2 CPUs to Bazel&#39;s local scheduler, which by default budgets two thirds of the machine&#39;s memory, so a 16 GB machine builds one sysimage at a time and a larger one builds several; adjust the budget with <code class="md-code-inline">--local_resources=memory=...</code>.</p>
 <h2 id="The-environment" class="md-heading">The environment<a href="#The-environment" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p><code class="md-code-inline">julia_image_env</code> with the defaults and <code class="md-code-inline">project = &quot;/opt/app&quot;</code> writes, on <code class="md-code-inline">x86_64</code>:</p>
 <div class="md-code-block">
@@ -219,6 +218,6 @@ PATH=/opt/julia/bin:$PATH</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=3829c407"></script>
+  <script src="../assets/materialdocs.js?v=ff056006"></script>
 </body>
 </html>

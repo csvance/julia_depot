@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Julia versions — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=b6fdd0e9">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=56c93d60">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Julia versions — julia_depot">
   <meta property="og:title" content="Julia versions — julia_depot">
@@ -73,10 +73,10 @@
 )</code></pre>
 </div>
 <p>The depot rule pins no version itself; it checks that your manifest was resolved under the Julia you fetched. Moving to a new Julia therefore takes two changes, the distribution version and a re-resolved manifest, and a mismatch fails at fetch time with a message instead of producing a subtly different depot.</p>
-<p>The only version-specific thing the module ships is the PackageCompiler environment a sysimage is built with, because PackageCompiler&#39;s compat and precompile cache are keyed on the Julia minor. There is one per minor under <code class="md-code-inline">julia/sysimage/v&lt;major&gt;.&lt;minor&gt;/</code>, and <code class="md-code-inline">sysimage.sh auto</code> picks the one matching the running Julia, failing with the list of available ones when yours is missing. The minors the module ships one for are the directories under <a href="https://github.com/csvance/julia_depot/tree/main/julia/sysimage"><code class="md-code-inline">julia/sysimage/</code></a>; on any other minor the distribution, depots and image layers work, and a sysimage needs an environment added as described below.</p>
+<p>The only version-specific thing the module ships is the PackageCompiler environment a sysimage is built with, because PackageCompiler&#39;s compat and precompile cache are keyed on the Julia minor. There is one per minor under <code class="md-code-inline">julia/sysimage/v&lt;major&gt;.&lt;minor&gt;/</code>, and the sysimage rules pick the one matching the running Julia, failing with the list of available ones when yours is missing. The minors the module ships one for are the directories under <a href="https://github.com/csvance/julia_depot/tree/main/julia/sysimage"><code class="md-code-inline">julia/sysimage/</code></a>; on any other minor the distribution, depots and image layers work, and a sysimage needs an environment added as described below.</p>
 <h2 id="Platforms" class="md-heading">Platforms<a href="#Platforms" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>Linux <code class="md-code-inline">x86_64</code> is the supported platform. <code class="md-code-inline">julia.dist</code> downloads the official build for the host, detected when the distribution is fetched. Linux aarch64 is mapped to its official build too, with its own CPU target list below, but it is untested and unsupported, though it may work. macOS, Windows and other architectures fail with a message saying they are not supported, because the scripts need GNU tar, coreutils and a Linux Julia. The check runs only when a Julia repository is fetched, so a host that never builds a Julia target is unaffected. <code class="md-code-inline">url</code> and <code class="md-code-inline">strip_prefix</code> are templates, so one declaration serves both architectures, and a mirror too: <code class="md-code-inline">{version}</code> (1.12.7), <code class="md-code-inline">{minor}</code> (1.12), <code class="md-code-inline">{platform}</code> (<code class="md-code-inline">linux-x86_64</code>) and <code class="md-code-inline">{arch_dir}</code> (<code class="md-code-inline">x64</code>, the directory julialang-s3 files the build under) expand.</p>
-<p>The CPU targets follow the architecture: the image rules and <code class="md-code-inline">sysimage.sh</code> default to the official build&#39;s list for it, <code class="md-code-inline">PORTABLE_X86_64_CPU_TARGET</code> or <code class="md-code-inline">PORTABLE_AARCH64_CPU_TARGET</code>; see <a href="../images/#CPU-targets">Images</a>. The end-to-end suite runs on Linux <code class="md-code-inline">x86_64</code> only.</p>
+<p>The CPU targets follow the architecture: the image and sysimage rules default to the official build&#39;s list for it, <code class="md-code-inline">PORTABLE_X86_64_CPU_TARGET</code> or <code class="md-code-inline">PORTABLE_AARCH64_CPU_TARGET</code>; see <a href="../images/#CPU-targets">Images</a>. The end-to-end suite runs on Linux <code class="md-code-inline">x86_64</code> only.</p>
 <h2 id="Adding-a-Julia-version" class="md-heading">Adding a Julia version<a href="#Adding-a-Julia-version" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>The steps below use 1.14 as the example. The first two need that Julia installed locally (juliaup is the simplest way); the rest do not.</p>
 <h3 id="1.-The-PackageCompiler-environment" class="md-heading">1. The PackageCompiler environment<a href="#1.-The-PackageCompiler-environment" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
@@ -144,6 +144,6 @@ env -u JULIA_PKG_SERVER julia +1.14 --project=e2e/projects/v1.14 \
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=b6fdd0e9"></script>
+  <script src="../assets/materialdocs.js?v=56c93d60"></script>
 </body>
 </html>
