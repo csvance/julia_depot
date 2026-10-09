@@ -62,6 +62,11 @@ for 0.1.x through the transition.
 - `julia_depot_layer` failed for a project with no JLLs, even with `min_artifacts = 0`: it
   required an `artifacts/` directory before counting. It now ships an empty one, and the floor
   alone decides; with the default of 1 such a project still fails, naming the count.
+- Running Julia no longer makes Bazel fetch its distribution again. Julia updates the timestamp
+  of each precompile cache it loads, the distribution's bundled ones included, and Bazel took
+  that for an external edit of the `julia.dist` repository, re-extracting about a gigabyte. The
+  bundled caches, `share/julia/compiled`, are left out of `:dist`; Julia still finds them, and
+  `julia_dist_layer` still ships them.
 
 ### New
 
