@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recipes — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=5a1c4b1d">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=84f38999">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Recipes — julia_depot">
   <meta property="og:title" content="Recipes — julia_depot">
@@ -159,7 +159,7 @@ $(location @julia_depot//julia:sysimage.sh) &quot;$$proj&quot; auto &quot;$@&quo
     read_only_depots = [&quot;/opt/julia-depot-shared&quot;],
 )</code></pre>
 </div>
-<p><code class="md-code-inline">env.sh</code> then exports <code class="md-code-inline">/cache/&lt;user&gt;/myproject/julia:/opt/julia-depot-shared:</code>. Entries expand like <code class="md-code-inline">dir</code> and need it. Julia reads from every entry and writes only to the first, and Pkg installs nothing a later entry already has, so the per-user depot holds only what the shared one lacks. A host without the shared depot fetches into <code class="md-code-inline">dir</code> alone. Whether each read-only depot exists is an input, but not what is in it: if the shared depot is pruned of something the environment used, refetch with <code class="md-code-inline">bazel fetch --force @app_depot</code>.</p>
+<p><code class="md-code-inline">env.sh</code> then exports <code class="md-code-inline">/cache/&lt;user&gt;/myproject/julia:/opt/julia-depot-shared:</code>. Entries expand like <code class="md-code-inline">dir</code> and need it. Julia reads from every entry and writes only to the first, and Pkg installs nothing a later entry already has, so the per-user depot holds only what the shared one lacks. A host without the shared depot fetches into <code class="md-code-inline">dir</code> alone. Whether each read-only depot exists is an input, but not what is in it: if the shared depot is pruned of something the environment used, refetch with <code class="md-code-inline">bazel fetch --force @app_depot</code>. A refetch cannot repair a file damaged in place in the shared depot; that has to be fixed there.</p>
 <p>This is deliberately not hermetic. Julia loads what the shared depot holds without checking it against the Manifest&#39;s hashes, so the shared depot is trusted code, and an <code class="md-code-inline">artifacts/Overrides.toml</code> in it redirects artifacts for every user; see <a href="../contract/#What-is-not-hermetic">what is not hermetic</a>.</p>
 <h2 id="Loading-an-image-with-podman-on-a-host-that-also-has-docker" class="md-heading">Loading an image with podman on a host that also has docker<a href="#Loading-an-image-with-podman-on-a-host-that-also-has-docker" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>Not Julia-specific, but it costs an afternoon the first time. <code class="md-code-inline">rules_oci</code>&#39;s <code class="md-code-inline">oci_load</code> probes <code class="md-code-inline">command -v docker</code> first and falls back to podman only when that fails, so on a host where a docker CLI is installed but its socket is not reachable the probe wins and the load dies with &quot;permission denied while trying to connect to the docker API&quot;. Name the loader instead of depending on which CLIs happen to be on PATH: a one-line script, exported as a file, because <code class="md-code-inline">loader</code> must be a single file and an <code class="md-code-inline">sh_binary</code> brings runfiles with it.</p>
@@ -204,6 +204,6 @@ oci_load(
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=5a1c4b1d"></script>
+  <script src="../assets/materialdocs.js?v=84f38999"></script>
 </body>
 </html>
