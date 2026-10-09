@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Testing — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=76fe110d">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=5f52a3f6">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Testing — julia_depot">
   <meta property="og:title" content="Testing — julia_depot">
@@ -57,20 +57,20 @@
       <article class="md-article">
       <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="https://github.com/csvance/julia_depot/blob/main/docs/src/testing.md" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
 <h1 id="Testing" class="md-heading">Testing<a href="#Testing" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
-<p>The tests live in <code class="md-code-inline">e2e/</code>, a separate Bazel module that depends on this one through <code class="md-code-inline">local_path_override</code>. That is deliberate: what is being tested is the consumer interface, so the tests consume it the way a consumer does, through <code class="md-code-inline">bazel_dep</code>, the extension, and the repositories it produces.</p>
+<p>The tests live in <code class="md-code-inline">e2e/</code>, a separate Bazel module that depends on this one through <code class="md-code-inline">local_path_override</code>. The suite tests the consumer interface, so it uses the module the way a consumer does: through <code class="md-code-inline">bazel_dep</code>, the extension, and the repositories it produces.</p>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
 <pre><code class="language-bash">cd e2e
 bazel test //...</code></pre>
 </div>
-<p>Nothing else is needed. The Julia distributions are fetched and pinned by the module itself, so no Julia has to be installed to run the suite. It resolves against the public package server, pinned in <code class="md-code-inline">e2e/.bazelrc</code>, so a shell pointing <code class="md-code-inline">JULIA_PKG_SERVER</code> at a private mirror does not change what the tests fetch.</p>
-<p>The suite assumes <code class="md-code-inline">JULIA_DEPOT_PATH</code> is unset or names a single depot, which is what CI runs with. A few tests look for what the fetch installed in the first depot only, so with a multi-entry path, where packages and artifacts may already live in a later entry, they fail without anything being wrong with the rules. To run the suite from such a shell, clear the variable for the fetch:</p>
+<p>No Julia has to be installed: the module fetches and pins the distributions itself. It resolves against the public package server, pinned in <code class="md-code-inline">e2e/.bazelrc</code>, so a shell pointing <code class="md-code-inline">JULIA_PKG_SERVER</code> at a private mirror does not change what the tests fetch.</p>
+<p>The suite assumes <code class="md-code-inline">JULIA_DEPOT_PATH</code> is unset or names a single depot, which is what CI runs with. A few tests look for what the fetch installed in the first depot only, so with a multi-entry path, where packages and artifacts may already live in a later entry, they fail even though the rules work. To run the suite from such a shell, clear the variable for the fetch:</p>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
 <pre><code class="language-bash">bazel test //... --repo_env=JULIA_DEPOT_PATH=</code></pre>
 </div>
 <p>That instantiates into Julia&#39;s default depot, <code class="md-code-inline">~/.julia</code>.</p>
-<p>Expect a few minutes cold, most of it downloading the two Julia distributions and building two sysimages per version (one for the sysimage tests, one portable one for the image example); warm, the whole matrix takes a few minutes.</p>
+<p>Expect a few minutes cold, most of it downloading the Julia distributions and building two sysimages per version (one for the sysimage tests, one portable one for the image example); warm, the whole matrix takes a few minutes.</p>
 <h2 id="The-matrix" class="md-heading">The matrix<a href="#The-matrix" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>The matrix is every supported Julia version (see <a href="../julia-versions/#Supported-versions">supported versions</a>), one <code class="md-code-inline">julia_version_tests()</code> call each in <code class="md-code-inline">e2e/tests/BUILD.bazel</code> and one workflow each, <code class="md-code-inline">.github/workflows/julia-&lt;minor&gt;.yml</code>, with its own badge in the README. The tests are tagged <code class="md-code-inline">julia&lt;minor&gt;</code> for the Julia they run, so a CI shard needs only that version&#39;s distribution and depot:</p>
 <div class="md-code-block">
@@ -104,6 +104,6 @@ bazel test //...</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=76fe110d"></script>
+  <script src="../assets/materialdocs.js?v=5f52a3f6"></script>
 </body>
 </html>

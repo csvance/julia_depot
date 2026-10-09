@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Index — julia_depot</title>
-  <link rel="stylesheet" href="./assets/materialdocs.css?v=f49c0e88">
+  <link rel="stylesheet" href="./assets/materialdocs.css?v=82513ed2">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Index — julia_depot">
   <meta property="og:title" content="Index — julia_depot">
@@ -61,7 +61,7 @@
   <div class="landing-hero__text">
     <p class="landing-name" style="--landing-name-chars: 11">julia_depot</p>
     <h1 class="landing-title">Reproducible Julia environments with Bazel</h1>
-    <p class="landing-tagline">Depots, sysimages and container images pinned to the Manifest.toml you already commit. The rules never re-resolve, never model packages themselves, and never invent a second lockfile.</p>
+    <p class="landing-tagline">Depots, sysimages and container images pinned to the Manifest.toml you already commit. The rules never re-resolve, never model packages themselves, and never add a second lockfile.</p>
     <div class="landing-actions">
 <a class="landing-btn landing-btn--brand" href="#The-core-workflow">Get started</a>
       <a class="landing-btn landing-btn--alt" href="images/">Images</a>
@@ -103,9 +103,9 @@
 </section>
 </div>
 <h2 id="Why-these-rules" class="md-heading">Why these rules<a href="#Why-these-rules" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
-<p>They work with Julia&#39;s package manager rather than against it. The unit of pinning is Pkg&#39;s own: a resolved <code class="md-code-inline">Manifest.toml</code>, which already names every package by tree hash and every artifact by content hash. The rules never re-resolve, never model packages themselves, and never invent a second lockfile. They hand Pkg your project and make the result a Bazel input, so everything Pkg understands keeps working unchanged: path sources, artifact overrides, private registries and package servers, and the workspaces Julia 1.12 introduced, where several packages share one manifest.</p>
-<p>That makes them simple, and simple turns out to be enough for a lot: a developer REPL on a pinned environment, a sysimage that removes load time, a container image whose depot holds exactly the closure and nothing else, and a build that refuses to proceed when the Julia and the manifest disagree instead of producing something subtly wrong.</p>
-<p>This is not a Julia language ruleset. <a href="https://github.com/periareon/rules_julia"><code class="md-code-inline">rules_julia</code></a> models Julia code as Bazel targets (<code class="md-code-inline">julia_library</code>, <code class="md-code-inline">julia_binary</code>, <code class="md-code-inline">julia_test</code>) with a Bazel toolchain; this module instead pins whole environments to the <code class="md-code-inline">Manifest.toml</code> Pkg already writes, and packages them into images. The two answer different questions.</p>
+<p>The rules build on Julia&#39;s package manager. The unit of pinning is Pkg&#39;s own: a resolved <code class="md-code-inline">Manifest.toml</code>, which already names every package by tree hash and every artifact by content hash. The rules never re-resolve, never model packages themselves, and never add a second lockfile. They hand Pkg your project and make the result a Bazel input, so everything Pkg understands keeps working unchanged: path sources, artifact overrides, private registries and package servers, and the workspaces Julia 1.12 introduced, where several packages share one manifest.</p>
+<p>That keeps them simple, and simple covers a lot: a developer REPL on a pinned environment, a sysimage that removes load time, a container image whose depot holds exactly the closure, and a build that fails when the Julia and the manifest disagree instead of producing something subtly wrong.</p>
+<p>This module pins whole environments to the <code class="md-code-inline">Manifest.toml</code> Pkg already writes and packages them into images. It is not a Julia language ruleset: <a href="https://github.com/periareon/rules_julia"><code class="md-code-inline">rules_julia</code></a> models Julia code as Bazel targets (<code class="md-code-inline">julia_library</code>, <code class="md-code-inline">julia_binary</code>, <code class="md-code-inline">julia_test</code>) with a Bazel toolchain.</p>
 <h2 id="The-core-workflow" class="md-heading">The core workflow<a href="#The-core-workflow" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <ol class="md-list-tight">
 <li><p>Resolve your project the ordinary way and commit <code class="md-code-inline">Project.toml</code> and <code class="md-code-inline">Manifest.toml</code>.</p>
@@ -115,7 +115,7 @@
 </ol>
 <div class="md-code-block">
 <button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
-<pre><code class="language-python">bazel_dep(name = &quot;julia_depot&quot;, version = &quot;0.1.0&quot;)
+<pre><code class="language-python">bazel_dep(name = &quot;julia_depot&quot;, version = &quot;0.1.1&quot;)
 julia = use_extension(&quot;@julia_depot//julia:extensions.bzl&quot;, &quot;julia&quot;)
 julia.dist(name = &quot;julia_dist&quot;, version = &quot;1.12.7&quot;)
 julia.depot(
@@ -132,7 +132,7 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
 <li><p>For an image, the rules in <code class="md-code-inline">julia/image.bzl</code> do the Julia-specific part: the distribution, depot, sysimage and precompile-cache layers as deterministic tars, the image&#39;s environment, and a test that the image starts without compiling anything. You assemble the image with <code class="md-code-inline">rules_oci</code> (or anything else that takes tars); this module does not depend on it.</p>
 </li>
 </ol>
-<p>Moving to a new Julia is the distribution version plus a re-resolved manifest, nothing else. Private registries plug in through the depot&#39;s <code class="md-code-inline">hook</code>. A host-wide shared depot can sit read-only behind a per-user one; see <a href="./recipes/#A-shared-depot-behind-a-declared-one">a shared depot</a>.</p>
+<p>Moving to a new Julia takes a new distribution version and a re-resolved manifest. Private registries plug in through the depot&#39;s <code class="md-code-inline">hook</code>. A host-wide shared depot can sit read-only behind a per-user one, so each user&#39;s depot holds only what it lacks; see <a href="./recipes/#A-shared-depot-behind-a-declared-one">a shared depot</a>.</p>
 <h2 id="What-is-in-the-box" class="md-heading">What is in the box<a href="#What-is-in-the-box" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
 <p>In <code class="md-code-inline">MODULE.bazel</code>, from the <code class="md-code-inline">julia</code> extension:</p>
 <div class="md-table-wrap">
@@ -219,6 +219,6 @@ use_repo(julia, &quot;julia_dist&quot;, &quot;my_depot&quot;)</code></pre>
   <script>hljs.highlightAll();</script>
   <script src="./siteinfo.js"></script>
   <script src="./../versions.js"></script>
-  <script src="./assets/materialdocs.js?v=f49c0e88"></script>
+  <script src="./assets/materialdocs.js?v=82513ed2"></script>
 </body>
 </html>
