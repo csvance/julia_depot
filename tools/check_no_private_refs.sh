@@ -36,14 +36,14 @@ for f in "${pattern_files[@]}"; do
     done < "$f"
 done
 [ "${#patterns[@]}" -gt 0 ] || {
-    echo "no patterns to check for, which cannot be right" >&2
+    echo "no patterns to check for" >&2
     exit 1
 }
 
 files="$(git ls-files --cached --others --exclude-standard |
     grep -vxF -e "tools/private_ref_patterns.txt" -e "${PRIVATE_REF_PATTERNS_EXTRA:-/dev/null}")"
 [ -n "$files" ] || {
-    echo "no files to check, which cannot be right" >&2
+    echo "no files to check" >&2
     exit 1
 }
 

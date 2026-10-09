@@ -74,4 +74,4 @@ $output" ;;
     esac
 done
 
-echo "PASS: a v$build_minor environment under julia $running_minor was refused, exit 2", also under the deprecated spellings
+echo "PASS: a v$build_minor environment under julia $running_minor was refused, exit 2, also under the deprecated spellings"

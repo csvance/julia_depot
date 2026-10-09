@@ -67,13 +67,13 @@ def host_platform(os_name, arch, what = "julia.dist"):
     """
     name = os_name.lower()
     if name.startswith("mac") or "darwin" in name:
-        fail("{}: macOS is not supported yet; julia_depot supports Linux x86_64".format(what))
+        fail("{}: macOS is not supported; julia_depot supports Linux x86_64".format(what))
     if name.startswith("windows"):
-        fail("{}: Windows is not supported yet; julia_depot supports Linux x86_64".format(what))
+        fail("{}: Windows is not supported; julia_depot supports Linux x86_64".format(what))
     if not name.startswith("linux"):
         fail("{}: {} is not supported; julia_depot supports Linux x86_64".format(what, os_name))
     if arch not in _ARCHES:
-        fail("{}: Linux on {} is not supported yet; julia_depot supports Linux x86_64".format(what, arch))
+        fail("{}: Linux on {} is not supported; julia_depot supports Linux x86_64".format(what, arch))
     julia_arch, arch_dir = _ARCHES[arch]
     return "linux-" + julia_arch, arch_dir
 

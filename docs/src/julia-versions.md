@@ -46,8 +46,8 @@ environment added as described below.
 Linux `x86_64` is the supported platform. `julia.dist` downloads the official build for the
 host, detected when the distribution is fetched. Linux aarch64 is mapped to its official build
 too, with its own CPU target list below, but it is untested and unsupported, though it may
-work. macOS, Windows and other architectures fail with a message saying they are not supported
-yet, because the scripts need GNU tar, coreutils and a Linux Julia. The check runs only when a
+work. macOS, Windows and other architectures fail with a message saying they are not supported,
+because the scripts need GNU tar, coreutils and a Linux Julia. The check runs only when a
 Julia repository is fetched, so a host that never builds a Julia target is unaffected. `url`
 and `strip_prefix` are templates, so one declaration serves both architectures, and a mirror
 too: `{version}` (1.12.7), `{minor}` (1.12), `{platform}` (`linux-x86_64`) and `{arch_dir}`

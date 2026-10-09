@@ -53,7 +53,7 @@ want === nothing && error("$(basename(pinned)) records no julia_version, so it c
 # This pin exists to prevent that.
 if want != have
     error("$(basename(pinned)) was resolved under Julia $want but this is Julia $have; " *
-          "align the distribution or re-resolve the manifest deliberately")
+          "align the distribution or re-resolve the manifest")
 end
 
 Pkg.instantiate()

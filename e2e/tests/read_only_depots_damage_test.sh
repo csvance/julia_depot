@@ -116,7 +116,7 @@ lib="$(find "$case_dir/shared/artifacts/$bz2_hash/lib" -name 'libbz2.so.*' -type
 : >"$lib"
 expect_load_fails "artifact library truncated" "could not load library"
 refetch
-[ ! -d "$case_dir/dir/artifacts/$bz2_hash" ] || fail "artifact library truncated: the refetch installed the artifact into dir after all, so the docs that say it cannot repair this are wrong:
+[ ! -d "$case_dir/dir/artifacts/$bz2_hash" ] || fail "artifact library truncated: the refetch repaired it; update docs/src/contract.md:
 $output"
 expect_load_fails "artifact library truncated, after the refetch" "could not load library"
 
@@ -141,11 +141,11 @@ src="$(echo "$case_dir"/shared/packages/Crayons/*/src/Crayons.jl)"
 sed -i 's/^module Crayons$/module Crayons\nconst DAMAGED = true/' "$src"
 grep -q 'const DAMAGED' "$src" || fail "could not modify $src"
 expect_loads "package source modified"
-grep -qx modified=true <<<"$output" || fail "package source modified: the modified code was not loaded, so Julia now checks package sources and docs/src/contract.md should say so:
+grep -qx modified=true <<<"$output" || fail "package source modified: the modified code was not loaded; update docs/src/contract.md:
 $output"
 refetch
 expect_loads "package source modified, after the refetch"
-grep -qx modified=true <<<"$output" || fail "package source modified: the refetch repaired it, so docs/src/contract.md should say so:
+grep -qx modified=true <<<"$output" || fail "package source modified: the refetch repaired it; update docs/src/contract.md:
 $output"
 
 # --- Overrides.toml added: the artifact is redirected, silently ---
@@ -153,7 +153,7 @@ new_case overrides_added
 cp -a "$case_dir/shared/artifacts/$bz2_hash" "$case_dir/elsewhere"
 printf '%s = "%s"\n' "$bz2_hash" "$case_dir/elsewhere" >"$case_dir/shared/artifacts/Overrides.toml"
 expect_loads "Overrides.toml added"
-grep -qx "artifact=$case_dir/elsewhere" <<<"$output" || fail "Overrides.toml added: the artifact was not redirected, so Julia no longer reads overrides from every depot and docs/src/contract.md should say so:
+grep -qx "artifact=$case_dir/elsewhere" <<<"$output" || fail "Overrides.toml added: the artifact was not redirected; update docs/src/contract.md:
 $output"
 
 echo "PASS: damaged read-only depots behave as docs/src/contract.md says"
