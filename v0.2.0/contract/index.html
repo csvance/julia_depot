@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The contract — julia_depot</title>
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=4e662d96">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <meta name="title" content="The contract — julia_depot">
+  <meta property="og:title" content="The contract — julia_depot">
+  <meta property="twitter:title" content="The contract — julia_depot">
+  <meta name="description" content="Documentation for julia_depot.">
+  <meta property="og:description" content="Documentation for julia_depot.">
+  <meta property="twitter:description" content="Documentation for julia_depot.">
+  <meta property="og:url" content="https://csvance.github.io/julia_depot/contract/">
+  <meta property="twitter:url" content="https://csvance.github.io/julia_depot/contract/">
+  <link rel="canonical" href="https://csvance.github.io/julia_depot/contract/">
+  <link rel="stylesheet" href="../assets/documenterlandingpage/landing.css">
+  <link rel="stylesheet" href="../assets/documenterlandingpage/landing-material.css">
+  <script>
+    (function(){
+      document.documentElement.classList.add('no-transition');
+      window.addEventListener('load',function(){setTimeout(function(){document.documentElement.classList.remove('no-transition');},50);});
+    })()
+  </script>
+</head>
+<body data-warn-outdated>
+  <header class="md-navbar">
+    <button id="md-hamburger" class="md-icon-btn md-hamburger" aria-label="Toggle navigation" aria-expanded="false"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+    <span class="md-navbar-title">julia_depot</span>
+    <span class="md-navbar-spacer"></span>
+    <button id="md-search-btn" class="md-search-bar" aria-label="Search documentation" aria-expanded="false">
+      <svg class="md-icon md-search-bar-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <span class="md-search-bar-label">Search docs</span>
+      <kbd class="md-search-bar-kbd">Ctrl K</kbd>
+    </button>
+    <div id="md-version" class="md-version" hidden>
+      <button id="md-version-btn" class="md-version-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select documentation version">
+        <span id="md-version-current" class="md-version-current"></span>
+        <svg class="md-icon md-version-caret" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <ul id="md-version-menu" class="md-version-menu" role="listbox" hidden></ul>
+    </div>
+    <a class="md-icon-btn md-repo-link" href="https://github.com/csvance/julia_depot" title="View the repository on GitHub" aria-label="View the repository on GitHub" rel="noopener" target="_blank"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 .3a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0012 .3z"/></svg><span class="md-repo-label">GitHub</span></a>
+  </header>
+  <div class="md-layout">
+    <nav class="md-sidebar">
+      <a href="../">Home</a>
+      <a href="../images/">Images</a>
+      <a href="../recipes/">Recipes</a>
+      <a href="../contract/" class="md-nav-active">The contract</a>
+      <a href="../julia-versions/">Julia versions</a>
+      <a href="../testing/">Testing</a>
+      <a href="../used-by/">Used by</a>
+    </nav>
+    <main class="md-content">
+      <article class="md-article">
+      <div class="md-article-actions"><a class="md-icon-btn md-edit-link" href="https://github.com/csvance/julia_depot/blob/main/docs/src/contract.md" title="Edit source on GitHub" aria-label="Edit source on GitHub"><svg class="md-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 000-1.41l-2.34-2.34a.996.996 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a></div>
+<h1 id="The-contract" class="md-heading">The contract<a href="#The-contract" class="md-heading-anchor" aria-label="Link to this section">#</a></h1>
+<h2 id="What-the-Manifest-guarantees" class="md-heading">What the Manifest guarantees<a href="#What-the-Manifest-guarantees" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>A resolved <code class="md-code-inline">Manifest.toml</code> names every registered package by git tree hash and every artifact by content hash, so it determines the closure. That holds when the manifest has no <code class="md-code-inline">repo-url</code> entries (git-sourced packages, which Pkg fetches by branch) and when every JLL&#39;s artifacts are hash-pinned in its <code class="md-code-inline">Artifacts.toml</code>, which is the normal state of a resolved manifest. Path entries are your own source and are Bazel <code class="md-code-inline">srcs</code>, not depot content. Check your manifest for <code class="md-code-inline">repo-url</code> before relying on this.</p>
+<p>The module never runs Pkg&#39;s resolver. A manifest is pinned, never re-resolved.</p>
+<h2 id="The-depot-rule" class="md-heading">The depot rule<a href="#The-depot-rule" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p><code class="md-code-inline">julia.depot</code> is a repository rule because a fetch may use the network, and because Bazel keys a fetch on the rule&#39;s inputs: the manifest, the hook, the Julia version and the environment variables it names. Changing any of them re-conforms the depot.</p>
+<p>It runs <code class="md-code-inline">instantiate.sh</code> on the declared <code class="md-code-inline">dir</code>, or else on the ambient depot (<code class="md-code-inline">JULIA_DEPOT_PATH</code>, or Julia&#39;s default). A fresh depot per manifest would mean gigabytes of artifacts on every change, and an existing depot already has most of them. The cost is that <code class="md-code-inline">compiled/</code> can thrash between branches with different manifests. The script refuses a manifest whose <code class="md-code-inline">julia_version</code> differs from the running Julia, because such a manifest can instantiate and then behave differently, the failure the pin exists to prevent.</p>
+<p>The rule produces <code class="md-code-inline">env.sh</code>, which always exports <code class="md-code-inline">JULIA_DEPOT_PATH</code>: the depot the fetch instantiated into, whether declared with <code class="md-code-inline">dir</code>, set in the launching environment, or Julia&#39;s default made explicit, followed by any <code class="md-code-inline">read_only_depots</code>. A hook is given the same value, and writes, like Pkg, to its first entry. The rule also produces <code class="md-code-inline">stamp.txt</code> with the manifest sha256, Julia version, host triplet and depot. <code class="md-code-inline">env.sh</code> does not name Julia: consumers take it as a label from the distribution (<code class="md-code-inline">@julia_dist//:bin/julia</code>). The depot is the only machine-specific path in the file, and it is per user.</p>
+<p>The rule checks that <code class="md-code-inline">manifest</code> is the file Julia instantiates from. Julia prefers a versioned <code class="md-code-inline">Manifest-v&lt;major&gt;.&lt;minor&gt;.toml</code> beside <code class="md-code-inline">Manifest.toml</code>, and a <code class="md-code-inline">Project.toml</code> can name another file with <code class="md-code-inline">manifest = ...</code>. The fetch fails unless <code class="md-code-inline">manifest</code> points at the file Julia uses, so a project can carry one manifest per Julia version, each pinned by its own <code class="md-code-inline">julia.depot</code>.</p>
+<p>The fetch is keyed on the manifest, the hook, the Julia version (through the distribution&#39;s version header), the declared <code class="md-code-inline">dir</code> and <code class="md-code-inline">read_only_depots</code>, whether each read-only depot exists, and the variables <code class="md-code-inline">HOME</code>, <code class="md-code-inline">JULIA_PKG_SERVER</code>, every <code class="md-code-inline">hook_environ</code> entry and, when no <code class="md-code-inline">dir</code> is declared, <code class="md-code-inline">JULIA_DEPOT_PATH</code>. It is not keyed on what a read-only depot holds, because watching a shared depot&#39;s whole tree would cost more than the fetch it guards. A shared depot that loses something the environment relied on needs <code class="md-code-inline">bazel fetch --force</code>.</p>
+<h3 id="What-is-not-hermetic" class="md-heading">What is not hermetic<a href="#What-is-not-hermetic" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>The depot rule is not hermetic, by design. The depot is a directory outside Bazel&#39;s output base that the fetch conforms in place: Bazel caches <code class="md-code-inline">env.sh</code> and <code class="md-code-inline">stamp.txt</code>, not the depot, which <code class="md-code-inline">bazel clean --expunge</code> leaves alone and anything else on the host can change. Two hosts with the same <code class="md-code-inline">MODULE.bazel</code> and lockfile can have different depot contents, and <code class="md-code-inline">read_only_depots</code> adds trees the rule neither owns nor watches. The hermetic alternative, a depot per manifest inside the output base, would download and precompile gigabytes on every manifest change and share nothing between workspaces or users.</p>
+<p>The Manifest decides where Julia looks, not what it finds there. It names every package by tree hash and every artifact by content hash, and Julia looks both up by those names in every depot on the path. Pkg checks the hash when it downloads, and nothing checks it again when Julia loads, so a directory under the right name is used as it is. A compiled cache, <code class="md-code-inline">.ji</code> or pkgimage <code class="md-code-inline">.so</code>, is reused when Julia&#39;s staleness check passes, which compares its sources, dependencies and flags, not its bits. A depot on the path is therefore trusted the way any binary you run is: a shared depot&#39;s maintainer supplies code you load. What is guaranteed is that a missing package or artifact, for example one pruned from a shared depot, fails to load instead of resolving to some other version, and that a forced refetch installs it into <code class="md-code-inline">dir</code>. A damaged one is different. Pkg treats a directory that exists as installed, so a refetch leaves a truncated library or a modified source file in place; only repairing the shared depot, or no longer stacking it, fixes the environment. A corrupted compiled cache is the exception: Julia rejects it and compiles a fresh one into <code class="md-code-inline">dir</code>. The e2e suite checks each of these; see <a href="../testing/">Testing</a>.</p>
+<p><code class="md-code-inline">artifacts/Overrides.toml</code> extends this trust further. Julia reads it from every depot on the path, an earlier depot winning over a later one, and an override can point an artifact at any directory, under any hash. An <code class="md-code-inline">Overrides.toml</code> in a shared depot therefore changes what loads for everyone who stacks that depot. Keep shared depots free of one, or treat it as part of what every consumer builds against.</p>
+<p>The image layers differ in what they take from these depots. The depot layer takes nothing but registries and package server credentials: <code class="md-code-inline">image_depot.sh</code> downloads every package and artifact again into a clean depot, with only Julia&#39;s bundled depots behind it, so Pkg verifies everything that goes in, except the artifacts an <code class="md-code-inline">overrides_build</code> file substitutes. That makes it independent of the host&#39;s depots, but not hermetic, since it is an action that uses the network. The compiled layer precompiles offline inside the assembled image, so no host cache reaches it. The sysimage layer is the exception: it builds from the packages on the depot path the stamp records, <code class="md-code-inline">dir</code> and any <code class="md-code-inline">read_only_depots</code>, so whatever a shared depot holds, its <code class="md-code-inline">Overrides.toml</code> included, is in scope for the sysimage.</p>
+<h3 id="Read-only-depots" class="md-heading">Read-only depots<a href="#Read-only-depots" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p><code class="md-code-inline">read_only_depots</code> stacks depots after <code class="md-code-inline">dir</code>, so the path is <code class="md-code-inline">&lt;dir&gt;:&lt;ro1&gt;:&lt;ro2&gt;:...:</code>, the trailing separator keeping Julia&#39;s bundled depots last. On Julia 1.10 a trailing separator would also add the user depot <code class="md-code-inline">~/.julia</code>, so there the two bundled depots are named instead. Julia reads packages, artifacts and compiled caches from every entry and writes only to the first, and Pkg installs nothing some entry already holds, so <code class="md-code-inline">dir</code> ends up holding only what the read-only depots lack. The rule writes nothing to them: it neither creates them nor fails when one is missing, since Julia skips a missing entry and a host may not have the shared depot at all. Julia itself does update the timestamp of a cache file it loads, in whichever depot, and ignores the failure where it lacks permission, so a shared depot&#39;s files should be read-only to its users at the filesystem level. The attribute requires <code class="md-code-inline">dir</code>: without one the depot path is the ambient <code class="md-code-inline">JULIA_DEPOT_PATH</code>, which can already list any number of depots, and the depot written to would then depend on the shell.</p>
+<p>The image side needs no extra support for this. <code class="md-code-inline">image_depot.sh</code> instantiates into a clean depot whatever the source depot holds, and copies the registries of every entry of the source path, so a registry that lives only in a shared depot still reaches the instantiate; the sysimage layer reads the whole path the stamp records.</p>
+<h2 id="Repository-names" class="md-heading">Repository names<a href="#Repository-names" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p>The <code class="md-code-inline">julia</code> extension is evaluated once for the whole module graph, so the names given to <code class="md-code-inline">julia.dist</code> and <code class="md-code-inline">julia.depot</code> share one namespace across every module that uses it. Each name can be declared only once: a second declaration, in any module, fails with an error naming both modules, even when the two are identical.</p>
+<p>The convention that keeps names apart:</p>
+<ul class="md-list-tight">
+<li><p>The root module names its repositories freely: <code class="md-code-inline">julia_dist</code>, <code class="md-code-inline">my_depot</code>.</p>
+</li>
+<li><p>A module that others depend on prefixes every name it declares with its own module name: <code class="md-code-inline">my_library_julia</code>, <code class="md-code-inline">my_library_depot</code>.</p>
+</li>
+</ul>
+<p>A clash fails even when one side is the root module. If the root&#39;s declaration won, the other module would build against a Julia or a manifest it never declared, and a module with no depot, one that only builds image layers, would ship the root&#39;s Julia with no sign of it.</p>
+<h2 id="The-depot-layer" class="md-heading">The depot layer<a href="#The-depot-layer" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p><code class="md-code-inline">julia_depot_layer</code> makes the opposite choice: it instantiates into a clean depot, because an image must carry exactly the closure. It does not enumerate artifacts from <code class="md-code-inline">Artifacts.toml</code> files, because a static walk under-counts: packages may augment the platform with their own code (<code class="md-code-inline">HDF5_jll</code> tags its entries <code class="md-code-inline">mpi</code>), and a plain <code class="md-code-inline">HostPlatform()</code> then matches nothing and drops the artifact with no error. Letting Pkg instantiate means Pkg performs the augmented selection.</p>
+<p>Two details are easy to miss:</p>
+<ul class="md-list-tight">
+<li><p>The distribution&#39;s bundled depots stay on the depot path. Setting <code class="md-code-inline">JULIA_DEPOT_PATH</code> to the fresh directory alone drops <code class="md-code-inline">&lt;julia&gt;/share/julia</code>, where the stdlib precompile caches live, and <code class="md-code-inline">using Pkg</code> then recompiles Pkg serially before anything else. The build appends the two bundled depots by name. A trailing colon would expand to the same two since Julia 1.11 (on 1.10 it adds <code class="md-code-inline">~/.julia</code> as well), but naming them keeps the path explicit.</p>
+</li>
+<li><p>Nothing is precompiled into the layer. A cache built in the build&#39;s temporary depot, laid out differently from the image, would not be valid there. <code class="md-code-inline">julia_compiled_layer</code> precompiles in a tree with the image&#39;s own layout instead, so its caches load unchanged from the image&#39;s paths; see <a href="../images/">Images</a>.</p>
+</li>
+</ul>
+<p>In <code class="md-code-inline">full</code> mode the build also runs <code class="md-code-inline">download_source</code>, because <code class="md-code-inline">Pkg.instantiate</code> skips weak dependencies&#39; sources and a source-loaded image then fails precompiling extensions with &quot;failed to find source of parent package&quot;.</p>
+<h2 id="The-sysimage" class="md-heading">The sysimage<a href="#The-sysimage" class="md-heading-anchor" aria-label="Link to this section">#</a></h2>
+<p><code class="md-code-inline">julia_sysimage</code> writes the sysimage as a file and <code class="md-code-inline">julia_sysimage_layer</code> as an image layer; both run the same build. A sysimage bakes compiled code, not native libraries, so it does not replace the depot layer: JLLs resolve their artifact directories in <code class="md-code-inline">__init__</code>, at startup. The build environment PackageCompiler runs in is pinned per Julia minor and checked against the running Julia before any work starts.</p>
+<h3 id="The-compiler-that-links-it" class="md-heading">The compiler that links it<a href="#The-compiler-that-links-it" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>PackageCompiler links the sysimage with a C compiler. Left to itself it takes the first of g++, clang++, gcc and clang on the host&#39;s <code class="md-code-inline">PATH</code>, and the sysimage then depends on that compiler and on the host&#39;s C library, neither of which is an input of the action. Two hosts with different compilers would produce different sysimages under the same cache key, and a sysimage linked against a newer glibc than another host has would not load there. So the compiler is a declared input, chosen explicitly:</p>
+<ul class="md-list-tight">
+<li><p><strong>Pinned</strong>, the default for <code class="md-code-inline">julia_sysimage</code>: a <code class="md-code-inline">julia.cc</code> repository, zig fetched by sha256 and run as <code class="md-code-inline">zig cc -target &lt;arch&gt;-linux-gnu.&lt;glibc&gt;</code>. One tarball holds the compiler, the linker and the glibc stubs, so every host links against the same C library. The module declares one itself, <code class="md-code-inline">@julia_depot_cc</code>, targeting glibc 2.17 like the official Julia builds; a sysimage linked for it loads on any glibc from 2.17 up. Declare your own with <code class="md-code-inline">julia.cc</code> for another zig or glibc. The generated <code class="md-code-inline">bin/cc</code> records the zig version, its sha256 and the target, so changing any of them changes its digest and with it the action key.</p>
+</li>
+<li><p><strong>Your own</strong>: any executable target or file, as <code class="md-code-inline">cc</code>. It is an input of the action, so changing it rebuilds, and it is then yours to keep pinned.</p>
+</li>
+<li><p><strong>The host&#39;s</strong>, by opt-in only: <code class="md-code-inline">system_cc = True</code>. The build prints a warning that the result depends on the host, and the action is tagged <code class="md-code-inline">no-remote-cache</code> so the result never reaches a shared cache.</p>
+</li>
+</ul>
+<p>Nothing falls back to the host&#39;s compiler silently.</p>
+<p>The pinned compiler only links: PackageCompiler compiles the code with Julia&#39;s own LLVM, so the compiler&#39;s part is the link and the C library the sysimage is linked against. That is what it pins. The precompile caches of <code class="md-code-inline">julia_compiled_layer</code> need no C compiler, since Julia links them with the <code class="md-code-inline">lld</code> it bundles.</p>
+<h3 id="The-inputs-file" class="md-heading">The inputs file<a href="#The-inputs-file" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
+<p>A sysimage is not reproducible: Julia stamps the code it compiles with a build id, and the build&#39;s paths are baked in. Two builds of the same commit therefore give different bytes, and a check that compares a rebuilt sysimage with a released one by digest fails. What does reproduce is what the sysimage was built from, so each sysimage rule also writes an inputs file, <code class="md-code-inline">&lt;name&gt;.inputs.json</code>, and <code class="md-code-inline">julia_sysimage_layer</code> ships it beside the sysimage it packages (<code class="md-code-inline">/opt/julia-sysimage/sys.inputs.json</code> for the default <code class="md-code-inline">path</code>).</p>
+<p>It records everything the rule declares, and nothing that depends on the host:</p>
+<ul class="md-list-tight">
+<li><p><code class="md-code-inline">julia</code>: the version, platform and sha256 of the tarball the distribution was fetched from</p>
+</li>
+<li><p><code class="md-code-inline">config</code>: the packages, the CPU target, <code class="md-code-inline">env</code> as written (before <code class="md-code-inline">{execroot}</code> expands), the kind of compiler, and the layer&#39;s <code class="md-code-inline">path</code></p>
+</li>
+<li><p><code class="md-code-inline">files</code>: the sha256 of each project file (<code class="md-code-inline">project/...</code>), each <code class="md-code-inline">data</code> file (<code class="md-code-inline">data/&lt;label&gt;</code>), the compiler (<code class="md-code-inline">cc/bin/cc</code> for a <code class="md-code-inline">julia.cc</code> repository, which records zig&#39;s sha256 and the glibc target), the PackageCompiler environment for the Julia minor, and the module&#39;s scripts that run the build</p>
+</li>
+<li><p><code class="md-code-inline">format</code>: the version of this layout</p>
+</li>
+</ul>
+<p>The depot is not in it. The Manifest is, and the Manifest determines the depot (see <a href="../contract/#What-the-Manifest-guarantees">what the Manifest guarantees</a>), which leaves the trust described in <a href="../contract/#What-is-not-hermetic">what is not hermetic</a>. With <code class="md-code-inline">system_cc</code> it records the compiler only as <code class="md-code-inline">system</code>, so it vouches for nothing about the link.</p>
+<p>The file is written by its own action, from the same declared inputs as the build, so it is cheap to produce without building the sysimage:</p>
+<div class="md-code-block">
+<button class="md-copy-btn" title="Copy to clipboard" aria-label="Copy code"><span class="md-copy-icon">⧉</span><span class="md-copy-feedback">Copied!</span></button>
+<pre><code class="language-sh">bazel build --output_groups=inputs //:app_sysimage</code></pre>
+</div>
+<p>Comparing that with the file a released image carries checks a rebuild against a release: equal files mean the same declared inputs. Two caveats: a key under <code class="md-code-inline">data/</code> or <code class="md-code-inline">cc/</code> holds the file&#39;s canonical label, which can change with the module graph or the Bazel version, so compare files from the same Bazel; and the files are equal only if the rule&#39;s attributes are.</p>
+      </article>
+      <footer class="md-footer">
+<p>Built with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and <a href="https://github.com/mthelm85/MaterialDocs.jl">MaterialDocs.jl</a>.</p>
+      </footer>
+    </main>
+    <aside class="md-toc">
+      <div class="md-toc-inner">
+        <p class="md-toc-title">On this page</p>
+          <a class="md-toc-link md-toc-h2" href="#What-the-Manifest-guarantees">What the Manifest guarantees</a>
+          <a class="md-toc-link md-toc-h2" href="#The-depot-rule">The depot rule</a>
+            <a class="md-toc-link md-toc-h3" href="#What-is-not-hermetic">What is not hermetic</a>
+            <a class="md-toc-link md-toc-h3" href="#Read-only-depots">Read-only depots</a>
+          <a class="md-toc-link md-toc-h2" href="#Repository-names">Repository names</a>
+          <a class="md-toc-link md-toc-h2" href="#The-depot-layer">The depot layer</a>
+          <a class="md-toc-link md-toc-h2" href="#The-sysimage">The sysimage</a>
+            <a class="md-toc-link md-toc-h3" href="#The-compiler-that-links-it">The compiler that links it</a>
+            <a class="md-toc-link md-toc-h3" href="#The-inputs-file">The inputs file</a>
+      </div>
+    </aside>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/julia-repl.min.js"></script>
+  <script>hljs.highlightAll();</script>
+  <script src="../siteinfo.js"></script>
+  <script src="../../versions.js"></script>
+  <script src="../assets/materialdocs.js?v=4e662d96"></script>
+</body>
+</html>
