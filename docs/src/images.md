@@ -100,7 +100,8 @@ say, declares a second `julia.depot` over it, with `project` when the lock is no
 The depot's `project_srcs` (workspace members' `Project.toml`) are staged with it. A rule's own
 `srcs` are further project files the depot does not need (the package's source, a
 `LocalPreferences.toml`), staged at their paths relative to the project's directory. The depot layer copies the depot's registries and package-server
-credentials for the instantiate and ships neither; `fresh_registry = True` fetches the registry
+credentials for the instantiate and ships neither, and copies the packages and artifacts the
+fetch downloaded instead of downloading them again; `fresh_registry = True` fetches the registry
 instead. The sysimage
 layer reads the packages that depot already holds. Both take the whole depot path the stamp
 records, so a depot with `read_only_depots` works unchanged: registries come from every entry,

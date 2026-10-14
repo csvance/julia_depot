@@ -124,6 +124,12 @@ it restores the file and checks that the record returns to the original. It does
 Manifest's directory. CI runs it in the 1.13 job after the tests, and it runs by hand from
 anywhere.
 
+`e2e/bundled_warning_test.sh` also drives Bazel from outside, since what it checks is a fetch's
+output: a `JULIA_DEPOT_PATH` with no bundled depot on it must print the rule's warning, and one
+that keeps them, through an empty entry or by naming `share/julia`, must not. Its fixture,
+`bundled_warning_1_13`, has a hook that fails every fetch before instantiate, so each check
+takes seconds. CI runs it beside `refetch_test.sh`.
+
 The scripts the rules run are internal, but several tests drive them directly, because a
 failure path such as the wrong-minor refusal is cheaper to reach there than through a rule.
 

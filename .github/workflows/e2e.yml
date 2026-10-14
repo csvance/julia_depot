@@ -136,6 +136,13 @@ jobs:
         if: ${{ inputs.julia == '1.13' }}
         run: e2e/refetch_test.sh
 
+      # The warning a fetch prints for a JULIA_DEPOT_PATH without Julia's bundled depots, which
+      # only the fetch's output shows. Its fixture stops each fetch before instantiate, so it
+      # adds seconds.
+      - name: bundled depot warning test
+        if: ${{ inputs.julia == '1.13' }}
+        run: e2e/bundled_warning_test.sh
+
       - name: Test logs
         if: failure()
         working-directory: e2e

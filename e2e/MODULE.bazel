@@ -203,6 +203,16 @@ julia.depot(
     manifest = "//projects/v1.13:Manifest.toml",
 )
 
+# Never fetched successfully: its hook fails the fetch before instantiate. bundled_warning_test.sh
+# fetches it with an ambient JULIA_DEPOT_PATH, with and without a trailing separator, and reads
+# the rule's warning about the bundled depots from the output. No test target depends on it.
+julia.depot(
+    name = "bundled_warning_1_13",
+    hook = "//hooks:stop_hook.sh",
+    julia = "@julia_1_13",
+    manifest = "//projects/v1.13:Manifest.toml",
+)
+
 # --- C compilers for sysimages -----------------------------------------------------
 # The module's own pinned compiler, @julia_depot_cc, is declared by julia_depot and imported here
 # as any consumer would import it, for the sysimage.sh tests. A second compiler for another glibc
@@ -216,6 +226,7 @@ julia.cc(
 use_repo(
     julia,
     "ambient_depot_1_13",
+    "bundled_warning_1_13",
     "cc_glibc_2_28",
     "declared_depot_1_12",
     "depot_1_10",
