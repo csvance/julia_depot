@@ -63,7 +63,9 @@ The tar unpacks at `/opt/julia-depot` (`prefix` to change it) and holds `artifac
 which suffices when a sysimage carries the code. For an image that loads packages from
 source, set `contents = "full"` to ship `packages/` too. The depot's registries and package
 server credentials are copied into the clean depot for the instantiate only, and never reach
-the layer; `fresh_registry = True` fetches the registry instead. Set `JULIA_PKG_SERVER` with `--action_env` if your packages
+the layer; `fresh_registry = True` fetches the registry instead. The packages and artifacts the
+fetch downloaded are copied too, after a tree-hash check, so a cold build downloads them once;
+with `fresh_registry = True` there is nothing to copy from, and they are downloaded again. Set `JULIA_PKG_SERVER` with `--action_env` if your packages
 come from a private server. See [Images](images.md) for the rest of the image.
 
 ### Substituting a locally built artifact

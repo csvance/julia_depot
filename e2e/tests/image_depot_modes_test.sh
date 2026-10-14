@@ -9,6 +9,12 @@
 # servers/ into its clean depot so a private package server resolves as it does for the developer,
 # and servers/ holds credentials that must not leave the build.
 #
+# The source depot already holds every package and artifact of the Manifest, so both modes are
+# built with the package server unreachable: a layer that needed a download fails to build. Each
+# is then compared, byte for byte, with the layer built from an empty source depot, which
+# downloads everything. Copying from the source depot must change how long the build takes and
+# nothing in the layer.
+#
 # Listings are searched as here-strings: under pipefail, `printf | grep -q` fails whenever grep
 # matches and exits before printf has written the rest, which happens often enough on a loaded CI
 # runner to fail a correct layer.
@@ -41,8 +47,25 @@ $(grep -E '(^|/)(servers|registries)/' <<<"$listing")"
     fi
 }
 
+# Port 9 is discard, which nothing listens on: a download fails at once instead of timing out.
+offline=(JULIA_PKG_SERVER=http://localhost:9)
+
+# The same layer with nothing to copy from: the source depot is empty, so the registry and every
+# package and artifact are downloaded.
+assert_same_as_downloaded() {
+    local contents="$1" reused="$2" downloaded="$TEST_TMPDIR/downloaded-$1.tar"
+    mkdir -p "$TEST_TMPDIR/empty-depot"
+    src_depot="$TEST_TMPDIR/empty-depot" build_layer "$contents" "$downloaded" >/dev/null 2>&1 ||
+        fail "the $contents-mode layer did not build from an empty source depot"
+    cmp -s "$reused" "$downloaded" ||
+        fail "the $contents-mode layer copied from the source depot differs from the downloaded one:
+$(diff <(tar -tvf "$reused") <(tar -tvf "$downloaded"))"
+}
+
 # --- artifacts mode ---------------------------------------------------------------
-build_layer artifacts "$TEST_TMPDIR/artifacts.tar"
+build_layer artifacts "$TEST_TMPDIR/artifacts.tar" "${offline[@]}" ||
+    fail "the artifacts-mode layer needed a download, though the source depot holds the Manifest"
+assert_same_as_downloaded artifacts "$TEST_TMPDIR/artifacts.tar"
 artifacts_listing="$(tar -tf "$TEST_TMPDIR/artifacts.tar")"
 
 hash_dirs="$(printf '%s\n' "$artifacts_listing" |
@@ -63,7 +86,9 @@ fi
 assert_no_secrets "$artifacts_listing"
 
 # --- full mode --------------------------------------------------------------------
-build_layer full "$TEST_TMPDIR/full.tar"
+build_layer full "$TEST_TMPDIR/full.tar" "${offline[@]}" ||
+    fail "the full-mode layer needed a download, though the source depot holds the Manifest"
+assert_same_as_downloaded full "$TEST_TMPDIR/full.tar"
 full_listing="$(tar -tf "$TEST_TMPDIR/full.tar")"
 
 grep -q '^opt/julia-depot/packages/' <<<"$full_listing" ||
@@ -116,4 +141,4 @@ grep -qx 'opt/julia-depot/artifacts/' <(tar -tf "$TEST_TMPDIR/empty.tar") ||
     fail "the layer for a project with no artifacts has no empty opt/julia-depot/artifacts/:
 $(tar -tf "$TEST_TMPDIR/empty.tar")"
 
-echo "PASS: artifacts mode shipped $(printf '%s\n' "$hash_dirs" | wc -l) artifact(s) and no packages, full mode shipped both"
+echo "PASS: artifacts mode shipped $(printf '%s\n' "$hash_dirs" | wc -l) artifact(s) and no packages, full mode shipped both, and neither downloaded what the source depot held"

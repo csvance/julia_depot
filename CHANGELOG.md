@@ -4,6 +4,25 @@ Each release has a section here, written before it is tagged. The section for a 
 becomes its GitHub release notes and the body of its Bazel Central Registry pull request;
 see `.github/workflows/release_notes.sh` and `bcr_notes.sh`.
 
+## 0.2.1
+
+### Changed
+
+- `julia_depot_layer` no longer downloads what the fetch already downloaded. It instantiates
+  the Manifest into a clean depot, which used to fetch every package and artifact a second
+  time: on a project with large JLLs, about a minute and gigabytes per cold build. It now copies
+  them from the depot the fetch instantiated, checking each against its tree hash, and
+  instantiate downloads only what is missing or fails the check. The selection is still Pkg's,
+  and the layer is byte for byte the one a download produces. A package with a
+  `deps/build.jl` and an artifact with an override are still left to instantiate.
+
+### New
+
+- A `julia.depot` fetched with an ambient `JULIA_DEPOT_PATH` that leaves out Julia's bundled
+  depots, such as `--repo_env=JULIA_DEPOT_PATH=/some/depot` with no trailing `:`, prints a
+  warning. Without them every fetch recompiles Pkg and the other stdlibs into the depot, which
+  takes minutes on a CI runner. The path is still used as given; end it with `:` to keep them.
+
 ## 0.2.0
 
 This release makes sysimages hermetic in what they link, and makes the Starlark rules the

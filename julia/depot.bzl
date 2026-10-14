@@ -119,6 +119,19 @@ def _bundled_depots(rctx, julia, version_h):
         fail("julia_depot: cannot determine Julia's bundled depots:\n{}".format(res.stderr))
     return "".join([":" + d for d in res.stdout.strip().splitlines()])
 
+def _keeps_bundled(depot_path, julia):
+    """Whether a JULIA_DEPOT_PATH reaches the distribution's share/julia, where its stdlib caches are.
+
+    Julia expands an empty entry, leading, trailing or between two separators, to its default
+    path, which ends with the bundled depots. Otherwise the path must name share/julia itself.
+    """
+    prefixes = [julia.dirname.dirname, julia.realpath.dirname.dirname]
+    shipped = [str(p) + "/share/julia" for p in prefixes]
+    for entry in depot_path.split(":"):
+        if entry == "" or entry.rstrip("/") in shipped:
+            return True
+    return False
+
 def _julia_depot_impl(rctx):
     # The scripts need GNU tar and coreutils and a Linux Julia, whatever distribution is given.
     host_platform(rctx.os.name, rctx.os.arch, "julia_depot")
@@ -179,6 +192,17 @@ def _julia_depot_impl(rctx):
     # into. Treat it as unset, so Julia's default is resolved below.
     if env.get("JULIA_DEPOT_PATH") == "":
         env.pop("JULIA_DEPOT_PATH")
+
+    # An ambient path is used as given, so one that names its depots and nothing else drops the
+    # bundled depots, and Pkg and the other stdlibs are recompiled into the depot at every fetch
+    # (the cost is in image_depot.sh, at its depot_path). An empty entry, such as a trailing
+    # separator, keeps them, and so does naming them. Warn rather than append them: someone may
+    # have meant to leave them out.
+    if "JULIA_DEPOT_PATH" in env and not _keeps_bundled(env["JULIA_DEPOT_PATH"], julia):
+        # buildifier: disable=print
+        print(("julia_depot: JULIA_DEPOT_PATH={} leaves out Julia's bundled depots, so every fetch " +
+               "recompiles the stdlibs into the depot, minutes on a CI runner; end it with ':' " +
+               "to keep them").format(env["JULIA_DEPOT_PATH"]))
 
     # A declared depot overrides the ambient one. The attribute is a template because a depot
     # belongs per user on a local disk and a committed file cannot carry a username: {HOME}

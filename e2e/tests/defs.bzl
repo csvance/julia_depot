@@ -114,6 +114,7 @@ def julia_version_tests(
         ],
         data = _HELPERS + [
             "@julia_depot//julia:image_depot.sh",
+            "@julia_depot//julia:prefill_depot.jl",
             depot_repo + "//:stamp.txt",
             julia_repo + "//:bin/julia",
             julia_repo + "//:dist",
@@ -138,6 +139,7 @@ def julia_version_tests(
         data = _HELPERS + [
             "@julia_depot//julia:artifact_paths.jl",
             "@julia_depot//julia:image_depot.sh",
+            "@julia_depot//julia:prefill_depot.jl",
             depot_repo + "//:stamp.txt",
             julia_repo + "//:bin/julia",
             julia_repo + "//:dist",

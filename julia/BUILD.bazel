@@ -6,17 +6,20 @@ exports_files([
     "image_depot.sh",
     "image_layers.sh",
     "instantiate.sh",
+    "prefill_depot.jl",
     "sysimage.sh",
     "artifact_paths.jl",
 ])
 
-# What image_layers.sh runs beside itself, for the rules in image.bzl: the two scripts it wraps and
-# the PackageCompiler environments sysimage.sh selects from with `auto`.
+# What image_layers.sh runs beside itself, for the rules in image.bzl: the two scripts it wraps,
+# the Julia script image_depot.sh runs, and the PackageCompiler environments sysimage.sh selects
+# from with `auto`.
 filegroup(
     name = "image_scripts",
     srcs = [
         "image_depot.sh",
         "image_layers.sh",
+        "prefill_depot.jl",
         "sysimage.sh",
         ":sysimage_envs",
     ],

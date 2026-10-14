@@ -77,12 +77,14 @@ directory, under any hash. An `Overrides.toml` in a shared depot therefore chang
 for everyone who stacks that depot. Keep shared depots free of one, or treat it as part of
 what every consumer builds against.
 
-The image layers differ in what they take from these depots. The depot layer takes nothing but
-registries and package server credentials: `image_depot.sh` downloads every package and
-artifact again into a clean depot, with only Julia's bundled depots behind it, so Pkg verifies
-everything that goes in, except the artifacts an `overrides_build` file substitutes. That
-makes it independent of the host's depots, but not hermetic, since it is an action that uses
-the network. The compiled layer precompiles offline inside the assembled image, so no host
+The image layers differ in what they take from these depots. The depot layer takes registries
+and package server credentials, and copies the packages and artifacts it needs rather than
+downloading them again, but only after checking each against the tree hash the Manifest or the
+`Artifacts.toml` records; anything missing or failing the check is downloaded. The instantiate
+runs in a clean depot with only Julia's bundled depots behind it, so no other entry's caches or
+`Overrides.toml` reach it, and everything that goes in is verified, except the artifacts an
+`overrides_build` file substitutes. That makes it independent of what the host's depots hold
+beyond those hashes, but not hermetic, since it is an action that uses the network. The compiled layer precompiles offline inside the assembled image, so no host
 cache reaches it. The sysimage layer is the exception: it builds from the packages on the
 depot path the stamp records, `dir` and any `read_only_depots`, so whatever a shared depot
 holds, its `Overrides.toml` included, is in scope for the sysimage.
@@ -132,6 +134,12 @@ files, because a static walk under-counts: packages may augment the platform wit
 code (`HDF5_jll` tags its entries `mpi`), and a plain `HostPlatform()` then matches nothing
 and drops the artifact with no error. Letting Pkg instantiate means Pkg performs the augmented
 selection.
+
+The fetch has already downloaded the same closure into the depot, so the build copies it from
+there first, choosing what to copy with Pkg's own selection functions, and instantiate then finds
+it present. Packages with a `deps/build.jl`, which instantiate builds in place, and artifacts with
+an override are left to instantiate. The layer is the one a download would produce, byte for
+byte; `image_depot_modes_test.sh` checks that on every tested Julia version.
 
 Two details are easy to miss:
 

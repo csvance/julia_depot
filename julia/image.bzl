@@ -369,7 +369,8 @@ julia_depot_layer = rule(
     doc = """A clean depot for the project at `prefix`, as one layer: image_depot.sh as a rule.
 
 The project is instantiated from its Manifest into an empty depot, so the layer holds exactly its
-closure. `contents = "artifacts"` ships artifacts/ only, for an image whose code is in a sysimage;
+closure. What the depot already holds of it is copied in first, checked by tree hash, so the
+instantiate downloads only the rest. `contents = "artifacts"` ships artifacts/ only, for an image whose code is in a sysimage;
 `"full"` ships packages/ too, for an image that loads from source, and is what
 julia_compiled_layer needs. Fetches from the package server: set JULIA_PKG_SERVER with
 --action_env to use a mirror.
@@ -378,7 +379,7 @@ julia_compiled_layer needs. Fetches from the package server: set JULIA_PKG_SERVE
         "contents": attr.string(default = "artifacts", values = ["artifacts", "full"], doc = "artifacts: artifacts/ only. full: packages/ as well."),
         "prefix": attr.string(default = "/opt/julia-depot", doc = "Where the image keeps the depot. Match julia_image_env's `depot_prefix`."),
         "min_artifacts": attr.int(default = 1, doc = "Fail below this many artifact directories, to catch a selection that came up empty without an error."),
-        "fresh_registry": attr.bool(doc = "Fetch the registry into the clean depot instead of copying the depot's registries and package-server credentials, which are otherwise used for the instantiate (and never shipped)."),
+        "fresh_registry": attr.bool(doc = "Fetch the registry into the clean depot instead of copying the depot's registries and package-server credentials, which are otherwise used for the instantiate (and never shipped). The depot's packages and artifacts are not copied either, so everything is downloaded."),
         "overrides_build": attr.label(allow_single_file = True, doc = "artifacts/Overrides.toml naming build-host directories; see docs/src/recipes.md."),
         "overrides_image": attr.label(allow_single_file = True, doc = "The artifacts/Overrides.toml that ships, naming in-image paths. Required with overrides_build."),
         "env": attr.string_dict(doc = "Variables for the instantiate, e.g. what a package's platform augmentation reads to select an artifact."),

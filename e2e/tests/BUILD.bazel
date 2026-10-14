@@ -136,6 +136,7 @@ sh_test(
         "@julia_1_12//:bin/julia",
         "@julia_1_12//:dist",
         "@julia_depot//julia:image_depot.sh",
+        "@julia_depot//julia:prefill_depot.jl",
         "@read_only_depots_1_12//:env.sh",
         "@read_only_depots_1_12//:stamp.txt",
     ],

@@ -11,7 +11,9 @@
 #   JULIA_DEPOT_PATH              required, the source depot path: the registries/ of its
 #                                 entries and the servers/ (package-server credentials) of
 #                                 its first are copied into the clean depot so instantiate
-#                                 resolves the way the developer does
+#                                 resolves the way the developer does, and the Manifest's
+#                                 packages and artifacts it holds are copied rather than
+#                                 downloaded again (prefill_depot.jl)
 #   JULIA_PKG_SERVER              optional, passed through to Pkg (default: Pkg's default)
 #   JULIA_DEPOT_CONTENTS          artifacts (default) | full, see below
 #   JULIA_DEPOT_IMAGE_PREFIX      path of the depot inside the image, default opt/julia-depot
@@ -25,7 +27,9 @@
 # Why a second depot: depot.bzl conforms the developer's existing depot to the Manifest,
 # which suits a workstation build but not an image. That depot holds every project on the
 # machine, and this one needs a small part of it. The image gets its own depot, instantiated
-# from the Manifest into an empty directory.
+# from the Manifest into an empty directory. What the source depot already holds of that
+# Manifest is copied in first, so nothing is downloaded twice, but the selection is still
+# Pkg's, and the result is the same as from an empty source depot.
 #
 # Why Pkg selects the artifacts: a static walk of every Artifacts.toml with HostPlatform()
 # misses packages that augment the platform with their own code (HDF5_jll ships
@@ -149,6 +153,15 @@ env_args=(JULIA_DEPOT_PATH="$depot_path" JULIA_PKG_PRECOMPILE_AUTO=0)
 if [ -n "${JULIA_PKG_SERVER:-}" ]; then
     env_args+=(JULIA_PKG_SERVER="$JULIA_PKG_SERVER")
 fi
+
+# The fetch already instantiated this Manifest into the source depot, so copy what it holds
+# instead of downloading it again: on a large project, about a minute and gigabytes of
+# artifacts. The source depot stays off the path, so its registries, caches and Overrides.toml
+# cannot change what instantiate does; prefill_depot.jl reads it by path. Instantiate below is
+# unchanged and downloads whatever was not copied. See prefill_depot.jl for what is copied.
+env "${env_args[@]}" "$JULIA_DEPOT_BIN" --startup-file=no --project="$proj" \
+    "$(dirname "${BASH_SOURCE[0]}")/prefill_depot.jl" "${src_entries[@]}"
+
 env "${env_args[@]}" "$JULIA_DEPOT_BIN" --startup-file=no --project="$proj" -e "$instantiate"
 
 # A project with no JLLs has no artifacts/ at all. The floor below decides whether that is an
