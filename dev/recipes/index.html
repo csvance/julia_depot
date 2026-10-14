@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recipes — julia_depot</title>
-  <link rel="stylesheet" href="../assets/materialdocs.css?v=cee9c465">
+  <link rel="stylesheet" href="../assets/materialdocs.css?v=56384f67">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
   <meta name="title" content="Recipes — julia_depot">
   <meta property="og:title" content="Recipes — julia_depot">
@@ -89,7 +89,7 @@ julia_depot_layer(
     depot = &quot;@my_depot&quot;,
 )</code></pre>
 </div>
-<p>The tar unpacks at <code class="md-code-inline">/opt/julia-depot</code> (<code class="md-code-inline">prefix</code> to change it) and holds <code class="md-code-inline">artifacts/</code> only, which suffices when a sysimage carries the code. For an image that loads packages from source, set <code class="md-code-inline">contents = &quot;full&quot;</code> to ship <code class="md-code-inline">packages/</code> too. The depot&#39;s registries and package server credentials are copied into the clean depot for the instantiate only, and never reach the layer; <code class="md-code-inline">fresh_registry = True</code> fetches the registry instead. Set <code class="md-code-inline">JULIA_PKG_SERVER</code> with <code class="md-code-inline">--action_env</code> if your packages come from a private server. See <a href="../images/">Images</a> for the rest of the image.</p>
+<p>The tar unpacks at <code class="md-code-inline">/opt/julia-depot</code> (<code class="md-code-inline">prefix</code> to change it) and holds <code class="md-code-inline">artifacts/</code> only, which suffices when a sysimage carries the code. For an image that loads packages from source, set <code class="md-code-inline">contents = &quot;full&quot;</code> to ship <code class="md-code-inline">packages/</code> too. The depot&#39;s registries and package server credentials are copied into the clean depot for the instantiate only, and never reach the layer; <code class="md-code-inline">fresh_registry = True</code> fetches the registry instead. The packages and artifacts the fetch downloaded are copied too, after a tree-hash check, so a cold build downloads them once; with <code class="md-code-inline">fresh_registry = True</code> there is nothing to copy from, and they are downloaded again. Set <code class="md-code-inline">JULIA_PKG_SERVER</code> with <code class="md-code-inline">--action_env</code> if your packages come from a private server. See <a href="../images/">Images</a> for the rest of the image.</p>
 <h3 id="Substituting-a-locally-built-artifact" class="md-heading">Substituting a locally built artifact<a href="#Substituting-a-locally-built-artifact" class="md-heading-anchor" aria-label="Link to this section">#</a></h3>
 <p>When a JLL&#39;s registry artifact must be replaced, for instance by a library built from a patched source, ship the replacement in its own layer at a fixed path and give the depot layer two override files:</p>
 <div class="md-code-block">
@@ -198,6 +198,6 @@ oci_load(
   <script>hljs.highlightAll();</script>
   <script src="../siteinfo.js"></script>
   <script src="../../versions.js"></script>
-  <script src="../assets/materialdocs.js?v=cee9c465"></script>
+  <script src="../assets/materialdocs.js?v=56384f67"></script>
 </body>
 </html>
