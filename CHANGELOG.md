@@ -22,6 +22,7 @@ see `.github/workflows/release_notes.sh` and `bcr_notes.sh`.
   depots, such as `--repo_env=JULIA_DEPOT_PATH=/some/depot` with no trailing `:`, prints a
   warning. Without them every fetch recompiles Pkg and the other stdlibs into the depot, which
   takes minutes on a CI runner. The path is still used as given; end it with `:` to keep them.
+- `julia.dist` knows the checksums for Julia 1.13.2, so `sha256` can be omitted.
 
 ## 0.2.0
 
