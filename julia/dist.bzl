@@ -45,6 +45,10 @@ _KNOWN_SHA256 = {
         "linux-aarch64": "b366ac62162d42b272e82436397487dec719f0830d059cdd8a3f7a1810647128",
         "linux-x86_64": "2ecdfc9890ab0a565fdd92404c915ba2a04a933dbd5d292cc224d13819d17d07",
     },
+    "1.13.3": {
+        "linux-aarch64": "9ceb053bee6dfb8189bd40afd6925de3a9b7ff8fac8d01a5fcdd84af171ddf03",
+        "linux-x86_64": "5c61cb4b40332cb5a3504e7779e2f5dac093caa4a1116ded19f01413f85c63e4",
+    },
 }
 
 DEFAULT_URL = "https://julialang-s3.julialang.org/bin/linux/{arch_dir}/{minor}/julia-{version}-{platform}.tar.gz"
