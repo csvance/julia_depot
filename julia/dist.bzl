@@ -25,6 +25,10 @@ _KNOWN_SHA256 = {
         "linux-aarch64": "cc257b21967049642bfe17de1aff7dae17477eba4f423f98cb400c002080e5a2",
         "linux-x86_64": "b0c50dfe349d76ffc8580d24e0c0be623988a6d91ed57ad8b73c0137fd27bc0d",
     },
+    "1.10.13": {
+        "linux-aarch64": "f21192227b84236803e64e1fe2434c4c92975e3ce5a0cc28edfa50fbbcf1d748",
+        "linux-x86_64": "f2bfa080db29b50a9bf250f69e9acdcfd8b7c49409dee5e55588f986706fb8bd",
+    },
     "1.11.9": {
         "linux-aarch64": "a2071f0654d1d6af4381cba650b9f790f5f8bb7a570e51e378de8bcf67ff623e",
         "linux-x86_64": "b36363356d7a05eaf8b7b9e7a91c710f6bd3d2940be4d4e6d14b9a9f2927de35",
