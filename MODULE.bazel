@@ -33,7 +33,7 @@
 # Built and tested with Bazel 9 only.
 module(
     name = "julia_depot",
-    version = "0.2.0",
+    version = "0.2.1",
     bazel_compatibility = [">=9.0.0"],
     compatibility_level = 2,
 )
